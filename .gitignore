@@ -1,0 +1,227 @@
+# ===================================
+# Dotfiles and Dot Folders
+# ===================================
+# Ignore all dotfiles
+.*
+
+# Exception: Keep .gitignore
+!.gitignore
+
+# Exception: Keep .*.example files
+!.*.example
+
+# Ignore all dot folders
+.*/
+
+# ===================================
+# Markdown Files
+# ===================================
+*.md
+
+# ===================================
+# C# / F# / .NET
+# ===================================
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+
+# Visual Studio / Rider
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.sln.docstates
+*.pidb
+*.booproj
+
+# Build results
+[Dd]ebugPublic/
+[Rr]eleases/
+
+# NuGet
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+TestResult.xml
+*.trx
+*.coverage
+*.coveragexml
+
+# ===================================
+# Rust
+# ===================================
+target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# ===================================
+# Go
+# ===================================
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# Build output
+/src/services/auth/auth
+vendor/
+
+# ===================================
+# Python
+# ===================================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# Distribution / packaging
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+wheels/
+*.whl
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# Jupyter
+.ipynb_checkpoints
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ===================================
+# TypeScript / Node.js
+# ===================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+.parcel-cache/
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn
+.yarn-integrity
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# ===================================
+# IDEs and Editors
+# ===================================
+# VS Code (keep workspace settings with .example extension)
+.vscode/
+!.vscode/*.example
+
+# JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Editor temp files
+*.swp
+*.swo
+*~
+
+# ===================================
+# OS Files
+# ===================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ===================================
+# Security - Keys (NEVER commit)
+# ===================================
+infra/keys/*.pem
+*.pem
+*.key
+
+# ===================================
+# Temporary and misc
+# ===================================
+*.log
+logs/
+*.tmp
+*.temp
+*.bak
+tmp/
+.tmp/
+
+# Tilt
+.tilt/
+
+# Generated protos (commit these if you want reproducible builds)
+# src/services/*/proto/
