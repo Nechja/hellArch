@@ -6,7 +6,8 @@ services:
       POSTGRES_USER: hellarch
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hellarch}
       POSTGRES_DB: auth_db
-    # ports exposed only on Docker network (use `docker compose --profile expose` to expose)
+    ports:
+      - "5434:5432"
     volumes:
       - auth-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -24,6 +25,8 @@ services:
       POSTGRES_USER: hellarch
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hellarch}
       POSTGRES_DB: user_db
+    ports:
+      - "5433:5432"
     volumes:
       - user-db-data:/var/lib/postgresql/data
     healthcheck:

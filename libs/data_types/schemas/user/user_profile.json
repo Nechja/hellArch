@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "user/profile",
+  "title": "UserProfile",
+  "description": "Extended user profile info",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "auth_user_id": { "type": "string", "format": "uuid" },
+    "display_name": { "type": ["string", "null"], "maxLength": 255 },
+    "bio": { "type": ["string", "null"], "maxLength": 1000 },
+    "avatar_url": { "type": ["string", "null"] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "required": ["id", "auth_user_id", "created_at", "updated_at"]
+}

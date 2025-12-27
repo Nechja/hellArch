@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <!-- Generated code - disable strict analysis -->
+    <NoWarn>CA1724;CA1056;IDE0161</NoWarn>
+  </PropertyGroup>
+
+</Project>
