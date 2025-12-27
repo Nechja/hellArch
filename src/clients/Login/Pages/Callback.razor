@@ -1,0 +1,26 @@
+@page "/callback"
+@inject NavigationManager Navigation
+
+<PageTitle>Logged In - HellArch</PageTitle>
+
+<div class="login-container">
+    <div class="login-card">
+        <h1>Welcome!</h1>
+        <p class="subtitle">You're now logged in</p>
+
+        <div class="user-info">
+            <p>Session established successfully.</p>
+        </div>
+
+        <button class="btn-secondary" @onclick="Logout">
+            Sign Out
+        </button>
+    </div>
+</div>
+
+@code {
+    private void Logout()
+    {
+        Navigation.NavigateTo("/api/auth/logout", forceLoad: true);
+    }
+}

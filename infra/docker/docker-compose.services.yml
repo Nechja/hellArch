@@ -1,0 +1,71 @@
+services:
+  gateway:
+    build:
+      context: ../../src/gateway
+      dockerfile: Dockerfile
+    container_name: hellarch-gateway
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_URLS=http://+:5000
+      - ASPNETCORE_ENVIRONMENT=Development
+    volumes:
+      - ../../src/gateway:/app
+      - gateway-nuget:/root/.nuget
+    networks:
+      - hellarch
+    restart: unless-stopped
+
+  auth:
+    build:
+      context: ../../src/services/auth
+      dockerfile: Dockerfile
+    container_name: hellarch-auth
+    ports:
+      - "5001:5001"
+    environment:
+      - HTTP_ADDRESS=:5001
+      - GRPC_ADDRESS=:50051
+      - AUTH_DATABASE_URL=postgres://hellarch:hellarch@auth-db:5432/auth_db
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - JWT_PRIVATE_KEY_PATH=/keys/dev-private.pem
+      - JWT_PUBLIC_KEY_PATH=/keys/dev-public.pem
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
+      - DISCORD_REDIRECT_URI=${DISCORD_REDIRECT_URI}
+      - HELLARCH_ENV=development
+    volumes:
+      - ../../src/services/auth:/app
+      - ../../infra/keys:/keys:ro
+      - auth-go-cache:/go/pkg/mod
+    networks:
+      - hellarch
+    restart: unless-stopped
+
+  user:
+    build:
+      context: ../../src/services/user
+      dockerfile: Dockerfile
+    container_name: hellarch-user
+    ports:
+      - "5002:5002"
+    environment:
+      - ASPNETCORE_URLS=http://+:5002
+      - ASPNETCORE_ENVIRONMENT=Development
+      - USER_DATABASE_URL=Host=user-db;Port=5432;Database=user_db;Username=hellarch;Password=hellarch
+    volumes:
+      - ../../src/services/user:/app
+      - user-nuget:/root/.nuget
+    networks:
+      - hellarch
+    restart: unless-stopped
+
+volumes:
+  gateway-nuget:
+  auth-go-cache:
+  user-nuget:
+
+networks:
+  hellarch:
+    external: true

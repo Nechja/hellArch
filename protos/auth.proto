@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package hellarch.auth.v1;
+
+option csharp_namespace = "HellArch.Auth.V1";
+option go_package = "github.com/nechja/hellarch/auth/proto;authpb";
+
+import "google/protobuf/timestamp.proto";
+
+// ============================================================================
+// Auth Service
+// ============================================================================
+
+service AuthService {
+    // OAuth flow
+    rpc GetOAuthUrl(GetOAuthUrlRequest) returns (GetOAuthUrlResponse);
+    rpc HandleOAuthCallback(HandleOAuthCallbackRequest) returns (HandleOAuthCallbackResponse);
+
+    // Token operations
+    rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+    rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse);
+    rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+    // Session management
+    rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
+    rpc EndSession(EndSessionRequest) returns (EndSessionResponse);
+}
+
+// ============================================================================
+// OAuth
+// ============================================================================
+
+enum OAuthProvider {
+    OAUTH_PROVIDER_UNSPECIFIED = 0;
+    OAUTH_PROVIDER_DISCORD = 1;
+    OAUTH_PROVIDER_GOOGLE = 2;
+    OAUTH_PROVIDER_GITHUB = 3;
+    OAUTH_PROVIDER_MICROSOFT = 4;
+}
+
+message GetOAuthUrlRequest {
+    OAuthProvider provider = 1;
+    string redirect_uri = 2;
+    string state = 3;
+}
+
+message GetOAuthUrlResponse {
+    string auth_url = 1;
+}
+
+message HandleOAuthCallbackRequest {
+    OAuthProvider provider = 1;
+    string code = 2;
+    string state = 3;
+}
+
+message HandleOAuthCallbackResponse {
+    string access_token = 1;
+    string refresh_token = 2;
+    int64 expires_in = 3;
+    UserInfo user_info = 4;
+}
+
+// ============================================================================
+// Tokens
+// ============================================================================
+
+message RefreshTokenRequest {
+    string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+    string access_token = 1;
+    string refresh_token = 2;
+    int64 expires_in = 3;
+}
+
+message RevokeTokenRequest {
+    string token = 1;
+}
+
+message RevokeTokenResponse {
+    bool success = 1;
+}
+
+message ValidateTokenRequest {
+    string token = 1;
+}
+
+message ValidateTokenResponse {
+    bool valid = 1;
+    UserInfo user_info = 2;
+    google.protobuf.Timestamp expires_at = 3;
+}
+
+// ============================================================================
+// Sessions
+// ============================================================================
+
+message GetSessionRequest {
+    string session_id = 1;
+}
+
+message GetSessionResponse {
+    Session session = 1;
+}
+
+message EndSessionRequest {
+    string session_id = 1;
+}
+
+message EndSessionResponse {
+    bool success = 1;
+}
+
+message Session {
+    string id = 1;
+    string user_id = 2;
+    google.protobuf.Timestamp created_at = 3;
+    google.protobuf.Timestamp expires_at = 4;
+    string ip_address = 5;
+    string user_agent = 6;
+}
+
+// ============================================================================
+// Shared Types
+// ============================================================================
+
+message UserInfo {
+    string id = 1;
+    string provider_id = 2;
+    OAuthProvider provider = 3;
+    string email = 4;
+    string username = 5;
+    string avatar_url = 6;
+    map<string, string> claims = 7;  // flexible claims like rank, roles, etc.
+}

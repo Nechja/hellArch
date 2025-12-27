@@ -1,0 +1,75 @@
+services:
+  auth-db:
+    image: postgres:17-alpine
+    container_name: hellarch-auth-db
+    environment:
+      POSTGRES_USER: hellarch
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hellarch}
+      POSTGRES_DB: auth_db
+    # ports exposed only on Docker network (use `docker compose --profile expose` to expose)
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hellarch -d auth_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hellarch
+
+  user-db:
+    image: postgres:17-alpine
+    container_name: hellarch-user-db
+    environment:
+      POSTGRES_USER: hellarch
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hellarch}
+      POSTGRES_DB: user_db
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hellarch -d user_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hellarch
+
+  redis:
+    image: redis:7-alpine
+    container_name: hellarch-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hellarch
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: hellarch-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: hellarch
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-hellarch}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - hellarch
+
+volumes:
+  auth-db-data:
+  user-db-data:
+  redis-data:
+  rabbitmq-data:
+
+networks:
+  hellarch:
+    name: hellarch

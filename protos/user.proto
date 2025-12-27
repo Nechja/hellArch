@@ -1,0 +1,154 @@
+syntax = "proto3";
+
+package hellarch.user.v1;
+
+option csharp_namespace = "HellArch.User.V1";
+option go_package = "github.com/nechja/hellarch/user/proto;userpb";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// ============================================================================
+// User Service
+// ============================================================================
+
+service UserService {
+    // Profile operations
+    rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+    rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+    rpc CreateProfile(CreateProfileRequest) returns (CreateProfileResponse);
+
+    // Preferences
+    rpc GetPreferences(GetPreferencesRequest) returns (GetPreferencesResponse);
+    rpc UpdatePreferences(UpdatePreferencesRequest) returns (UpdatePreferencesResponse);
+
+    // Linked accounts (OAuth providers)
+    rpc GetLinkedAccounts(GetLinkedAccountsRequest) returns (GetLinkedAccountsResponse);
+    rpc LinkAccount(LinkAccountRequest) returns (LinkAccountResponse);
+    rpc UnlinkAccount(UnlinkAccountRequest) returns (UnlinkAccountResponse);
+}
+
+// ============================================================================
+// Profile
+// ============================================================================
+
+message GetProfileRequest {
+    string user_id = 1;
+}
+
+message GetProfileResponse {
+    UserProfile profile = 1;
+}
+
+message CreateProfileRequest {
+    string user_id = 1;
+    string email = 2;
+    string display_name = 3;
+    string avatar_url = 4;
+}
+
+message CreateProfileResponse {
+    UserProfile profile = 1;
+}
+
+message UpdateProfileRequest {
+    string user_id = 1;
+    optional string display_name = 2;
+    optional string avatar_url = 3;
+    optional string bio = 4;
+}
+
+message UpdateProfileResponse {
+    UserProfile profile = 1;
+}
+
+message UserProfile {
+    string id = 1;
+    string email = 2;
+    string display_name = 3;
+    string avatar_url = 4;
+    string bio = 5;
+    google.protobuf.Timestamp created_at = 6;
+    google.protobuf.Timestamp updated_at = 7;
+}
+
+// ============================================================================
+// Preferences
+// ============================================================================
+
+message GetPreferencesRequest {
+    string user_id = 1;
+}
+
+message GetPreferencesResponse {
+    UserPreferences preferences = 1;
+}
+
+message UpdatePreferencesRequest {
+    string user_id = 1;
+    UserPreferences preferences = 2;
+}
+
+message UpdatePreferencesResponse {
+    UserPreferences preferences = 1;
+}
+
+message UserPreferences {
+    Theme theme = 1;
+    string locale = 2;
+    string timezone = 3;
+    NotificationSettings notifications = 4;
+    google.protobuf.Struct custom = 5;  // flexible JSON for app-specific prefs
+}
+
+enum Theme {
+    THEME_UNSPECIFIED = 0;
+    THEME_DARK = 1;
+    THEME_LIGHT = 2;
+    THEME_SYSTEM = 3;
+}
+
+message NotificationSettings {
+    bool email_enabled = 1;
+    bool push_enabled = 2;
+    bool in_app_enabled = 3;
+}
+
+// ============================================================================
+// Linked Accounts
+// ============================================================================
+
+message GetLinkedAccountsRequest {
+    string user_id = 1;
+}
+
+message GetLinkedAccountsResponse {
+    repeated LinkedAccount accounts = 1;
+}
+
+message LinkAccountRequest {
+    string user_id = 1;
+    string provider = 2;
+    string provider_user_id = 3;
+    string email = 4;
+}
+
+message LinkAccountResponse {
+    LinkedAccount account = 1;
+}
+
+message UnlinkAccountRequest {
+    string user_id = 1;
+    string provider = 2;
+}
+
+message UnlinkAccountResponse {
+    bool success = 1;
+}
+
+message LinkedAccount {
+    string provider = 1;
+    string provider_user_id = 2;
+    string email = 3;
+    google.protobuf.Timestamp linked_at = 4;
+}
