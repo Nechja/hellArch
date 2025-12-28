@@ -91,6 +91,6 @@ and UserInfo = {
     Email: string
     Username: string
     AvatarUrl: string
-    Claims: Map<string, ClaimsEntry>
+    Claims: Map<string, string>
 }
 

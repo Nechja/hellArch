@@ -5,9 +5,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Events.fs" />
-    <Compile Include="User.fs" />
-    <Compile Include="Auth.fs" />
+    <Compile Include="../generated/fsharp/events.fs" />
+    <Compile Include="../generated/fsharp/user.fs" />
+    <Compile Include="../generated/fsharp/auth.fs" />
   </ItemGroup>
 
 </Project>
