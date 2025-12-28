@@ -1,3 +1,5 @@
+import type { UserPreferences } from './user_preferences';
+
 /** Extended user profile information.
 Linked to auth user via AuthUserId.
 Email is denormalized from auth for read performance. */

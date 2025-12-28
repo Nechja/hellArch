@@ -1,3 +1,6 @@
+import type { LinkedAccount } from './linked_account';
+import type { Session } from './session';
+
 /** Core user identity in the auth system. */
 export interface User {
   id: string;

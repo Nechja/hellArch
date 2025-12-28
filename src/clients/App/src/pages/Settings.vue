@@ -1,15 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-
-interface User {
-  id: string
-  email: string
-  display_name: string
-  avatar_url: string
-}
+import type { UserProfile } from '@hellarch/types'
 
 const props = defineProps<{
-  user: User | null
+  user: UserProfile | null
 }>()
 
 const displayName = ref(props.user?.display_name || '')

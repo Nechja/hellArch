@@ -8,6 +8,10 @@ var outputDir = args.Length > 1 ? args[1] : "..";
 var csFiles = Directory.GetFiles(sourceDir, "*.cs", SearchOption.AllDirectories);
 Console.WriteLine($"Found {csFiles.Length} C# files");
 
+// First pass: collect all type definitions to build type->domain map
+var typeMap = new Dictionary<string, string>(); // typeName -> domain
+var typeDefs = new List<(TypeDef Def, string Domain)>();
+
 foreach (var file in csFiles)
 {
     var code = File.ReadAllText(file);
@@ -23,13 +27,8 @@ foreach (var file in csFiles)
     foreach (var classDecl in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
     {
         var typeDef = ParseClass(classDecl, namespaceName);
-        Console.WriteLine($"  {namespaceName}.{typeDef.Name}");
-
-        GenerateGo(typeDef, domain, outputDir);
-        GenerateRust(typeDef, domain, outputDir);
-        GeneratePython(typeDef, domain, outputDir);
-        GenerateFSharp(typeDef, domain, outputDir);
-        GenerateTypeScript(typeDef, domain, outputDir);
+        typeMap[typeDef.Name] = domain;
+        typeDefs.Add((typeDef, domain));
     }
 
     foreach (var enumDecl in root.DescendantNodes().OfType<EnumDeclarationSyntax>()
@@ -37,6 +36,18 @@ foreach (var file in csFiles)
     {
         // Standalone enums are handled separately if needed
     }
+}
+
+// Second pass: generate files with proper imports
+foreach (var (typeDef, domain) in typeDefs)
+{
+    Console.WriteLine($"  {typeDef.Namespace}.{typeDef.Name}");
+
+    GenerateGo(typeDef, domain, outputDir);
+    GenerateRust(typeDef, domain, outputDir);
+    GeneratePython(typeDef, domain, outputDir);
+    GenerateFSharp(typeDef, domain, outputDir);
+    GenerateTypeScript(typeDef, domain, outputDir, typeMap);
 }
 
 Console.WriteLine("\nDone!");
@@ -433,13 +444,50 @@ string CSharpToFSharp(string type, bool nullable)
     return nullable ? $"{fsType} option" : fsType;
 }
 
-void GenerateTypeScript(TypeDef def, string domain, string outDir)
+void GenerateTypeScript(TypeDef def, string domain, string outDir, Dictionary<string, string> typeMap)
 {
     var dir = Path.Combine(outDir, "typescript", domain.ToLower());
     Directory.CreateDirectory(dir);
     var file = Path.Combine(dir, $"{ToSnakeCase(def.Name)}.ts");
 
     var sb = new System.Text.StringBuilder();
+
+    // Collect imports needed for referenced types
+    var imports = new Dictionary<string, HashSet<string>>(); // domain -> types
+    foreach (var p in def.Properties)
+    {
+        var referencedTypes = ExtractReferencedTypes(p.Type);
+        foreach (var refType in referencedTypes)
+        {
+            if (typeMap.TryGetValue(refType, out var refDomain) && refType != def.Name)
+            {
+                if (!imports.ContainsKey(refDomain))
+                    imports[refDomain] = [];
+                imports[refDomain].Add(refType);
+            }
+        }
+    }
+
+    // Generate import statements
+    foreach (var (importDomain, types) in imports.OrderBy(kv => kv.Key))
+    {
+        var typeList = string.Join(", ", types.OrderBy(t => t));
+        var relativePath = importDomain.Equals(domain, StringComparison.OrdinalIgnoreCase)
+            ? $"./{ToSnakeCase(types.First())}"
+            : $"../{importDomain.ToLower()}/{ToSnakeCase(types.First())}";
+
+        // For multiple types from same domain, import each separately
+        foreach (var type in types.OrderBy(t => t))
+        {
+            var path = importDomain.Equals(domain, StringComparison.OrdinalIgnoreCase)
+                ? $"./{ToSnakeCase(type)}"
+                : $"../{importDomain.ToLower()}/{ToSnakeCase(type)}";
+            sb.AppendLine($"import type {{ {type} }} from '{path}';");
+        }
+    }
+
+    if (imports.Count > 0)
+        sb.AppendLine();
 
     foreach (var e in def.Enums)
     {
@@ -463,6 +511,31 @@ void GenerateTypeScript(TypeDef def, string domain, string outDir)
     File.WriteAllText(file, sb.ToString());
     Console.WriteLine($"    typescript: ok");
 }
+
+List<string> ExtractReferencedTypes(string type)
+{
+    var result = new List<string>();
+
+    // Handle collection types
+    if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
+        type.StartsWith("List<", StringComparison.Ordinal) ||
+        type.StartsWith("IEnumerable<", StringComparison.Ordinal))
+    {
+#pragma warning disable CA1865, CA1307
+        var innerType = type.Substring(type.IndexOf('<') + 1).TrimEnd('>');
+#pragma warning restore CA1865, CA1307
+        result.AddRange(ExtractReferencedTypes(innerType));
+    }
+    else if (!IsPrimitiveType(type))
+    {
+        result.Add(type);
+    }
+
+    return result;
+}
+
+bool IsPrimitiveType(string type) =>
+    type is "Guid" or "string" or "int" or "long" or "bool" or "DateTime" or "DateTimeOffset";
 
 string CSharpToTypeScript(string type, bool nullable)
 {

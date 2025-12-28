@@ -1,3 +1,5 @@
+import type { User } from './user';
+
 /** User session for cookie-based authentication. */
 export interface Session {
   id: string;

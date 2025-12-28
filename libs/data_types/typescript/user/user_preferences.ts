@@ -1,3 +1,5 @@
+import type { UserProfile } from './user_profile';
+
 export type Theme = 'system' | 'light' | 'dark';
 
 /** User preferences and settings. */
