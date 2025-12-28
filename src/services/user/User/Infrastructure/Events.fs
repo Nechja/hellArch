@@ -1,5 +1,9 @@
 namespace User.Infrastructure
 
+#nowarn "3261" // Nullness warning
+#nowarn "3262" // Value known to be without null
+#nowarn "3264" // Downcasting nullness
+
 open System
 open System.Text
 open System.Text.Json
@@ -11,6 +15,7 @@ open User.Domain
 
 module Events =
 
+    [<CLIMutable>]
     type CloudEvent<'T> =
         { specversion: string
           id: string
@@ -20,6 +25,7 @@ module Events =
           time: string
           data: 'T }
 
+    [<CLIMutable>]
     type UserCreatedData =
         { user_id: string
           email: string
@@ -37,6 +43,37 @@ module Events =
         let options = JsonSerializerOptions()
         options.PropertyNameCaseInsensitive <- true
         options
+
+    let private handleUserCreated (dbConfig: Database.DatabaseConfig) (data: UserCreatedData) =
+        task {
+            let authUserId = Guid.Parse(data.user_id)
+
+            // Check if profile already exists for this auth user
+            let! existingProfile = Database.getProfileByAuthUserId dbConfig authUserId |> Async.StartAsTask
+
+            match existingProfile with
+            | Ok(Some _) ->
+                printfn "Profile already exists for auth user %s, skipping" data.user_id
+            | Ok None ->
+                // Create the profile
+                let request: CreateProfileFromEvent =
+                    { AuthUserId = authUserId
+                      Email = data.email
+                      DisplayName = Some data.username
+                      AvatarUrl =
+                        if String.IsNullOrEmpty(data.avatar_url) then
+                            None
+                        else
+                            Some data.avatar_url }
+
+                let! result = Database.createProfile dbConfig request |> Async.StartAsTask
+
+                match result with
+                | Ok profile ->
+                    printfn "Created profile %A for auth user %s" profile.Id data.user_id
+                | Error err -> printfn "Failed to create profile: %A" err
+            | Error err -> printfn "Failed to check existing profile: %A" err
+        }
 
     let startConsumer
         (config: EventsConfig)
@@ -84,63 +121,41 @@ module Events =
 
             let consumer = AsyncEventingBasicConsumer(channel)
 
-            consumer.ReceivedAsync.Add(fun args ->
-                task {
-                    try
-                        let body = Encoding.UTF8.GetString(args.Body.ToArray())
-                        printfn "Received event: %s" body
+            let handler =
+                AsyncEventHandler<BasicDeliverEventArgs>(fun _ args ->
+                    task {
+                        try
+                            let body = Encoding.UTF8.GetString(args.Body.ToArray())
+                            printfn "Received event: %s" body
 
-                        let eventType =
-                            match args.BasicProperties.Headers with
-                            | null -> None
-                            | headers ->
-                                match headers.TryGetValue("ce-type") with
-                                | true, value -> Some(Encoding.UTF8.GetString(value :?> byte[]))
-                                | false, _ -> None
+                            let eventType =
+                                match args.BasicProperties.Headers with
+                                | null -> None
+                                | headers ->
+                                    match headers.TryGetValue("ce-type") with
+                                    | true, value when not (isNull value) ->
+                                        Some(Encoding.UTF8.GetString(value :?> byte array))
+                                    | _ -> None
 
-                        match eventType with
-                        | Some "hellarch.auth.user.created.v1" ->
-                            let event =
-                                JsonSerializer.Deserialize<CloudEvent<UserCreatedData>>(body, jsonOptions)
+                            match eventType with
+                            | Some "hellarch.auth.user.created.v1" ->
+                                try
+                                    let event = JsonSerializer.Deserialize<CloudEvent<UserCreatedData>>(body, jsonOptions)
+                                    do! handleUserCreated dbConfig event.data
+                                with ex ->
+                                    printfn "Failed to deserialize event: %s" ex.Message
 
-                            let userId = Guid.Parse(event.data.user_id)
+                            | Some eventType -> printfn "Ignoring event type: %s" eventType
+                            | None -> printfn "Event missing type header"
 
-                            // Check if profile already exists
-                            let! existingProfile = Database.getProfileOption dbConfig userId |> Async.StartAsTask
+                            do! channel.BasicAckAsync(args.DeliveryTag, multiple = false).AsTask()
+                        with ex ->
+                            printfn "Error processing event: %s" ex.Message
+                            // Nack and requeue on error
+                            do! channel.BasicNackAsync(args.DeliveryTag, multiple = false, requeue = true).AsTask()
+                    })
 
-                            match existingProfile with
-                            | Ok(Some _) ->
-                                printfn "Profile already exists for user %s, skipping" event.data.user_id
-                            | Ok None ->
-                                // Create the profile
-                                let request: CreateProfileRequest =
-                                    { UserId = userId
-                                      Email = event.data.email
-                                      DisplayName = Some event.data.username
-                                      AvatarUrl =
-                                        if String.IsNullOrEmpty(event.data.avatar_url) then
-                                            None
-                                        else
-                                            Some event.data.avatar_url }
-
-                                let! result = Database.createProfile dbConfig request |> Async.StartAsTask
-
-                                match result with
-                                | Ok profile ->
-                                    printfn "Created profile for user %s: %A" event.data.user_id profile.Id
-                                | Error err -> printfn "Failed to create profile: %A" err
-                            | Error err -> printfn "Failed to check existing profile: %A" err
-
-                        | Some eventType -> printfn "Ignoring event type: %s" eventType
-                        | None -> printfn "Event missing type header"
-
-                        do! channel.BasicAckAsync(args.DeliveryTag, multiple = false)
-                    with ex ->
-                        printfn "Error processing event: %s" ex.Message
-                        // Nack and requeue on error
-                        do! channel.BasicNackAsync(args.DeliveryTag, multiple = false, requeue = true)
-                }
-                |> ValueTask)
+            consumer.add_ReceivedAsync(handler)
 
             let! _ =
                 channel.BasicConsumeAsync(

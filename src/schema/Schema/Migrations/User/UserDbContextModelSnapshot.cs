@@ -17,7 +17,7 @@ namespace Schema.Migrations.User
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.1")
+                .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -40,10 +40,18 @@ namespace Schema.Migrations.User
                         .HasColumnType("boolean")
                         .HasColumnName("email_notifications");
 
+                    b.Property<bool>("InAppNotifications")
+                        .HasColumnType("boolean")
+                        .HasColumnName("in_app_notifications");
+
                     b.Property<string>("Locale")
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)")
                         .HasColumnName("locale");
+
+                    b.Property<bool>("PushNotifications")
+                        .HasColumnType("boolean")
+                        .HasColumnName("push_notifications");
 
                     b.Property<string>("Theme")
                         .IsRequired()
@@ -107,6 +115,11 @@ namespace Schema.Migrations.User
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("display_name");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()

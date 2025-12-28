@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "protoc-gen-fsharp": {
+      "version": "0.1.0",
+      "commands": [
+        "protoc-gen-fsharp"
+      ],
+      "rollForward": false
+    }
+  }
+}

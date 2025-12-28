@@ -6,13 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Auth entities -->
-    <Compile Include="Auth/User.fs" />
-    <Compile Include="Auth/Session.fs" />
-    <Compile Include="Auth/LinkedAccount.fs" />
-    <!-- User entities -->
-    <Compile Include="User/UserPreferences.fs" />
-    <Compile Include="User/UserProfile.fs" />
+    <Compile Include="Auth/Types.fs" />
+    <Compile Include="User/Types.fs" />
   </ItemGroup>
 
 </Project>

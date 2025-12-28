@@ -2,30 +2,47 @@ namespace User.Infrastructure
 
 open System
 open Npgsql.FSharp
+open HellArch.DataTypes.User
 open User.Domain
 
 module Database =
 
     type DatabaseConfig = { ConnectionString: string }
 
+    let private parseTheme (value: string) : Theme =
+        match value.ToLowerInvariant() with
+        | "dark" -> Theme.Dark
+        | "light" -> Theme.Light
+        | _ -> Theme.System
+
+    let private themeToString (theme: Theme) : string =
+        match theme with
+        | Theme.Dark -> "dark"
+        | Theme.Light -> "light"
+        | Theme.System -> "system"
+
     let private parseProfile (read: RowReader) : UserProfile =
         { Id = read.uuid "id"
+          AuthUserId = read.uuid "auth_user_id"
           Email = read.string "email"
           DisplayName = read.stringOrNone "display_name"
           AvatarUrl = read.stringOrNone "avatar_url"
           Bio = read.stringOrNone "bio"
-          CreatedAt = read.datetimeOffset "created_at"
-          UpdatedAt = read.datetimeOffset "updated_at" }
+          CreatedAt = read.dateTime "created_at"
+          UpdatedAt = read.dateTime "updated_at"
+          Preferences = None }
 
     let private parsePreferences (read: RowReader) : UserPreferences =
-        { Theme = read.string "theme" |> Theme.fromString
-          Locale = read.string "locale"
-          Timezone = read.string "timezone"
-          Notifications =
-            { EmailEnabled = read.bool "email_enabled"
-              PushEnabled = read.bool "push_enabled"
-              InAppEnabled = read.bool "in_app_enabled" }
-          Custom = Map.empty }
+        { Id = read.uuid "id"
+          UserProfileId = read.uuid "user_profile_id"
+          Theme = read.string "theme" |> parseTheme
+          Locale = read.stringOrNone "locale"
+          Timezone = read.stringOrNone "timezone"
+          EmailNotifications = read.bool "email_notifications"
+          PushNotifications = read.bool "push_notifications"
+          InAppNotifications = read.bool "in_app_notifications"
+          CreatedAt = read.dateTime "created_at"
+          UpdatedAt = read.dateTime "updated_at" }
 
     let getProfile (config: DatabaseConfig) (userId: Guid) =
         async {
@@ -40,26 +57,26 @@ module Database =
 
                 return Ok result
             with ex ->
-                return Error(UserProfileOperations.DatabaseError ex.Message)
+                return Error(UserError.DatabaseError ex.Message)
         }
 
-    let getProfileOption (config: DatabaseConfig) (userId: Guid) =
+    let getProfileByAuthUserId (config: DatabaseConfig) (authUserId: Guid) =
         async {
             try
                 let! results =
                     config.ConnectionString
                     |> Sql.connect
-                    |> Sql.query "SELECT * FROM user_profiles WHERE id = @id"
-                    |> Sql.parameters [ "id", Sql.uuid userId ]
+                    |> Sql.query "SELECT * FROM user_profiles WHERE auth_user_id = @auth_user_id"
+                    |> Sql.parameters [ "auth_user_id", Sql.uuid authUserId ]
                     |> Sql.executeAsync parseProfile
                     |> Async.AwaitTask
 
                 return Ok(results |> List.tryHead)
             with ex ->
-                return Error(UserProfileOperations.DatabaseError ex.Message)
+                return Error(UserError.DatabaseError ex.Message)
         }
 
-    let createProfile (config: DatabaseConfig) (request: CreateProfileRequest) =
+    let createProfile (config: DatabaseConfig) (request: CreateProfileFromEvent) =
         async {
             try
                 let! result =
@@ -67,12 +84,13 @@ module Database =
                     |> Sql.connect
                     |> Sql.query
                         """
-                        INSERT INTO user_profiles (id, email, display_name, avatar_url)
-                        VALUES (@id, @email, @display_name, @avatar_url)
+                        INSERT INTO user_profiles (id, auth_user_id, email, display_name, avatar_url)
+                        VALUES (@id, @auth_user_id, @email, @display_name, @avatar_url)
                         RETURNING *
                         """
                     |> Sql.parameters
-                        [ "id", Sql.uuid request.UserId
+                        [ "id", Sql.uuid (Guid.NewGuid())
+                          "auth_user_id", Sql.uuid request.AuthUserId
                           "email", Sql.string request.Email
                           "display_name", Sql.stringOrNone request.DisplayName
                           "avatar_url", Sql.stringOrNone request.AvatarUrl ]
@@ -81,10 +99,10 @@ module Database =
 
                 return Ok result
             with ex ->
-                return Error(UserProfileOperations.DatabaseError ex.Message)
+                return Error(UserError.DatabaseError ex.Message)
         }
 
-    let updateProfile (config: DatabaseConfig) (userId: Guid) (request: UpdateProfileRequest) =
+    let updateProfile (config: DatabaseConfig) (userId: Guid) (displayName: string option) (avatarUrl: string option) (bio: string option) =
         async {
             try
                 let! result =
@@ -102,15 +120,15 @@ module Database =
                         """
                     |> Sql.parameters
                         [ "id", Sql.uuid userId
-                          "display_name", Sql.stringOrNone request.DisplayName
-                          "avatar_url", Sql.stringOrNone request.AvatarUrl
-                          "bio", Sql.stringOrNone request.Bio ]
+                          "display_name", Sql.stringOrNone displayName
+                          "avatar_url", Sql.stringOrNone avatarUrl
+                          "bio", Sql.stringOrNone bio ]
                     |> Sql.executeRowAsync parseProfile
                     |> Async.AwaitTask
 
                 return Ok result
             with ex ->
-                return Error(UserProfileOperations.DatabaseError ex.Message)
+                return Error(UserError.DatabaseError ex.Message)
         }
 
     let getPreferences (config: DatabaseConfig) (userId: Guid) =
@@ -119,22 +137,17 @@ module Database =
                 let! results =
                     config.ConnectionString
                     |> Sql.connect
-                    |> Sql.query "SELECT * FROM user_preferences WHERE user_id = @user_id"
-                    |> Sql.parameters [ "user_id", Sql.uuid userId ]
+                    |> Sql.query "SELECT * FROM user_preferences WHERE user_profile_id = @user_profile_id"
+                    |> Sql.parameters [ "user_profile_id", Sql.uuid userId ]
                     |> Sql.executeAsync parsePreferences
                     |> Async.AwaitTask
 
-                return
-                    Ok(
-                        results
-                        |> List.tryHead
-                        |> Option.defaultValue UserPreferences.defaultPreferences
-                    )
+                return Ok(results |> List.tryHead)
             with ex ->
-                return Error(UserProfileOperations.DatabaseError ex.Message)
+                return Error(UserError.DatabaseError ex.Message)
         }
 
-    let upsertPreferences (config: DatabaseConfig) (userId: Guid) (prefs: UserPreferences) =
+    let upsertPreferences (config: DatabaseConfig) (prefs: UserPreferences) =
         async {
             try
                 let! _ =
@@ -142,29 +155,30 @@ module Database =
                     |> Sql.connect
                     |> Sql.query
                         """
-                        INSERT INTO user_preferences (user_id, theme, locale, timezone, email_enabled, push_enabled, in_app_enabled)
-                        VALUES (@user_id, @theme, @locale, @timezone, @email_enabled, @push_enabled, @in_app_enabled)
-                        ON CONFLICT (user_id) DO UPDATE SET
+                        INSERT INTO user_preferences (id, user_profile_id, theme, locale, timezone, email_notifications, push_notifications, in_app_notifications)
+                        VALUES (@id, @user_profile_id, @theme, @locale, @timezone, @email_notifications, @push_notifications, @in_app_notifications)
+                        ON CONFLICT (user_profile_id) DO UPDATE SET
                             theme = @theme,
                             locale = @locale,
                             timezone = @timezone,
-                            email_enabled = @email_enabled,
-                            push_enabled = @push_enabled,
-                            in_app_enabled = @in_app_enabled,
+                            email_notifications = @email_notifications,
+                            push_notifications = @push_notifications,
+                            in_app_notifications = @in_app_notifications,
                             updated_at = NOW()
                         """
                     |> Sql.parameters
-                        [ "user_id", Sql.uuid userId
-                          "theme", Sql.string (Theme.toString prefs.Theme)
-                          "locale", Sql.string prefs.Locale
-                          "timezone", Sql.string prefs.Timezone
-                          "email_enabled", Sql.bool prefs.Notifications.EmailEnabled
-                          "push_enabled", Sql.bool prefs.Notifications.PushEnabled
-                          "in_app_enabled", Sql.bool prefs.Notifications.InAppEnabled ]
+                        [ "id", Sql.uuid prefs.Id
+                          "user_profile_id", Sql.uuid prefs.UserProfileId
+                          "theme", Sql.string (themeToString prefs.Theme)
+                          "locale", Sql.stringOrNone prefs.Locale
+                          "timezone", Sql.stringOrNone prefs.Timezone
+                          "email_notifications", Sql.bool prefs.EmailNotifications
+                          "push_notifications", Sql.bool prefs.PushNotifications
+                          "in_app_notifications", Sql.bool prefs.InAppNotifications ]
                     |> Sql.executeNonQueryAsync
                     |> Async.AwaitTask
 
                 return Ok prefs
             with ex ->
-                return Error(UserProfileOperations.DatabaseError ex.Message)
+                return Error(UserError.DatabaseError ex.Message)
         }

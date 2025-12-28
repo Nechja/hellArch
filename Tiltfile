@@ -54,7 +54,7 @@ docker_compose('./infra/docker/docker-compose.services.yml')
 # Label service resources (DBs now run migrations on startup)
 dc_resource('gateway', labels=['services'], resource_deps=['auth-db', 'redis'], links=['http://localhost:5000'])
 dc_resource('auth', labels=['services'], resource_deps=['auth-db', 'redis', 'rabbitmq'], links=['http://localhost:5001'])
-dc_resource('user', labels=['services'], resource_deps=['user-db', 'redis'], links=['http://localhost:5002'])
+dc_resource('user', labels=['services'], resource_deps=['user-db', 'redis', 'rabbitmq'], links=['http://localhost:5002'])
 # Login client (Blazor WASM - runs locally with mise-managed dotnet)
 local_resource(
     'login',
@@ -65,6 +65,14 @@ local_resource(
     resource_deps=['gateway'],
     links=['http://localhost:5010']
 )
+
+# ============================================================================
+# Observability
+# ============================================================================
+
+docker_compose('./infra/docker/docker-compose.observability.yml')
+
+dc_resource('jaeger', labels=['observability'], links=['http://localhost:16686'])
 
 # ============================================================================
 # Dev Tools

@@ -5,6 +5,7 @@ open System.Text.Json
 open Microsoft.AspNetCore.Http
 open User.Domain
 open User.Infrastructure
+open HellArch.User.V1
 
 module Handlers =
 
@@ -20,22 +21,25 @@ module Handlers =
             do! ctx.Response.WriteAsync(JsonSerializer.Serialize(data, jsonOptions))
         }
 
-    let private handleError (ctx: HttpContext) (error: UserProfileOperations.UserError) =
+    let private handleError (ctx: HttpContext) (error: UserError) =
         match error with
-        | UserProfileOperations.NotFound id ->
+        | UserError.NotFound id ->
             writeJson ctx 404 {| error = "not_found"; message = $"User {id} not found" |}
-        | UserProfileOperations.ValidationError msg ->
+        | UserError.ValidationError msg ->
             writeJson ctx 400 {| error = "validation_error"; message = msg |}
-        | UserProfileOperations.DatabaseError _ ->
+        | UserError.DatabaseError _ ->
             writeJson ctx 500 {| error = "internal_error"; message = "Database error" |}
+        | UserError.Conflict msg ->
+            writeJson ctx 409 {| error = "conflict"; message = msg |}
 
     let getProfile (dbConfig: Database.DatabaseConfig) (userId: Guid) (ctx: HttpContext) =
         task {
-            let! result = Database.getProfileOption dbConfig userId |> Async.StartAsTask
+            let! result = Database.getProfile dbConfig userId |> Async.StartAsTask
 
             match result with
-            | Ok(Some profile) -> do! writeJson ctx 200 profile
-            | Ok None -> do! writeJson ctx 404 {| error = "not_found"; message = "Profile not found" |}
+            | Ok profile ->
+                let dto = Mapping.UserProfile.toDto profile
+                do! writeJson ctx 200 dto
             | Error err -> do! handleError ctx err
         }
 
@@ -46,10 +50,18 @@ module Handlers =
             match Option.ofObj bodyNullable with
             | None -> do! writeJson ctx 400 {| error = "bad_request"; message = "Invalid request body" |}
             | Some body ->
-                let! result = Database.createProfile dbConfig body |> Async.StartAsTask
+                let request: CreateProfileFromEvent =
+                    { AuthUserId = Guid.Parse(body.UserId)
+                      Email = body.Email
+                      DisplayName = if String.IsNullOrEmpty body.DisplayName then None else Some body.DisplayName
+                      AvatarUrl = if String.IsNullOrEmpty body.AvatarUrl then None else Some body.AvatarUrl }
+
+                let! result = Database.createProfile dbConfig request |> Async.StartAsTask
 
                 match result with
-                | Ok profile -> do! writeJson ctx 201 profile
+                | Ok profile ->
+                    let dto = Mapping.UserProfile.toDto profile
+                    do! writeJson ctx 201 dto
                 | Error err -> do! handleError ctx err
         }
 
@@ -60,14 +72,17 @@ module Handlers =
             match Option.ofObj bodyNullable with
             | None -> do! writeJson ctx 400 {| error = "bad_request"; message = "Invalid request body" |}
             | Some body ->
-                match UserProfileOperations.validateUpdateRequest body with
-                | Error err -> do! handleError ctx err
-                | Ok validatedRequest ->
-                    let! result = Database.updateProfile dbConfig userId validatedRequest |> Async.StartAsTask
+                let displayName = body.DisplayName
+                let avatarUrl = body.AvatarUrl
+                let bio = body.Bio
 
-                    match result with
-                    | Ok profile -> do! writeJson ctx 200 profile
-                    | Error err -> do! handleError ctx err
+                let! result = Database.updateProfile dbConfig userId displayName avatarUrl bio |> Async.StartAsTask
+
+                match result with
+                | Ok profile ->
+                    let dto = Mapping.UserProfile.toDto profile
+                    do! writeJson ctx 200 dto
+                | Error err -> do! handleError ctx err
         }
 
     let getPreferences (dbConfig: Database.DatabaseConfig) (userId: Guid) (ctx: HttpContext) =
@@ -75,21 +90,28 @@ module Handlers =
             let! result = Database.getPreferences dbConfig userId |> Async.StartAsTask
 
             match result with
-            | Ok prefs -> do! writeJson ctx 200 prefs
+            | Ok (Some prefs) ->
+                let dto = Mapping.UserPreferences.toDto prefs
+                do! writeJson ctx 200 dto
+            | Ok None ->
+                do! writeJson ctx 404 {| error = "not_found"; message = "Preferences not found" |}
             | Error err -> do! handleError ctx err
         }
 
     let updatePreferences (dbConfig: Database.DatabaseConfig) (userId: Guid) (ctx: HttpContext) =
         task {
-            let! prefsNullable = ctx.Request.ReadFromJsonAsync<UserPreferences>()
+            let! prefsNullable = ctx.Request.ReadFromJsonAsync<HellArch.User.V1.UserPreferences>()
 
             match Option.ofObj prefsNullable with
             | None -> do! writeJson ctx 400 {| error = "bad_request"; message = "Invalid request body" |}
-            | Some prefs ->
-                let! result = Database.upsertPreferences dbConfig userId prefs |> Async.StartAsTask
+            | Some prefsDto ->
+                let prefs = Mapping.UserPreferences.fromDto userId prefsDto
+                let! result = Database.upsertPreferences dbConfig prefs |> Async.StartAsTask
 
                 match result with
-                | Ok updatedPrefs -> do! writeJson ctx 200 updatedPrefs
+                | Ok updatedPrefs ->
+                    let dto = Mapping.UserPreferences.toDto updatedPrefs
+                    do! writeJson ctx 200 dto
                 | Error err -> do! handleError ctx err
         }
 

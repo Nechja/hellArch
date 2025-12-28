@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/nechja/hellarch/auth/internal/config"
@@ -15,13 +16,26 @@ import (
 	"github.com/nechja/hellarch/auth/internal/jwt"
 	"github.com/nechja/hellarch/auth/internal/oauth"
 	"github.com/nechja/hellarch/auth/internal/store"
+	"github.com/nechja/hellarch/auth/internal/telemetry"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
 func main() {
+	logLevel := slog.LevelDebug // Default to debug for dev
+	switch strings.ToLower(os.Getenv("LOG_LEVEL")) {
+	case "info":
+		logLevel = slog.LevelInfo
+	case "warn", "warning":
+		logLevel = slog.LevelWarn
+	case "error":
+		logLevel = slog.LevelError
+	}
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: logLevel,
 	}))
 	slog.SetDefault(logger)
 
@@ -33,6 +47,14 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	// Initialize OpenTelemetry
+	shutdownTelemetry, err := telemetry.Setup(ctx, "auth")
+	if err != nil {
+		slog.Warn("failed to initialize telemetry, continuing without tracing", "error", err)
+	} else {
+		defer shutdownTelemetry(ctx)
+	}
 
 	// Initialize stores
 	pgStore, err := store.NewPostgres(ctx, cfg.DatabaseURL)
@@ -70,20 +92,22 @@ func main() {
 	authHandler := handler.NewAuthHandler(pgStore, redisStore, jwtService, oauthService, eventPublisher, cfg)
 	httpHandler := handler.NewHTTPHandler(authHandler)
 
-	// Initialize gRPC server
-	grpcServer := grpc.NewServer()
+	// Initialize gRPC server with OTel instrumentation
+	grpcServer := grpc.NewServer(
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	)
 	handler.RegisterAuthServiceServer(grpcServer, authHandler)
 
 	if cfg.Environment == "development" {
 		reflection.Register(grpcServer)
 	}
 
-	// Initialize HTTP server
+	// Initialize HTTP server with OTel instrumentation
 	mux := http.NewServeMux()
 	httpHandler.RegisterRoutes(mux)
 	httpServer := &http.Server{
 		Addr:    cfg.HTTPAddress,
-		Handler: mux,
+		Handler: otelhttp.NewHandler(mux, "auth-http"),
 	}
 
 	// Start gRPC server

@@ -9,6 +9,8 @@ services:
     environment:
       - ASPNETCORE_URLS=http://+:5000
       - ASPNETCORE_ENVIRONMENT=Development
+      - LOG_LEVEL=debug
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
       - ../../src/gateway:/app
       - gateway-nuget:/root/.nuget
@@ -35,6 +37,8 @@ services:
       - JWT_PUBLIC_KEY_PATH=/keys/dev-public.pem
       # Discord vars loaded from env_file
       - HELLARCH_ENV=development
+      - LOG_LEVEL=debug
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
       - ../../src/services/auth:/app
       - ../../infra/keys:/keys:ro
@@ -54,8 +58,12 @@ services:
       - ASPNETCORE_URLS=http://+:5002
       - ASPNETCORE_ENVIRONMENT=Development
       - USER_DATABASE_URL=Host=user-db;Port=5432;Database=user_db;Username=hellarch;Password=hellarch
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - LOG_LEVEL=debug
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
       - ../../src/services/user:/app
+      - ../../libs:/libs
       - user-nuget:/root/.nuget
     networks:
       - hellarch
