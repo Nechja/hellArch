@@ -91,9 +91,8 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Return tokens in response (API clients without redirect)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"access_token":  result.AccessToken,
 		"refresh_token": result.RefreshToken,
 		"expires_in":    result.ExpiresIn,
@@ -104,7 +103,9 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 			"avatar_url": result.User.AvatarURL,
 			"provider":   result.User.Provider,
 		},
-	})
+	}); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
 }
 
 func (h *HTTPHandler) handleRefresh(w http.ResponseWriter, r *http.Request) {

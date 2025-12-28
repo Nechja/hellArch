@@ -50,14 +50,16 @@ func (h *AdminHandler) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := map[string]any{
-		"users":      users,
+		"users":       users,
 		"total_count": total,
-		"page":       page,
-		"page_size":  pageSize,
+		"page":        page,
+		"page_size":   pageSize,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
 }
 
 func (h *AdminHandler) handleGetUser(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +88,9 @@ func (h *AdminHandler) handleGetUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
 }
 
 func (h *AdminHandler) handleGetUserSessions(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +121,9 @@ func (h *AdminHandler) handleGetUserSessions(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
 }
 
 func (h *AdminHandler) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
@@ -163,5 +169,7 @@ func (h *AdminHandler) handleGetStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
 }

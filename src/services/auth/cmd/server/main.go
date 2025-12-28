@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net"
 	"net/http"
@@ -24,7 +25,14 @@ import (
 )
 
 func main() {
-	logLevel := slog.LevelDebug // Default to debug for dev
+	if err := run(); err != nil {
+		slog.Error("server failed", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	logLevel := slog.LevelDebug
 	switch strings.ToLower(os.Getenv("LOG_LEVEL")) {
 	case "info":
 		logLevel = slog.LevelInfo
@@ -41,8 +49,7 @@ func main() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		slog.Error("failed to load config", "error", err)
-		os.Exit(1)
+		return errors.New("failed to load config: " + err.Error())
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -52,34 +59,30 @@ func main() {
 	if err != nil {
 		slog.Warn("failed to initialize telemetry, continuing without tracing", "error", err)
 	} else {
-		defer shutdownTelemetry(ctx)
+		defer func() { _ = shutdownTelemetry(ctx) }()
 	}
 
 	pgStore, err := store.NewPostgres(ctx, cfg.DatabaseURL)
 	if err != nil {
-		slog.Error("failed to connect to postgres", "error", err)
-		os.Exit(1)
+		return errors.New("failed to connect to postgres: " + err.Error())
 	}
 	defer pgStore.Close()
 
 	redisStore, err := store.NewRedis(ctx, cfg.RedisURL)
 	if err != nil {
-		slog.Error("failed to connect to redis", "error", err)
-		os.Exit(1)
+		return errors.New("failed to connect to redis: " + err.Error())
 	}
-	defer redisStore.Close()
+	defer func() { _ = redisStore.Close() }()
 
 	eventPublisher, err := events.NewPublisher(ctx, cfg.RabbitMQURL, "hellarch/auth")
 	if err != nil {
-		slog.Error("failed to connect to RabbitMQ", "error", err)
-		os.Exit(1)
+		return errors.New("failed to connect to RabbitMQ: " + err.Error())
 	}
-	defer eventPublisher.Close()
+	defer func() { _ = eventPublisher.Close() }()
 
 	jwtService, err := jwt.NewService(cfg.JWTPrivateKeyPath, cfg.JWTPublicKeyPath)
 	if err != nil {
-		slog.Error("failed to initialize jwt service", "error", err)
-		os.Exit(1)
+		return errors.New("failed to initialize jwt service: " + err.Error())
 	}
 
 	oauthService := oauth.NewService(cfg.OAuth)
@@ -107,8 +110,7 @@ func main() {
 
 	grpcLis, err := net.Listen("tcp", cfg.GRPCAddress)
 	if err != nil {
-		slog.Error("failed to listen for grpc", "error", err, "address", cfg.GRPCAddress)
-		os.Exit(1)
+		return errors.New("failed to listen for grpc: " + err.Error())
 	}
 
 	go func() {
@@ -134,5 +136,6 @@ func main() {
 	if err := httpServer.Shutdown(ctx); err != nil {
 		slog.Error("HTTP server shutdown error", "error", err)
 	}
-	cancel()
+
+	return nil
 }

@@ -74,11 +74,10 @@ func NewPublisher(ctx context.Context, amqpURL, source string) (*Publisher, erro
 
 	ch, err := conn.Channel()
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("failed to open channel: %w", err)
 	}
 
-	// Declare the topic exchange
 	if err := ch.ExchangeDeclare(
 		ExchangeName,
 		ExchangeType,
@@ -88,8 +87,8 @@ func NewPublisher(ctx context.Context, amqpURL, source string) (*Publisher, erro
 		false, // no-wait
 		nil,   // arguments
 	); err != nil {
-		ch.Close()
-		conn.Close()
+		_ = ch.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("failed to declare exchange: %w", err)
 	}
 
