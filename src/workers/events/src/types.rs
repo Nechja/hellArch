@@ -1,7 +1,6 @@
-use chrono::{DateTime, Utc};
-use serde::Deserialize;
 use thiserror::Error;
 
+pub use hellarch_cloud_events::CloudEvent;
 pub use hellarch_cloud_events::auth::{
     AccountLinked, SessionCreated, UserCreated,
 };
@@ -34,16 +33,4 @@ impl EventType {
             _ => None,
         }
     }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CloudEvent<T> {
-    pub specversion: String,
-    pub id: String,
-    pub source: String,
-    #[serde(rename = "type")]
-    pub event_type: String,
-    pub datacontenttype: String,
-    pub time: DateTime<Utc>,
-    pub data: T,
 }

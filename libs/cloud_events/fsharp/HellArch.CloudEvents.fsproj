@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="CloudEvent.fs" />
     <Compile Include="Auth/Types.fs" />
   </ItemGroup>
 

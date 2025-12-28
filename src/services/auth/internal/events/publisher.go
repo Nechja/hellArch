@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	cloudevents "github.com/nechja/hellarch/cloudevents/auth"
+	cloudevents "github.com/nechja/hellarch/cloudevents"
+	"github.com/nechja/hellarch/cloudevents/auth"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -107,18 +108,6 @@ func (p *Publisher) Close() error {
 	return p.conn.Close()
 }
 
-// CloudEvent represents a CloudEvents 1.0 compliant event
-type CloudEvent struct {
-	SpecVersion     string            `json:"specversion"`
-	ID              string            `json:"id"`
-	Source          string            `json:"source"`
-	Type            string            `json:"type"`
-	DataContentType string            `json:"datacontenttype"`
-	Time            string            `json:"time"`
-	Data            any               `json:"data"`
-	Extensions      map[string]string `json:"extensions,omitempty"`
-}
-
 func (p *Publisher) Publish(ctx context.Context, eventType string, data any, traceParent string) error {
 	ctx, span := tracer.Start(ctx, "rabbitmq.publish",
 		trace.WithSpanKind(trace.SpanKindProducer),
@@ -131,13 +120,13 @@ func (p *Publisher) Publish(ctx context.Context, eventType string, data any, tra
 	)
 	defer span.End()
 
-	event := CloudEvent{
+	event := cloudevents.CloudEvent[any]{
 		SpecVersion:     "1.0",
 		ID:              uuid.New().String(),
 		Source:          p.source,
 		Type:            eventType,
 		DataContentType: "application/json",
-		Time:            time.Now().UTC().Format(time.RFC3339),
+		Time:            time.Now().UTC(),
 		Data:            data,
 	}
 
@@ -191,9 +180,9 @@ func (p *Publisher) Publish(ctx context.Context, eventType string, data any, tra
 	return nil
 }
 
-type UserCreated = cloudevents.UserCreated
-type SessionCreated = cloudevents.SessionCreated
-type AccountLinked = cloudevents.AccountLinked
+type UserCreated = auth.UserCreated
+type SessionCreated = auth.SessionCreated
+type AccountLinked = auth.AccountLinked
 
 func (p *Publisher) PublishUserCreated(ctx context.Context, data UserCreated) error {
 	return p.Publish(ctx, EventTypeUserCreated, data, "")

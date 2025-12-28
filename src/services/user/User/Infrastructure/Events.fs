@@ -17,6 +17,7 @@ open OpenTelemetry.Context.Propagation
 open RabbitMQ.Client
 open RabbitMQ.Client.Events
 open User.Domain
+open HellArch.CloudEvents
 open HellArch.CloudEvents.Auth
 
 module Events =
@@ -37,18 +38,6 @@ module Events =
             )
 
         propagator.Extract(PropagationContext(), headers, getter)
-
-    [<CLIMutable>]
-    type CloudEvent<'T> =
-        {
-            specversion: string
-            id: string
-            source: string
-            ``type``: string
-            datacontenttype: string
-            time: string
-            data: 'T
-        }
 
     type EventsConfig = { RabbitMQUrl: string; QueueName: string; Logger: ILogger }
 
