@@ -5,9 +5,6 @@ WORKDIR /app
 RUN go install github.com/air-verse/air@v1.62.0
 RUN mkdir -p /.cache/go-build /go/pkg/mod && chmod -R 777 /.cache /go
 
-COPY go.mod go.sum ./
-RUN go mod download
-
 COPY . .
 
 CMD ["air", "-c", ".air.toml"]

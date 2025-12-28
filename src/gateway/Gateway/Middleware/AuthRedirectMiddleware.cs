@@ -40,13 +40,13 @@ internal sealed partial class AuthRedirectMiddleware(
         // Handle root path redirect
         if (path == "/")
         {
-            var userId = await ValidateSession(context).ConfigureAwait(false);
-            var redirectTo = userId is not null ? _defaultRedirect : _loginPath;
+            var rootUserId = await ValidateSession(context).ConfigureAwait(false);
+            var redirectTo = rootUserId is not null ? _defaultRedirect : _loginPath;
             context.Response.Redirect(redirectTo);
             return;
         }
 
-        // Bypass paths that don't require auth
+        // Bypass paths that don't need user context
         if (ShouldBypass(path))
         {
             LogBypassingAuth(path);
@@ -54,22 +54,21 @@ internal sealed partial class AuthRedirectMiddleware(
             return;
         }
 
-        // Check if path is protected
-        if (IsProtectedPath(path))
+        // Try to validate session and add user context
+        var userId = await ValidateSession(context).ConfigureAwait(false);
+
+        if (userId is not null)
         {
-            var userId = await ValidateSession(context).ConfigureAwait(false);
-
-            if (userId is null)
-            {
-                LogRedirectingToLogin(path);
-                var returnUrl = Uri.EscapeDataString(context.Request.Path + context.Request.QueryString);
-                context.Response.Redirect($"{_loginPath}?return_url={returnUrl}");
-                return;
-            }
-
-            // Add user ID header for downstream services
             context.Request.Headers["X-User-ID"] = userId;
             LogSessionValidated(path);
+        }
+        else if (IsProtectedPath(path))
+        {
+            // Protected paths require auth - redirect to login
+            LogRedirectingToLogin(path);
+            var returnUrl = Uri.EscapeDataString(context.Request.Path + context.Request.QueryString);
+            context.Response.Redirect($"{_loginPath}?return_url={returnUrl}");
+            return;
         }
 
         await next(context).ConfigureAwait(false);

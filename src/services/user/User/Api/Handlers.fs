@@ -159,12 +159,14 @@ module Handlers =
                 match Guid.TryParse(values.ToString()) with
                 | false, _ ->
                     do! writeJson ctx 400 {| error = "bad_request"; message = "Invalid user ID format" |}
-                | true, userId ->
-                    let! result = Database.getProfile dbConfig userId |> Async.StartAsTask
+                | true, authUserId ->
+                    let! result = Database.getProfileByAuthUserId dbConfig authUserId |> Async.StartAsTask
 
                     match result with
-                    | Ok profile ->
+                    | Ok(Some profile) ->
                         let dto = Mapping.UserProfile.toDto profile
                         do! writeJson ctx 200 dto
+                    | Ok None ->
+                        do! writeJson ctx 404 {| error = "not_found"; message = "Profile not found" |}
                     | Error err -> do! handleError ctx err
         }
