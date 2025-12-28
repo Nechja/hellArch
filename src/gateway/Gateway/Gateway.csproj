@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <LoginProjectPath>../../../clients/Login/Login.csproj</LoginProjectPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,5 +17,22 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.11.1" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.11.2" />
   </ItemGroup>
+
+  <!-- Build Login WASM client and copy to wwwroot/login -->
+  <Target Name="BuildLoginClient" BeforeTargets="Build" Condition="'$(BuildLogin)' == 'true'">
+    <Message Importance="High" Text="Building Login WASM client..." />
+    <Exec Command="dotnet publish $(LoginProjectPath) -c $(Configuration) -o $(IntermediateOutputPath)login-publish" />
+    <ItemGroup>
+      <LoginFiles Include="$(IntermediateOutputPath)login-publish/wwwroot/**/*" />
+    </ItemGroup>
+    <MakeDir Directories="$(ProjectDir)wwwroot/login" />
+    <Copy SourceFiles="@(LoginFiles)" DestinationFolder="$(ProjectDir)wwwroot/login/%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Message Importance="High" Text="Login WASM client copied to wwwroot/login" />
+  </Target>
+
+  <!-- Clean Login artifacts -->
+  <Target Name="CleanLoginClient" AfterTargets="Clean">
+    <RemoveDir Directories="$(ProjectDir)wwwroot/login" />
+  </Target>
 
 </Project>

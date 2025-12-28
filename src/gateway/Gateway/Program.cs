@@ -65,6 +65,12 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddHealthChecks();
 
+builder.Services.AddHttpClient();
+
+var rateLimitConfig = builder.Configuration.GetSection("RateLimiting");
+var permitLimit = rateLimitConfig.GetValue("PermitLimit", 100);
+var windowMinutes = rateLimitConfig.GetValue("WindowMinutes", 1);
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -73,8 +79,8 @@ builder.Services.AddRateLimiter(options =>
             partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 100,
-                Window = TimeSpan.FromMinutes(1)
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromMinutes(windowMinutes)
             }));
 });
 
@@ -84,8 +90,21 @@ app.UseCors("AllowClients");
 app.UseRateLimiter();
 
 app.UseMiddleware<AuthCookieToJwtMiddleware>();
+app.UseMiddleware<AuthRedirectMiddleware>();
 
 app.UseHealthChecks("/health");
+
+// Serve static files for SPAs (login, app, etc.)
+app.UseStaticFiles(new StaticFileOptions
+{
+    ServeUnknownFileTypes = true // For WASM files
+});
+
+app.UseRouting();
+
+// SPA fallback routes - serve index.html for client-side routing
+app.MapFallbackToFile("/login/{**path}", "login/index.html");
+app.MapFallbackToFile("/app/{**path}", "app/index.html");
 
 app.MapReverseProxy();
 
