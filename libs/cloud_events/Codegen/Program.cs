@@ -229,9 +229,15 @@ void GeneratePython(TypeDef def, string domain, string outDir)
     var file = Path.Combine(dir, $"{ToSnakeCase(def.Name)}.py");
 
     var sb = new System.Text.StringBuilder();
-    sb.AppendLine("from datetime import datetime");
-    sb.AppendLine("from enum import Enum");
-    sb.AppendLine("from typing import Optional");
+    sb.AppendLine("from __future__ import annotations");
+    sb.AppendLine();
+
+    if (def.Properties.Any(p => p.Type is "DateTime" or "DateTimeOffset"))
+        sb.AppendLine("from datetime import datetime");
+
+    if (def.Enums.Count > 0)
+        sb.AppendLine("from enum import Enum");
+
     sb.AppendLine();
     sb.AppendLine("from pydantic import BaseModel, ConfigDict");
     sb.AppendLine();
