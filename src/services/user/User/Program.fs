@@ -74,7 +74,7 @@ let main args =
         { ConnectionString = getRequiredEnv "USER_DATABASE_URL" }
 
     // Health endpoint
-    app.MapGet("/health", Func<HttpContext, _>(Handlers.health)) |> ignore
+    app.MapGet("/user/health", Func<HttpContext, _>(Handlers.health)) |> ignore
 
     // Profile endpoints
     app.MapGet(

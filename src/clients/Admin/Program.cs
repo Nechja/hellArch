@@ -54,9 +54,18 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     return ConnectionMultiplexer.Connect(options);
 });
 
+// RabbitMQ Management API
+var rabbitmqUrl = Environment.GetEnvironmentVariable("RABBITMQ_MANAGEMENT_URL") ?? "http://localhost:15672";
+builder.Services.AddHttpClient("RabbitMQ", client =>
+{
+    client.BaseAddress = new Uri(rabbitmqUrl + "/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
 // Services
 builder.Services.AddScoped<AuthAdminFacade>();
 builder.Services.AddScoped<RedisBrowserAdapter>();
+builder.Services.AddScoped<RabbitMqAdapter>();
 
 // OpenTelemetry
 var otelEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -77,7 +86,20 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
+// Handle path base from X-Forwarded-Prefix header (set by Gateway)
+app.Use((context, next) =>
+{
+    var forwardedPrefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault();
+    if (!string.IsNullOrEmpty(forwardedPrefix))
+    {
+        context.Request.PathBase = forwardedPrefix;
+    }
+    return next();
+});
+
+// Serve static files from wwwroot (css, js, images)
 app.UseStaticFiles();
+
 app.UseAntiforgery();
 
 // Auth middleware - validates session before serving admin pages

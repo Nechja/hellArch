@@ -40,8 +40,12 @@ check_command "tilt" "curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt
 # Optional tools
 HAS_MISE=0
 HAS_DIRENV=0
+HAS_SOPS=0
+HAS_AGE=0
 check_optional "mise" "curl https://mise.run | sh (manages tool versions)" && HAS_MISE=1
 check_optional "direnv" "sudo apt install direnv (auto-loads environment)" && HAS_DIRENV=1
+check_optional "sops" "mise install sops (encrypted secrets)" && HAS_SOPS=1
+check_optional "age" "mise install age (encryption key management)" && HAS_AGE=1
 
 if [ $MISSING -eq 1 ]; then
     echo ""
@@ -81,6 +85,25 @@ else
 fi
 
 # ============================================================================
+# Generate age key for SOPS (if age available)
+# ============================================================================
+
+if [ $HAS_AGE -eq 1 ]; then
+    echo ""
+    echo "Setting up age encryption key for SOPS..."
+    SOPS_DIR="$ROOT_DIR/infra/sops"
+    mkdir -p "$SOPS_DIR"
+
+    if [ ! -f "$SOPS_DIR/age-key.txt" ]; then
+        age-keygen -o "$SOPS_DIR/age-key.txt" 2>&1 | head -1
+        echo "  Generated age-key.txt"
+        echo "  IMPORTANT: Share this key securely with team members"
+    else
+        echo "  Age key already exists"
+    fi
+fi
+
+# ============================================================================
 # Setup .env
 # ============================================================================
 
@@ -91,6 +114,21 @@ if [ ! -f "$ROOT_DIR/.env" ]; then
     echo "  NOTE: Edit .env and add your Discord OAuth credentials"
 else
     echo ".env already exists"
+fi
+
+# ============================================================================
+# Decrypt secrets (if SOPS available)
+# ============================================================================
+
+if [ $HAS_SOPS -eq 1 ] && [ -f "$SOPS_DIR/secrets.enc.yaml" ] && [ -f "$SOPS_DIR/age-key.txt" ]; then
+    echo ""
+    echo "Decrypting secrets..."
+    export SOPS_AGE_KEY_FILE="$SOPS_DIR/age-key.txt"
+    sops decrypt --output-type dotenv "$SOPS_DIR/secrets.enc.yaml" > "$ROOT_DIR/.env.secrets"
+    echo "  Created .env.secrets from encrypted secrets"
+else
+    echo ""
+    echo "Skipping secrets decryption (SOPS not available or no encrypted secrets)"
 fi
 
 # ============================================================================

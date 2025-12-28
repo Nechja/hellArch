@@ -1,48 +1,185 @@
 @page "/events"
+@inject Admin.Services.RabbitMqAdapter RabbitMq
+@inject ILogger<Events> Logger
 
 <PageTitle>Events - HellArch Admin</PageTitle>
 
 <h1>Events</h1>
 
 <p class="page-description">
-    View CloudEvents published through RabbitMQ. Events are used for asynchronous communication between services.
+    View CloudEvents published through RabbitMQ and queue statistics.
 </p>
 
-<section class="event-types">
-    <h2>Event Types</h2>
-    <div class="cards-grid">
-        <div class="card">
-            <h3>hellarch.auth.user.created.v1</h3>
-            <p>Published when a new user signs up via OAuth</p>
+<section class="stats-section">
+    <h2>RabbitMQ Overview</h2>
+    @if (_overview == null)
+    {
+        <p class="loading">Loading...</p>
+    }
+    else
+    {
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-value">@(_overview.QueueTotals?.Messages ?? 0)</span>
+                <span class="stat-label">Messages</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">@(_overview.ObjectTotals?.Queues ?? 0)</span>
+                <span class="stat-label">Queues</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">@(_overview.ObjectTotals?.Consumers ?? 0)</span>
+                <span class="stat-label">Consumers</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">@(_overview.ObjectTotals?.Connections ?? 0)</span>
+                <span class="stat-label">Connections</span>
+            </div>
         </div>
-        <div class="card">
-            <h3>hellarch.auth.session.created.v1</h3>
-            <p>Published when a user logs in and creates a session</p>
+    }
+</section>
+
+<section class="queues-section">
+    <h2>Queues</h2>
+    @if (_queues.Count == 0)
+    {
+        <p class="empty-state">No queues found</p>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Queue</th>
+                    <th>Messages</th>
+                    <th>Ready</th>
+                    <th>Unacked</th>
+                    <th>Consumers</th>
+                    <th>State</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var queue in _queues)
+                {
+                    <tr>
+                        <td>@queue.Name</td>
+                        <td>@queue.Messages</td>
+                        <td>@queue.MessagesReady</td>
+                        <td>@queue.MessagesUnacknowledged</td>
+                        <td>@queue.Consumers</td>
+                        <td><span class="badge @GetStateClass(queue.State)">@queue.State</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+<section class="exchanges-section">
+    <h2>Exchanges</h2>
+    @if (_exchanges.Count == 0)
+    {
+        <p class="empty-state">No custom exchanges found</p>
+    }
+    else
+    {
+        <div class="cards-grid">
+            @foreach (var exchange in _exchanges)
+            {
+                <div class="card">
+                    <h3>@exchange.Name</h3>
+                    <p>Type: @exchange.Type</p>
+                    <p class="meta">@(exchange.Durable ? "Durable" : "Transient")</p>
+                </div>
+            }
         </div>
-        <div class="card">
-            <h3>hellarch.auth.account.linked.v1</h3>
-            <p>Published when a user links an additional OAuth provider</p>
-        </div>
+    }
+</section>
+
+<section class="events-section">
+    <h2>Recent Events</h2>
+    <div class="section-actions">
+        <button class="btn btn-secondary" @onclick="LoadRecentEvents">Refresh</button>
     </div>
+    @if (_loadingEvents)
+    {
+        <p class="loading">Loading events...</p>
+    }
+    else if (_recentEvents.Count == 0)
+    {
+        <p class="empty-state">No events in queue (events are consumed by workers)</p>
+    }
+    else
+    {
+        <div class="events-list">
+            @foreach (var evt in _recentEvents)
+            {
+                <div class="event-card">
+                    <div class="event-header">
+                        <span class="event-type badge">@evt.GetEventTypeName()</span>
+                        <span class="event-time">@evt.Time</span>
+                    </div>
+                    <div class="event-meta">
+                        <span>ID: @evt.Id</span>
+                        <span>Source: @evt.Source</span>
+                    </div>
+                    <details class="event-data">
+                        <summary>Data</summary>
+                        <pre>@evt.GetFormattedData()</pre>
+                    </details>
+                </div>
+            }
+        </div>
+    }
 </section>
 
 <section class="info-box">
-    <h2>View Live Events</h2>
-    <p>
-        For real-time event monitoring, use the
-        <a href="http://localhost:15672" target="_blank" rel="noopener">RabbitMQ Management Console</a>.
-    </p>
-    <p>
-        View distributed traces for events in
-        <a href="http://localhost:16686" target="_blank" rel="noopener">Jaeger</a>.
-    </p>
+    <h2>External Tools</h2>
+    <div class="links-grid">
+        <a href="http://localhost:15672" target="_blank" rel="noopener" class="external-link">
+            RabbitMQ Management Console
+        </a>
+        <a href="http://localhost:16686" target="_blank" rel="noopener" class="external-link">
+            Jaeger Tracing
+        </a>
+    </div>
 </section>
 
-<section class="future-features">
-    <h2>Coming Soon</h2>
-    <ul>
-        <li>Real-time event stream via WebSocket</li>
-        <li>Event replay and debugging</li>
-        <li>Event filtering and search</li>
-    </ul>
-</section>
+@code {
+    private Admin.Services.RabbitMqOverview? _overview;
+    private IReadOnlyList<Admin.Services.QueueInfo> _queues = [];
+    private IReadOnlyList<Admin.Services.ExchangeInfo> _exchanges = [];
+    private IReadOnlyList<Admin.Services.CloudEventMessage> _recentEvents = [];
+    private bool _loadingEvents;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _overview = await RabbitMq.GetOverview();
+        _queues = await RabbitMq.GetQueues();
+        _exchanges = await RabbitMq.GetExchanges();
+        await LoadRecentEvents();
+    }
+
+    private async Task LoadRecentEvents()
+    {
+        _loadingEvents = true;
+        StateHasChanged();
+
+        _recentEvents = await RabbitMq.GetRecentEvents(20);
+
+        _loadingEvents = false;
+        StateHasChanged();
+    }
+
+    private static string GetStateClass(string state) => state?.ToLower() switch
+    {
+        "running" => "badge-success",
+        "idle" => "badge-warning",
+        _ => "badge-secondary"
+    };
+}

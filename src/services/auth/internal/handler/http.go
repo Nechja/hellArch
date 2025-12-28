@@ -23,7 +23,7 @@ func (h *HTTPHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/{provider}/callback", h.handleOAuthCallback)
 	mux.HandleFunc("POST /auth/refresh", h.handleRefresh)
 	mux.HandleFunc("POST /auth/validate", h.handleValidate)
-	mux.HandleFunc("GET /health", h.handleHealth)
+	mux.HandleFunc("GET /auth/health", h.handleHealth)
 }
 
 func (h *HTTPHandler) handleOAuthLogin(w http.ResponseWriter, r *http.Request) {
@@ -53,12 +53,13 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 	state := r.URL.Query().Get("state")
 
 	if code == "" || state == "" {
+		// Log the actual error for debugging but don't echo to user (XSS prevention)
 		errorDesc := r.URL.Query().Get("error_description")
 		if errorDesc == "" {
 			errorDesc = r.URL.Query().Get("error")
 		}
 		slog.Error("oauth callback error", "error", errorDesc, "provider", provider)
-		http.Error(w, "OAuth error: "+errorDesc, http.StatusBadRequest)
+		http.Error(w, "OAuth authentication failed. Please try again.", http.StatusBadRequest)
 		return
 	}
 

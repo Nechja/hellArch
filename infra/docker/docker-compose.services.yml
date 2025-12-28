@@ -29,6 +29,7 @@ services:
       - "5001:5001"
     env_file:
       - ../../.env
+      - ../../.env.secrets
     environment:
       - HTTP_ADDRESS=:5001
       - GRPC_ADDRESS=:50051
@@ -92,10 +93,16 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "5003:5003"
+    env_file:
+      - ../../.env
+      - ../../.env.secrets
     environment:
       - PORT=5003
       - GATEWAY_URL=http://hellarch-gateway:5000
       - REDIS_URL=redis:6379
+      - RABBITMQ_MANAGEMENT_URL=http://rabbitmq:15672
+      - RABBITMQ_USER=${RABBITMQ_USER:-hellarch}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-hellarch}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
     volumes:

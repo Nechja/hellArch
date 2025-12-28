@@ -25,6 +25,11 @@ using var activity = activitySource.StartActivity("database.migrate", ActivityKi
 activity?.SetTag("db.context", contextType);
 activity?.SetTag("db.system", "postgresql");
 
+if (activity is null)
+    Console.WriteLine("==> OTEL: No activity created (no sampler?)");
+else
+    Console.WriteLine($"==> OTEL: Activity created with TraceId={activity.TraceId}");
+
 Console.WriteLine($"==> Running migrations for {contextType} context");
 
 try
@@ -39,6 +44,9 @@ try
     activity?.SetTag("db.migrations.applied", migrationCount);
     activity?.SetStatus(ActivityStatusCode.Ok);
     Console.WriteLine("==> Migrations completed successfully");
+    activity?.Stop();
+    var flushed = tracerProvider?.ForceFlush(10000) ?? false;
+    Console.WriteLine($"==> OTEL: Flush completed: {flushed}");
     return 0;
 }
 catch (Exception ex)
@@ -46,6 +54,8 @@ catch (Exception ex)
     activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
     activity?.AddException(ex);
     Console.Error.WriteLine($"==> Migration FAILED: {ex.Message}");
+    activity?.Stop();
+    tracerProvider?.ForceFlush(10000);
     return 1;
 }
 
@@ -118,6 +128,7 @@ TracerProvider? BuildTracerProvider()
         .AddOtlpExporter(opts =>
         {
             opts.Endpoint = new Uri(otlpEndpoint);
+            opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
         })
         .Build();
 }

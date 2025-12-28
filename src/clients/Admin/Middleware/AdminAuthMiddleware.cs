@@ -74,16 +74,18 @@ public sealed class AdminAuthMiddleware(
 
     private static void RedirectToLogin(HttpContext context)
     {
-        // Build return URL using forwarded headers when behind proxy
+        // Build return URL - supports both direct access and proxy access
         var scheme = context.Request.Headers["X-Forwarded-Proto"].FirstOrDefault()
             ?? context.Request.Scheme;
         var host = context.Request.Headers["X-Forwarded-Host"].FirstOrDefault()
             ?? context.Request.Host.ToString();
-        var pathBase = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault()
-            ?? "/admin";
 
-        var returnUrl = Uri.EscapeDataString($"{scheme}://{host}{pathBase}{context.Request.Path}");
-        context.Response.Redirect($"{scheme}://{host}/api/auth/discord/login?redirect={returnUrl}");
+        // For direct access (localhost:5003), redirect to Gateway for auth
+        var gatewayHost = host.Contains(":5003") ? "localhost:5000" : host;
+        var returnHost = host.Contains(":5003") ? "localhost:5003" : $"{host}/admin";
+
+        var returnUrl = Uri.EscapeDataString($"{scheme}://{returnHost}{context.Request.Path}");
+        context.Response.Redirect($"{scheme}://{gatewayHost}/api/auth/discord/login?redirect={returnUrl}");
     }
 
     private sealed record ValidateResponse(

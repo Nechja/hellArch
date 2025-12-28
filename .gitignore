@@ -206,8 +206,24 @@ Desktop.ini
 # Security - Keys (NEVER commit)
 # ===================================
 infra/keys/*.pem
+infra/sops/age-key.txt
 *.pem
 *.key
+
+# ===================================
+# SOPS Config (keep)
+# ===================================
+!.sops.yaml
+
+# ===================================
+# SOPS Secrets
+# ===================================
+# Keep encrypted secrets
+!infra/sops/secrets.enc.yaml
+# Ignore decrypted/plaintext secrets
+infra/sops/secrets.yaml
+infra/sops/secrets.dec.yaml
+.env.secrets
 
 # ===================================
 # Temporary and misc
