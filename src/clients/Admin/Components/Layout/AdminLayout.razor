@@ -1,0 +1,32 @@
+@inherits LayoutComponentBase
+
+<div class="admin-layout">
+    <aside class="sidebar">
+        <div class="brand">
+            <h2>HellArch</h2>
+            <span class="subtitle">Admin Console</span>
+        </div>
+        <NavMenu />
+    </aside>
+
+    <main class="content">
+        <header class="content-header">
+            <div class="user-info">
+                @if (Username is not null)
+                {
+                    <span>@Username</span>
+                }
+            </div>
+        </header>
+        <div class="content-body">
+            @Body
+        </div>
+    </main>
+</div>
+
+@code {
+    [CascadingParameter]
+    public HttpContext? HttpContext { get; set; }
+
+    private string? Username => HttpContext?.Items["Username"]?.ToString();
+}

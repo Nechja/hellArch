@@ -11,6 +11,7 @@ open System.Text
 open System.Text.Json
 open System.Threading
 open System.Threading.Tasks
+open Microsoft.Extensions.Logging
 open OpenTelemetry
 open OpenTelemetry.Context.Propagation
 open RabbitMQ.Client
@@ -25,46 +26,50 @@ module Events =
     // Helper to extract trace context from RabbitMQ headers
     let private extractTraceContext (headers: IDictionary<string, obj>) =
         let getter =
-            TextMapPropagator.Getter<IDictionary<string, obj>>(fun carrier key ->
+            Func<IDictionary<string, obj>, string, string seq>(fun carrier key ->
                 match carrier.TryGetValue(key) with
                 | true, value when not (isNull value) ->
                     match value with
                     | :? (byte array) as bytes -> seq { Encoding.UTF8.GetString(bytes) }
                     | :? string as s -> seq { s }
                     | _ -> Seq.empty
-                | _ -> Seq.empty)
-        propagator.Extract(Baggage.Current, headers, getter)
+                | _ -> Seq.empty
+            )
+
+        propagator.Extract(PropagationContext(), headers, getter)
 
     [<CLIMutable>]
     type CloudEvent<'T> =
-        { specversion: string
-          id: string
-          source: string
-          ``type``: string
-          datacontenttype: string
-          time: string
-          data: 'T }
+        {
+            specversion: string
+            id: string
+            source: string
+            ``type``: string
+            datacontenttype: string
+            time: string
+            data: 'T
+        }
 
     [<CLIMutable>]
     type UserCreatedData =
-        { user_id: string
-          email: string
-          username: string
-          provider: string
-          provider_user_id: string
-          avatar_url: string
-          created_at: string }
+        {
+            user_id: string
+            email: string
+            username: string
+            provider: string
+            provider_user_id: string
+            avatar_url: string
+            created_at: string
+        }
 
-    type EventsConfig =
-        { RabbitMQUrl: string
-          QueueName: string }
+    type EventsConfig = { RabbitMQUrl: string; QueueName: string; Logger: ILogger }
 
     let private jsonOptions =
         let options = JsonSerializerOptions()
         options.PropertyNameCaseInsensitive <- true
         options
 
-    let private handleUserCreated (dbConfig: Database.DatabaseConfig) (data: UserCreatedData) =
+    let private handleUserCreated (logger: ILogger) (dbConfig: Database.DatabaseConfig) (data: UserCreatedData) =
         task {
             let authUserId = Guid.Parse(data.user_id)
 
@@ -72,27 +77,32 @@ module Events =
             let! existingProfile = Database.getProfileByAuthUserId dbConfig authUserId |> Async.StartAsTask
 
             match existingProfile with
-            | Ok(Some _) ->
-                printfn "Profile already exists for auth user %s, skipping" data.user_id
+            | Ok(Some _) -> logger.LogDebug("Profile already exists for auth user {AuthUserId}, skipping", data.user_id)
             | Ok None ->
                 // Create the profile
                 let request: CreateProfileFromEvent =
-                    { AuthUserId = authUserId
-                      Email = data.email
-                      DisplayName = Some data.username
-                      AvatarUrl =
-                        if String.IsNullOrEmpty(data.avatar_url) then
-                            None
-                        else
-                            Some data.avatar_url }
+                    {
+                        AuthUserId = authUserId
+                        Email = data.email
+                        DisplayName = Some data.username
+                        AvatarUrl =
+                            if String.IsNullOrEmpty(data.avatar_url) then
+                                None
+                            else
+                                Some data.avatar_url
+                    }
 
                 let! result = Database.createProfile dbConfig request |> Async.StartAsTask
 
                 match result with
                 | Ok profile ->
-                    printfn "Created profile %A for auth user %s" profile.Id data.user_id
-                | Error err -> printfn "Failed to create profile: %A" err
-            | Error err -> printfn "Failed to check existing profile: %A" err
+                    logger.LogInformation(
+                        "Created profile {ProfileId} for auth user {AuthUserId}",
+                        profile.Id,
+                        data.user_id
+                    )
+                | Error err -> logger.LogError("Failed to create profile: {Error}", err)
+            | Error err -> logger.LogError("Failed to check existing profile: {Error}", err)
         }
 
     let startConsumer
@@ -137,7 +147,7 @@ module Events =
                     cancellationToken = cancellationToken
                 )
 
-            printfn "Connected to RabbitMQ, consuming from queue: %s" config.QueueName
+            config.Logger.LogInformation("Connected to RabbitMQ, consuming from queue: {QueueName}", config.QueueName)
 
             let consumer = AsyncEventingBasicConsumer(channel)
 
@@ -147,11 +157,13 @@ module Events =
                         // Extract trace context from headers
                         let parentContext =
                             match args.BasicProperties.Headers with
-                            | null -> PropagationContext.Empty
+                            | null -> PropagationContext()
                             | headers ->
                                 let dict = Dictionary<string, obj>()
+
                                 for kvp in headers do
                                     dict.[kvp.Key] <- kvp.Value
+
                                 extractTraceContext dict
 
                         // Start a span for this message
@@ -164,7 +176,7 @@ module Events =
 
                         try
                             let body = Encoding.UTF8.GetString(args.Body.ToArray())
-                            printfn "Received event: %s" body
+                            config.Logger.LogDebug("Received event: {Body}", body)
 
                             let eventType =
                                 match args.BasicProperties.Headers with
@@ -178,6 +190,7 @@ module Events =
                             if not (isNull activity) then
                                 activity.SetTag("messaging.system", "rabbitmq") |> ignore
                                 activity.SetTag("messaging.destination.name", "hellarch.events") |> ignore
+
                                 match eventType with
                                 | Some et -> activity.SetTag("messaging.cloudevents.type", et) |> ignore
                                 | None -> ()
@@ -185,26 +198,31 @@ module Events =
                             match eventType with
                             | Some "hellarch.auth.user.created.v1" ->
                                 try
-                                    let event = JsonSerializer.Deserialize<CloudEvent<UserCreatedData>>(body, jsonOptions)
-                                    do! handleUserCreated dbConfig event.data
+                                    let event =
+                                        JsonSerializer.Deserialize<CloudEvent<UserCreatedData>>(body, jsonOptions)
+
+                                    do! handleUserCreated config.Logger dbConfig event.data
                                 with ex ->
-                                    printfn "Failed to deserialize event: %s" ex.Message
+                                    config.Logger.LogError(ex, "Failed to deserialize event")
+
                                     if not (isNull activity) then
                                         activity.SetStatus(ActivityStatusCode.Error, ex.Message) |> ignore
 
-                            | Some eventType -> printfn "Ignoring event type: %s" eventType
-                            | None -> printfn "Event missing type header"
+                            | Some et -> config.Logger.LogDebug("Ignoring event type: {EventType}", et)
+                            | None -> config.Logger.LogWarning("Event missing type header")
 
                             do! channel.BasicAckAsync(args.DeliveryTag, multiple = false).AsTask()
                         with ex ->
-                            printfn "Error processing event: %s" ex.Message
+                            config.Logger.LogError(ex, "Error processing event")
+
                             if not (isNull activity) then
                                 activity.SetStatus(ActivityStatusCode.Error, ex.Message) |> ignore
                             // Nack and requeue on error
                             do! channel.BasicNackAsync(args.DeliveryTag, multiple = false, requeue = true).AsTask()
-                    })
+                    }
+                )
 
-            consumer.add_ReceivedAsync(handler)
+            consumer.add_ReceivedAsync (handler)
 
             let! _ =
                 channel.BasicConsumeAsync(

@@ -1,0 +1,48 @@
+@page "/events"
+
+<PageTitle>Events - HellArch Admin</PageTitle>
+
+<h1>Events</h1>
+
+<p class="page-description">
+    View CloudEvents published through RabbitMQ. Events are used for asynchronous communication between services.
+</p>
+
+<section class="event-types">
+    <h2>Event Types</h2>
+    <div class="cards-grid">
+        <div class="card">
+            <h3>hellarch.auth.user.created.v1</h3>
+            <p>Published when a new user signs up via OAuth</p>
+        </div>
+        <div class="card">
+            <h3>hellarch.auth.session.created.v1</h3>
+            <p>Published when a user logs in and creates a session</p>
+        </div>
+        <div class="card">
+            <h3>hellarch.auth.account.linked.v1</h3>
+            <p>Published when a user links an additional OAuth provider</p>
+        </div>
+    </div>
+</section>
+
+<section class="info-box">
+    <h2>View Live Events</h2>
+    <p>
+        For real-time event monitoring, use the
+        <a href="http://localhost:15672" target="_blank" rel="noopener">RabbitMQ Management Console</a>.
+    </p>
+    <p>
+        View distributed traces for events in
+        <a href="http://localhost:16686" target="_blank" rel="noopener">Jaeger</a>.
+    </p>
+</section>
+
+<section class="future-features">
+    <h2>Coming Soon</h2>
+    <ul>
+        <li>Real-time event stream via WebSocket</li>
+        <li>Event replay and debugging</li>
+        <li>Event filtering and search</li>
+    </ul>
+</section>

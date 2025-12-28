@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: hellarch
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hellarch}
       POSTGRES_DB: auth_db
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://signoz-otel-collector:4318
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       HELLARCH_ENV: development
     ports:
       - "5434:5432"
@@ -33,7 +33,7 @@ services:
       POSTGRES_USER: hellarch
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hellarch}
       POSTGRES_DB: user_db
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://signoz-otel-collector:4318
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       HELLARCH_ENV: development
     ports:
       - "5433:5432"

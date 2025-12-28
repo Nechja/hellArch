@@ -4,6 +4,7 @@ services:
       context: ../../src/gateway
       dockerfile: Dockerfile
     container_name: hellarch-gateway
+    user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "5000:5000"
     environment:
@@ -23,6 +24,7 @@ services:
       context: ../../src/services/auth
       dockerfile: Dockerfile
     container_name: hellarch-auth
+    user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "5001:5001"
     env_file:
@@ -52,6 +54,7 @@ services:
       context: ../../src/services/user
       dockerfile: Dockerfile
     container_name: hellarch-user
+    user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "5002:5002"
     environment:

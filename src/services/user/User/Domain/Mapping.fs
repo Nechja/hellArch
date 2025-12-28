@@ -20,19 +20,23 @@ module Mapping =
 
     module UserProfile =
         let toDto (entity: UserProfile) : HellArch.User.V1.UserProfile =
-            { Id = entity.Id.ToString()
-              Email = entity.Email
-              DisplayName = entity.DisplayName |> Option.defaultValue ""
-              AvatarUrl = entity.AvatarUrl |> Option.defaultValue ""
-              Bio = entity.Bio |> Option.defaultValue ""
-              CreatedAt = Some entity.CreatedAt
-              UpdatedAt = Some entity.UpdatedAt }
+            {
+                Id = entity.Id.ToString()
+                Email = entity.Email
+                DisplayName = entity.DisplayName |> Option.defaultValue ""
+                AvatarUrl = entity.AvatarUrl |> Option.defaultValue ""
+                Bio = entity.Bio |> Option.defaultValue ""
+                CreatedAt = Some entity.CreatedAt
+                UpdatedAt = Some entity.UpdatedAt
+            }
 
     module NotificationSettings =
         let toDto (entity: UserPreferences) : HellArch.User.V1.NotificationSettings =
-            { EmailEnabled = entity.EmailNotifications
-              PushEnabled = entity.PushNotifications
-              InAppEnabled = entity.InAppNotifications }
+            {
+                EmailEnabled = entity.EmailNotifications
+                PushEnabled = entity.PushNotifications
+                InAppEnabled = entity.InAppNotifications
+            }
 
         let fromDto (dto: HellArch.User.V1.NotificationSettings option) =
             match dto with
@@ -41,21 +45,34 @@ module Mapping =
 
     module UserPreferences =
         let toDto (entity: UserPreferences) : HellArch.User.V1.UserPreferences =
-            { Theme = Theme.toDto entity.Theme
-              Locale = entity.Locale |> Option.defaultValue "en-US"
-              Timezone = entity.Timezone |> Option.defaultValue "UTC"
-              Notifications = Some (NotificationSettings.toDto entity)
-              Custom = None }
+            {
+                Theme = Theme.toDto entity.Theme
+                Locale = entity.Locale |> Option.defaultValue "en-US"
+                Timezone = entity.Timezone |> Option.defaultValue "UTC"
+                Notifications = Some(NotificationSettings.toDto entity)
+                Custom = None
+            }
 
         let fromDto (userId: Guid) (dto: HellArch.User.V1.UserPreferences) : UserPreferences =
             let (email, push, inApp) = NotificationSettings.fromDto dto.Notifications
-            { Id = Guid.NewGuid()
-              UserProfileId = userId
-              Theme = Theme.fromDto dto.Theme
-              Locale = if String.IsNullOrEmpty dto.Locale then None else Some dto.Locale
-              Timezone = if String.IsNullOrEmpty dto.Timezone then None else Some dto.Timezone
-              EmailNotifications = email
-              PushNotifications = push
-              InAppNotifications = inApp
-              CreatedAt = DateTime.UtcNow
-              UpdatedAt = DateTime.UtcNow }
+
+            {
+                Id = Guid.NewGuid()
+                UserProfileId = userId
+                Theme = Theme.fromDto dto.Theme
+                Locale =
+                    if String.IsNullOrEmpty dto.Locale then
+                        None
+                    else
+                        Some dto.Locale
+                Timezone =
+                    if String.IsNullOrEmpty dto.Timezone then
+                        None
+                    else
+                        Some dto.Timezone
+                EmailNotifications = email
+                PushNotifications = push
+                InAppNotifications = inApp
+                CreatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow
+            }

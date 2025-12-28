@@ -22,27 +22,31 @@ module Database =
         | Theme.System -> "system"
 
     let private parseProfile (read: RowReader) : UserProfile =
-        { Id = read.uuid "id"
-          AuthUserId = read.uuid "auth_user_id"
-          Email = read.string "email"
-          DisplayName = read.stringOrNone "display_name"
-          AvatarUrl = read.stringOrNone "avatar_url"
-          Bio = read.stringOrNone "bio"
-          CreatedAt = read.dateTime "created_at"
-          UpdatedAt = read.dateTime "updated_at"
-          Preferences = None }
+        {
+            Id = read.uuid "id"
+            AuthUserId = read.uuid "auth_user_id"
+            Email = read.string "email"
+            DisplayName = read.stringOrNone "display_name"
+            AvatarUrl = read.stringOrNone "avatar_url"
+            Bio = read.stringOrNone "bio"
+            CreatedAt = read.dateTime "created_at"
+            UpdatedAt = read.dateTime "updated_at"
+            Preferences = None
+        }
 
     let private parsePreferences (read: RowReader) : UserPreferences =
-        { Id = read.uuid "id"
-          UserProfileId = read.uuid "user_profile_id"
-          Theme = read.string "theme" |> parseTheme
-          Locale = read.stringOrNone "locale"
-          Timezone = read.stringOrNone "timezone"
-          EmailNotifications = read.bool "email_notifications"
-          PushNotifications = read.bool "push_notifications"
-          InAppNotifications = read.bool "in_app_notifications"
-          CreatedAt = read.dateTime "created_at"
-          UpdatedAt = read.dateTime "updated_at" }
+        {
+            Id = read.uuid "id"
+            UserProfileId = read.uuid "user_profile_id"
+            Theme = read.string "theme" |> parseTheme
+            Locale = read.stringOrNone "locale"
+            Timezone = read.stringOrNone "timezone"
+            EmailNotifications = read.bool "email_notifications"
+            PushNotifications = read.bool "push_notifications"
+            InAppNotifications = read.bool "in_app_notifications"
+            CreatedAt = read.dateTime "created_at"
+            UpdatedAt = read.dateTime "updated_at"
+        }
 
     let getProfile (config: DatabaseConfig) (userId: Guid) =
         async {
@@ -89,11 +93,13 @@ module Database =
                         RETURNING *
                         """
                     |> Sql.parameters
-                        [ "id", Sql.uuid (Guid.NewGuid())
-                          "auth_user_id", Sql.uuid request.AuthUserId
-                          "email", Sql.string request.Email
-                          "display_name", Sql.stringOrNone request.DisplayName
-                          "avatar_url", Sql.stringOrNone request.AvatarUrl ]
+                        [
+                            "id", Sql.uuid (Guid.NewGuid())
+                            "auth_user_id", Sql.uuid request.AuthUserId
+                            "email", Sql.string request.Email
+                            "display_name", Sql.stringOrNone request.DisplayName
+                            "avatar_url", Sql.stringOrNone request.AvatarUrl
+                        ]
                     |> Sql.executeRowAsync parseProfile
                     |> Async.AwaitTask
 
@@ -102,7 +108,13 @@ module Database =
                 return Error(UserError.DatabaseError ex.Message)
         }
 
-    let updateProfile (config: DatabaseConfig) (userId: Guid) (displayName: string option) (avatarUrl: string option) (bio: string option) =
+    let updateProfile
+        (config: DatabaseConfig)
+        (userId: Guid)
+        (displayName: string option)
+        (avatarUrl: string option)
+        (bio: string option)
+        =
         async {
             try
                 let! result =
@@ -119,10 +131,12 @@ module Database =
                         RETURNING *
                         """
                     |> Sql.parameters
-                        [ "id", Sql.uuid userId
-                          "display_name", Sql.stringOrNone displayName
-                          "avatar_url", Sql.stringOrNone avatarUrl
-                          "bio", Sql.stringOrNone bio ]
+                        [
+                            "id", Sql.uuid userId
+                            "display_name", Sql.stringOrNone displayName
+                            "avatar_url", Sql.stringOrNone avatarUrl
+                            "bio", Sql.stringOrNone bio
+                        ]
                     |> Sql.executeRowAsync parseProfile
                     |> Async.AwaitTask
 
@@ -167,14 +181,16 @@ module Database =
                             updated_at = NOW()
                         """
                     |> Sql.parameters
-                        [ "id", Sql.uuid prefs.Id
-                          "user_profile_id", Sql.uuid prefs.UserProfileId
-                          "theme", Sql.string (themeToString prefs.Theme)
-                          "locale", Sql.stringOrNone prefs.Locale
-                          "timezone", Sql.stringOrNone prefs.Timezone
-                          "email_notifications", Sql.bool prefs.EmailNotifications
-                          "push_notifications", Sql.bool prefs.PushNotifications
-                          "in_app_notifications", Sql.bool prefs.InAppNotifications ]
+                        [
+                            "id", Sql.uuid prefs.Id
+                            "user_profile_id", Sql.uuid prefs.UserProfileId
+                            "theme", Sql.string (themeToString prefs.Theme)
+                            "locale", Sql.stringOrNone prefs.Locale
+                            "timezone", Sql.stringOrNone prefs.Timezone
+                            "email_notifications", Sql.bool prefs.EmailNotifications
+                            "push_notifications", Sql.bool prefs.PushNotifications
+                            "in_app_notifications", Sql.bool prefs.InAppNotifications
+                        ]
                     |> Sql.executeNonQueryAsync
                     |> Async.AwaitTask
 

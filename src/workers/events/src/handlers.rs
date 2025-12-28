@@ -23,6 +23,7 @@ pub async fn handle_session_created(data: &SessionCreatedData) -> Result<(), Wor
     info!(
         session_id = %data.session_id,
         user_id = %data.user_id,
+        ip_address = %data.ip_address,
         "Processing session.created event"
     );
 

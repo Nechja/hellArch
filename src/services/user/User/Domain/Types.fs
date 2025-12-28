@@ -14,9 +14,10 @@ type UserError =
 type UserResult<'T> = Result<'T, UserError>
 
 /// Request to create a profile from an event (internal)
-type CreateProfileFromEvent = {
-    AuthUserId: Guid
-    Email: string
-    DisplayName: string option
-    AvatarUrl: string option
-}
+type CreateProfileFromEvent =
+    {
+        AuthUserId: Guid
+        Email: string
+        DisplayName: string option
+        AvatarUrl: string option
+    }

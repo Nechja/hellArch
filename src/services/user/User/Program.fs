@@ -13,24 +13,41 @@ open OpenTelemetry.Trace
 open User.Api
 open User.Infrastructure
 
+let private getRequiredEnv name =
+    match Environment.GetEnvironmentVariable(name) |> Option.ofObj with
+    | Some value -> value
+    | None -> failwithf "Required environment variable '%s' is not set" name
+
+let private getEnvOrDefault name defaultValue =
+    Environment.GetEnvironmentVariable(name)
+    |> Option.ofObj
+    |> Option.defaultValue defaultValue
+
 [<EntryPoint>]
 let main args =
     let builder = WebApplication.CreateBuilder(args)
 
     let logLevel =
-        match Environment.GetEnvironmentVariable("LOG_LEVEL") |> Option.ofObj |> Option.map (fun s -> s.ToLowerInvariant()) with
+        match
+            Environment.GetEnvironmentVariable("LOG_LEVEL")
+            |> Option.ofObj
+            |> Option.map (fun s -> s.ToLowerInvariant())
+        with
         | Some "info" -> LogLevel.Information
-        | Some "warn" | Some "warning" -> LogLevel.Warning
+        | Some "warn"
+        | Some "warning" -> LogLevel.Warning
         | Some "error" -> LogLevel.Error
         | _ -> LogLevel.Debug // Default to debug for dev
 
     builder.Logging.ClearProviders() |> ignore
     builder.Logging.SetMinimumLevel(logLevel) |> ignore
+
     builder.Logging.AddJsonConsole(fun options ->
         options.IncludeScopes <- true
         options.TimestampFormat <- "yyyy-MM-ddTHH:mm:ssZ"
         options.JsonWriterOptions <- JsonWriterOptions(Indented = false)
-    ) |> ignore
+    )
+    |> ignore
 
     let otelEndpoint =
         Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -46,18 +63,15 @@ let main args =
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddNpgsql()
-                .AddOtlpExporter(fun options ->
-                    options.Endpoint <- Uri(otelEndpoint)
-                ) |> ignore
-        ) |> ignore
+                .AddOtlpExporter(fun options -> options.Endpoint <- Uri(otelEndpoint))
+            |> ignore
+        )
+    |> ignore
 
     let app = builder.Build()
 
     let dbConfig: Database.DatabaseConfig =
-        { ConnectionString =
-            Environment.GetEnvironmentVariable("USER_DATABASE_URL")
-            |> Option.ofObj
-            |> Option.defaultValue "Host=localhost;Port=5433;Database=user_db;Username=hellarch;Password=hellarch" }
+        { ConnectionString = getRequiredEnv "USER_DATABASE_URL" }
 
     // Health endpoint
     app.MapGet("/health", Func<HttpContext, _>(Handlers.health)) |> ignore
@@ -91,13 +105,15 @@ let main args =
     )
     |> ignore
 
+    let logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("User")
+
     // RabbitMQ consumer configuration
     let eventsConfig: Events.EventsConfig =
-        { RabbitMQUrl =
-            Environment.GetEnvironmentVariable("RABBITMQ_URL")
-            |> Option.ofObj
-            |> Option.defaultValue "amqp://guest:guest@localhost:5672/"
-          QueueName = "user-service" }
+        {
+            RabbitMQUrl = getRequiredEnv "RABBITMQ_URL"
+            QueueName = "user-service"
+            Logger = logger
+        }
 
     // Start consumer as background task
     let cts = new CancellationTokenSource()
@@ -105,15 +121,17 @@ let main args =
 
     // Handle graceful shutdown
     app.Lifetime.ApplicationStopping.Register(fun () ->
-        printfn "Shutting down event consumer..."
+        logger.LogInformation("Shutting down event consumer...")
         cts.Cancel()
+
         try
             consumerTask.Wait(TimeSpan.FromSeconds(5.0)) |> ignore
         with
         | :? AggregateException -> ()
         | :? TaskCanceledException -> ()
-    ) |> ignore
+    )
+    |> ignore
 
-    printfn "User service starting on http://localhost:5002"
-    app.Run("http://localhost:5002")
+    logger.LogInformation("User service starting")
+    app.Run()
     0

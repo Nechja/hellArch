@@ -1,0 +1,139 @@
+@page "/redis"
+@inject RedisBrowserAdapter RedisBrowser
+
+<PageTitle>Redis Browser - HellArch Admin</PageTitle>
+
+<h1>Redis Browser</h1>
+
+<section class="connection-info">
+    <div class="connection-status @(_connectionInfo.IsConnected ? "connected" : "disconnected")">
+        <span class="status-indicator"></span>
+        <span>@(_connectionInfo.IsConnected ? "Connected" : "Disconnected")</span>
+    </div>
+</section>
+
+<section class="search-section">
+    <div class="search-bar">
+        <input type="text" @bind="_pattern" @bind:event="oninput" placeholder="Pattern (e.g., session:*, oauth:*)" class="input" />
+        <button @onclick="Search" class="btn btn-primary">Search</button>
+    </div>
+    <div class="quick-filters">
+        <button @onclick="() => SearchPattern('session:*')" class="btn btn-sm">Sessions</button>
+        <button @onclick="() => SearchPattern('oauth:state:*')" class="btn btn-sm">OAuth States</button>
+        <button @onclick="() => SearchPattern('revoked:*')" class="btn btn-sm">Revoked Tokens</button>
+        <button @onclick="() => SearchPattern('*')" class="btn btn-sm">All Keys</button>
+    </div>
+</section>
+
+<div class="redis-layout">
+    <section class="keys-list">
+        <h2>Keys (@_keys.Count)</h2>
+        @if (_keys.Count > 0)
+        {
+            <ul class="key-list">
+                @foreach (var key in _keys)
+                {
+                    <li class="key-item @(_selectedKey == key.Key ? "selected" : "")" @onclick="() => SelectKey(key.Key)">
+                        <span class="key-name monospace">@key.Key</span>
+                        <span class="key-type badge">@key.Type</span>
+                        @if (key.Ttl.HasValue)
+                        {
+                            <span class="key-ttl">TTL: @FormatTtl(key.Ttl.Value)</span>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+        else if (_searched)
+        {
+            <p class="empty-state">No keys found matching "@_pattern"</p>
+        }
+        else
+        {
+            <p class="empty-state">Enter a pattern and click Search</p>
+        }
+    </section>
+
+    <section class="key-detail">
+        <h2>Key Detail</h2>
+        @if (_keyDetail is not null)
+        {
+            <dl class="detail-list">
+                <dt>Key</dt>
+                <dd class="monospace">@_keyDetail.Key</dd>
+                <dt>Type</dt>
+                <dd><span class="badge">@_keyDetail.Type</span></dd>
+                <dt>TTL</dt>
+                <dd>@(_keyDetail.Ttl.HasValue ? FormatTtl(_keyDetail.Ttl.Value) : "No expiry")</dd>
+            </dl>
+            <div class="value-section">
+                <h3>Value</h3>
+                <pre class="value-display">@_keyDetail.Value</pre>
+            </div>
+            <div class="actions">
+                <button @onclick="DeleteSelectedKey" class="btn btn-danger">Delete Key</button>
+            </div>
+        }
+        else
+        {
+            <p class="empty-state">Select a key to view details</p>
+        }
+    </section>
+</div>
+
+@code {
+    private string _pattern = "*";
+    private bool _searched;
+    private IReadOnlyList<RedisKeyInfo> _keys = [];
+    private string? _selectedKey;
+    private RedisKeyDetail? _keyDetail;
+    private RedisConnectionInfo _connectionInfo = new(false, [], "");
+
+    protected override void OnInitialized()
+    {
+        _connectionInfo = RedisBrowser.GetConnectionInfo();
+    }
+
+    private async Task Search()
+    {
+        _keys = await RedisBrowser.ScanKeys(_pattern);
+        _searched = true;
+        _selectedKey = null;
+        _keyDetail = null;
+    }
+
+    private async Task SearchPattern(string pattern)
+    {
+        _pattern = pattern;
+        await Search();
+    }
+
+    private async Task SelectKey(string key)
+    {
+        _selectedKey = key;
+        _keyDetail = await RedisBrowser.GetKeyDetail(key);
+    }
+
+    private async Task DeleteSelectedKey()
+    {
+        if (_selectedKey is not null)
+        {
+            var success = await RedisBrowser.DeleteKey(_selectedKey);
+            if (success)
+            {
+                await Search();
+            }
+        }
+    }
+
+    private static string FormatTtl(TimeSpan ttl)
+    {
+        if (ttl.TotalDays >= 1)
+            return $"{ttl.Days}d {ttl.Hours}h";
+        if (ttl.TotalHours >= 1)
+            return $"{ttl.Hours}h {ttl.Minutes}m";
+        if (ttl.TotalMinutes >= 1)
+            return $"{ttl.Minutes}m {ttl.Seconds}s";
+        return $"{ttl.Seconds}s";
+    }
+}

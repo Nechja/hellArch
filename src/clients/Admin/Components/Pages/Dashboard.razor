@@ -1,0 +1,110 @@
+@page "/"
+@inject AuthAdminFacade AuthAdmin
+@inject RedisBrowserAdapter RedisBrowser
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>Dashboard - HellArch Admin</PageTitle>
+
+<h1>Dashboard</h1>
+
+<section class="stats-grid">
+    <div class="stat-card">
+        <h3>Users</h3>
+        <p class="stat-value">@_stats.UserCount</p>
+    </div>
+    <div class="stat-card">
+        <h3>Active Sessions</h3>
+        <p class="stat-value">@_stats.SessionCount</p>
+    </div>
+    <div class="stat-card">
+        <h3>Linked Accounts</h3>
+        <p class="stat-value">@_stats.LinkedAccountCount</p>
+    </div>
+</section>
+
+<section class="health-section">
+    <h2>Service Health</h2>
+    <div class="health-grid">
+        <div class="health-card @(_authHealthy ? "healthy" : "unhealthy")">
+            <span class="health-indicator"></span>
+            <span class="health-name">Auth Service</span>
+            <span class="health-status">@(_authHealthy ? "Healthy" : "Unhealthy")</span>
+        </div>
+        <div class="health-card @(_userHealthy ? "healthy" : "unhealthy")">
+            <span class="health-indicator"></span>
+            <span class="health-name">User Service</span>
+            <span class="health-status">@(_userHealthy ? "Healthy" : "Unhealthy")</span>
+        </div>
+        <div class="health-card @(_redisHealthy ? "healthy" : "unhealthy")">
+            <span class="health-indicator"></span>
+            <span class="health-name">Redis</span>
+            <span class="health-status">@(_redisHealthy ? "Connected" : "Disconnected")</span>
+        </div>
+    </div>
+</section>
+
+<section class="links-section">
+    <h2>Quick Links</h2>
+    <div class="links-grid">
+        <a href="http://localhost:16686" target="_blank" rel="noopener" class="link-card">
+            <h3>Jaeger Tracing</h3>
+            <p>View distributed traces</p>
+        </a>
+        <a href="http://localhost:15672" target="_blank" rel="noopener" class="link-card">
+            <h3>RabbitMQ Management</h3>
+            <p>Message queue dashboard</p>
+        </a>
+    </div>
+</section>
+
+@code {
+    private AdminStats _stats = new(0, 0, 0);
+    private bool _authHealthy;
+    private bool _userHealthy;
+    private bool _redisHealthy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(
+            LoadStats(),
+            CheckHealth()
+        );
+    }
+
+    private async Task LoadStats()
+    {
+        _stats = await AuthAdmin.GetStats();
+    }
+
+    private async Task CheckHealth()
+    {
+        var authClient = HttpClientFactory.CreateClient("AuthService");
+        var userClient = HttpClientFactory.CreateClient("UserService");
+
+        var tasks = new[]
+        {
+            CheckServiceHealth(authClient, "/health"),
+            CheckServiceHealth(userClient, "/health")
+        };
+
+        var results = await Task.WhenAll(tasks);
+        _authHealthy = results[0];
+        _userHealthy = results[1];
+
+        var redisInfo = RedisBrowser.GetConnectionInfo();
+        _redisHealthy = redisInfo.IsConnected;
+    }
+
+    private static async Task<bool> CheckServiceHealth(HttpClient client, string endpoint)
+    {
+        try
+        {
+            var response = await client.GetAsync(endpoint);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}

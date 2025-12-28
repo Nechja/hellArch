@@ -175,3 +175,75 @@ func (p *Postgres) DeleteSessionByToken(ctx context.Context, token string) error
 	_, err := p.pool.Exec(ctx, `DELETE FROM sessions WHERE token = $1`, token)
 	return err
 }
+
+// Admin methods
+
+func (p *Postgres) ListUsers(ctx context.Context, limit, offset int) ([]*User, int, error) {
+	// Get total count
+	var total int
+	if err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM users`).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := p.pool.Query(ctx,
+		`SELECT id, email, username, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+		limit, offset,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var users []*User
+	for rows.Next() {
+		var user User
+		if err := rows.Scan(&user.ID, &user.Email, &user.Username, &user.CreatedAt, &user.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		users = append(users, &user)
+	}
+	return users, total, nil
+}
+
+func (p *Postgres) GetUserSessions(ctx context.Context, userID string) ([]*Session, error) {
+	rows, err := p.pool.Query(ctx,
+		`SELECT id, user_id, token, ip_address, user_agent, expires_at, created_at
+		 FROM sessions WHERE user_id = $1 AND expires_at > NOW() ORDER BY created_at DESC`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []*Session
+	for rows.Next() {
+		var session Session
+		if err := rows.Scan(
+			&session.ID, &session.UserID, &session.Token, &session.IPAddress,
+			&session.UserAgent, &session.ExpiresAt, &session.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, &session)
+	}
+	return sessions, nil
+}
+
+func (p *Postgres) CountUsers(ctx context.Context) (int, error) {
+	var count int
+	err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM users`).Scan(&count)
+	return count, err
+}
+
+func (p *Postgres) CountActiveSessions(ctx context.Context) (int, error) {
+	var count int
+	err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM sessions WHERE expires_at > NOW()`).Scan(&count)
+	return count, err
+}
+
+func (p *Postgres) CountLinkedAccounts(ctx context.Context) (int, error) {
+	var count int
+	err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM linked_accounts`).Scan(&count)
+	return count, err
+}
