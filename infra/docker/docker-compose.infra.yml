@@ -1,8 +1,9 @@
 services:
   auth-db:
+    image: hellarch-auth-db
     build:
-      context: ../dbs/auth-db
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: infra/dbs/auth-db/Dockerfile
     container_name: hellarch-auth-db
     environment:
       POSTGRES_USER: hellarch
@@ -12,8 +13,6 @@ services:
       - "5434:5432"
     volumes:
       - auth-db-data:/var/lib/postgresql/data
-      - ../../src/schema:/schema:ro
-      - ../../libs/data_types:/libs/data_types:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hellarch -d auth_db"]
       interval: 5s
@@ -23,9 +22,10 @@ services:
       - hellarch
 
   user-db:
+    image: hellarch-user-db
     build:
-      context: ../dbs/user-db
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: infra/dbs/user-db/Dockerfile
     container_name: hellarch-user-db
     environment:
       POSTGRES_USER: hellarch
@@ -35,8 +35,6 @@ services:
       - "5433:5432"
     volumes:
       - user-db-data:/var/lib/postgresql/data
-      - ../../src/schema:/schema:ro
-      - ../../libs/data_types:/libs/data_types:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hellarch -d user_db"]
       interval: 5s

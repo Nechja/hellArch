@@ -1,25 +1,33 @@
+# Build stage - compile migration runner
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+WORKDIR /src
+
+# Copy project files
+COPY src/schema/Schema/Schema.csproj src/schema/Schema/
+COPY src/schema/MigrationRunner/MigrationRunner.csproj src/schema/MigrationRunner/
+COPY libs/data_types/csharp/ libs/data_types/csharp/
+
+# Restore
+RUN dotnet restore src/schema/MigrationRunner/MigrationRunner.csproj
+
+# Copy source and build
+COPY src/schema/Schema/ src/schema/Schema/
+COPY src/schema/MigrationRunner/ src/schema/MigrationRunner/
+
+RUN dotnet publish src/schema/MigrationRunner/MigrationRunner.csproj \
+    -c Release \
+    -r linux-x64 \
+    -o /app/publish
+
+# Runtime stage - just postgres + migration binary
 FROM postgres:17-bookworm
 
-# Install .NET SDK for EF Core migrations
-RUN apt-get update && apt-get install -y \
-    wget \
-    apt-transport-https \
-    && wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh \
-    && chmod +x dotnet-install.sh \
-    && ./dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet \
-    && ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet \
-    && rm dotnet-install.sh \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install EF Core tools
-ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
-ENV PATH="$PATH:/root/.dotnet/tools"
-RUN dotnet tool install --global dotnet-ef
+# Copy migration runner binary
+COPY --from=build /app/publish/MigrationRunner /usr/local/bin/migrate
 
 # Copy entrypoint wrapper
-COPY entrypoint.sh /usr/local/bin/entrypoint-wrapper.sh
-RUN chmod +x /usr/local/bin/entrypoint-wrapper.sh
+COPY infra/dbs/user-db/entrypoint.sh /usr/local/bin/entrypoint-wrapper.sh
+RUN chmod +x /usr/local/bin/entrypoint-wrapper.sh /usr/local/bin/migrate
 
 ENTRYPOINT ["/usr/local/bin/entrypoint-wrapper.sh"]
 CMD ["postgres"]

@@ -12,6 +12,33 @@ dotenv()
 
 docker_compose('./infra/docker/docker-compose.infra.yml')
 
+# Build DB images with migration runner - rebuilds when migrations change
+docker_build(
+    'hellarch-auth-db',
+    '.',
+    dockerfile='infra/dbs/auth-db/Dockerfile',
+    only=[
+        'src/schema/Schema/',
+        'src/schema/MigrationRunner/',
+        'libs/data_types/csharp/',
+        'infra/dbs/auth-db/',
+    ],
+    ignore=['**/bin', '**/obj'],
+)
+
+docker_build(
+    'hellarch-user-db',
+    '.',
+    dockerfile='infra/dbs/user-db/Dockerfile',
+    only=[
+        'src/schema/Schema/',
+        'src/schema/MigrationRunner/',
+        'libs/data_types/csharp/',
+        'infra/dbs/user-db/',
+    ],
+    ignore=['**/bin', '**/obj'],
+)
+
 # Label infrastructure resources
 dc_resource('auth-db', labels=['infra'])
 dc_resource('user-db', labels=['infra'])
