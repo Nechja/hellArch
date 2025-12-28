@@ -279,6 +279,14 @@ func (h *AuthHandler) ValidateToken(ctx context.Context, token string) (*jwt.Cla
 	return h.jwtService.ValidateToken(token)
 }
 
+func (h *AuthHandler) InvalidateSession(ctx context.Context, sessionToken string) error {
+	if err := h.redis.InvalidateSession(ctx, sessionToken); err != nil {
+		slog.Warn("failed to delete session from redis", "error", err)
+	}
+
+	return h.postgres.DeleteSessionByToken(ctx, sessionToken)
+}
+
 func generateRandomState() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {

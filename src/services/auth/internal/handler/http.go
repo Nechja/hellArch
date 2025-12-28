@@ -24,6 +24,8 @@ func (h *HTTPHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /auth/refresh", h.handleRefresh)
 	mux.HandleFunc("POST /auth/validate", h.handleValidate)
 	mux.HandleFunc("GET /auth/me", h.handleMe)
+	mux.HandleFunc("GET /auth/logout", h.handleLogout)
+	mux.HandleFunc("POST /auth/logout", h.handleLogout)
 	mux.HandleFunc("GET /auth/health", h.handleHealth)
 }
 
@@ -182,6 +184,34 @@ func (h *HTTPHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}); err != nil {
 		slog.Error("failed to encode response", "error", err)
 	}
+}
+
+func (h *HTTPHandler) handleLogout(w http.ResponseWriter, r *http.Request) {
+	sessionToken := r.Header.Get("X-Session-Token")
+	if sessionToken == "" {
+		cookie, err := r.Cookie("hellarch_session")
+		if err == nil {
+			sessionToken = cookie.Value
+		}
+	}
+
+	if sessionToken != "" {
+		if err := h.auth.InvalidateSession(r.Context(), sessionToken); err != nil {
+			slog.Warn("failed to invalidate session", "error", err)
+		}
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "hellarch_session",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+
+	http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 }
 
 func (h *HTTPHandler) handleMe(w http.ResponseWriter, r *http.Request) {

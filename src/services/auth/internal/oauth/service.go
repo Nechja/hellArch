@@ -78,7 +78,7 @@ func (s *Service) GetAuthURL(provider Provider, state string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("provider %s not configured", provider)
 	}
-	return cfg.AuthCodeURL(state, oauth2.AccessTypeOffline), nil
+	return cfg.AuthCodeURL(state), nil
 }
 
 func (s *Service) Exchange(ctx context.Context, provider Provider, code string) (*oauth2.Token, error) {
