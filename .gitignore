@@ -239,5 +239,9 @@ tmp/
 # Tilt
 .tilt/
 
+# Gateway static assets (built from clients)
+src/gateway/Gateway/wwwroot/login/
+src/gateway/Gateway/wwwroot/app/
+
 # Generated protos (commit these if you want reproducible builds)
 # src/services/*/proto/
