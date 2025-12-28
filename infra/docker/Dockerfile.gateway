@@ -1,0 +1,34 @@
+# Multi-stage build for Gateway with embedded Login WASM
+# This Dockerfile should be run from the repo root context
+
+# Stage 1: Build Login WASM client
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS login-build
+WORKDIR /src
+COPY src/clients/Login/ ./Login/
+RUN dotnet publish Login/Login.csproj -c Release -o /login-out
+
+# Stage 2: Build Gateway with Login static files
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS gateway-build
+WORKDIR /src
+
+# Copy Login WASM output to Gateway wwwroot
+COPY --from=login-build /login-out/wwwroot /src/Gateway/wwwroot/login
+
+# Copy Gateway project and restore
+COPY src/gateway/Gateway/*.csproj ./Gateway/
+RUN dotnet restore Gateway/Gateway.csproj
+
+# Copy Gateway source and build
+COPY src/gateway/Gateway/ ./Gateway/
+RUN dotnet publish Gateway/Gateway.csproj -c Release -o /gateway-out
+
+# Stage 3: Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+WORKDIR /app
+
+COPY --from=gateway-build /gateway-out .
+
+ENV ASPNETCORE_URLS=http://+:5000
+EXPOSE 5000
+
+ENTRYPOINT ["dotnet", "Gateway.dll"]

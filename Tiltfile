@@ -52,20 +52,26 @@ dc_resource('rabbitmq', labels=['infra'])
 docker_compose('./infra/docker/docker-compose.services.yml')
 
 # Label service resources (DBs now run migrations on startup)
-dc_resource('gateway', labels=['services'], resource_deps=['auth-db', 'redis'], links=['http://localhost:5000'])
+dc_resource('gateway', labels=['services'], resource_deps=['auth-db', 'redis', 'login-copy'], links=['http://localhost:5000', 'http://localhost:5000/login'])
 dc_resource('auth', labels=['services'], resource_deps=['auth-db', 'redis', 'rabbitmq'], links=['http://localhost:5001'])
 dc_resource('user', labels=['services'], resource_deps=['user-db', 'redis', 'rabbitmq'], links=['http://localhost:5002'])
 dc_resource('events-worker', labels=['workers'], resource_deps=['rabbitmq'])
 dc_resource('admin', labels=['clients'], resource_deps=['auth', 'user', 'redis'], links=['http://localhost:5003'])
-# Login client (Blazor WASM - runs locally with mise-managed dotnet)
+# Login client (Blazor WASM - builds and copies to Gateway wwwroot for serving)
 local_resource(
-    'login',
-    serve_cmd='cd src/clients/Login && mise exec -- dotnet watch run --no-hot-reload',
+    'login-build',
+    cmd='mise exec -- dotnet publish src/clients/Login/Login.csproj -c Debug -o .tilt/login',
     deps=['src/clients/Login'],
     ignore=['**/bin', '**/obj', '**/*.g.cs'],
     labels=['clients'],
-    resource_deps=['gateway'],
-    links=['http://localhost:5010']
+)
+
+# Copy Login WASM output to Gateway wwwroot (runs after login-build)
+local_resource(
+    'login-copy',
+    cmd='mkdir -p src/gateway/Gateway/wwwroot/login && cp -r .tilt/login/wwwroot/* src/gateway/Gateway/wwwroot/login/',
+    resource_deps=['login-build'],
+    labels=['clients'],
 )
 
 # ============================================================================
