@@ -4,14 +4,15 @@ import { ref } from 'vue'
 interface User {
   id: string
   email: string
-  username: string
+  display_name: string
+  avatar_url: string
 }
 
 const props = defineProps<{
   user: User | null
 }>()
 
-const username = ref(props.user?.username || '')
+const displayName = ref(props.user?.display_name || '')
 const saving = ref(false)
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -20,10 +21,10 @@ async function saveProfile() {
   message.value = null
 
   try {
-    const res = await fetch('/api/user/profile', {
+    const res = await fetch('/api/user/me', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: username.value }),
+      body: JSON.stringify({ display_name: displayName.value }),
     })
 
     if (res.ok) {
@@ -67,15 +68,15 @@ async function saveProfile() {
         </div>
 
         <div>
-          <label for="username" class="block text-sm font-medium text-text-secondary mb-2">
-            Username
+          <label for="displayName" class="block text-sm font-medium text-text-secondary mb-2">
+            Display Name
           </label>
           <input
-            id="username"
-            v-model="username"
+            id="displayName"
+            v-model="displayName"
             type="text"
             class="input"
-            placeholder="Enter your username"
+            placeholder="Enter your display name"
           />
         </div>
 

@@ -1,15 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import NavBar from './components/NavBar.vue'
+import type { UserProfile } from '@hellarch/types'
 
-interface User {
-  id: string
-  email: string
-  display_name: string
-  avatar_url: string
-}
-
-const user = ref<User | null>(null)
+const user = ref<UserProfile | null>(null)
 const loading = ref(true)
 
 onMounted(async () => {

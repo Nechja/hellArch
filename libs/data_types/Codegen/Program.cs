@@ -29,6 +29,7 @@ foreach (var file in csFiles)
         GenerateRust(typeDef, domain, outputDir);
         GeneratePython(typeDef, domain, outputDir);
         GenerateFSharp(typeDef, domain, outputDir);
+        GenerateTypeScript(typeDef, domain, outputDir);
     }
 
     foreach (var enumDecl in root.DescendantNodes().OfType<EnumDeclarationSyntax>()
@@ -430,6 +431,62 @@ string CSharpToFSharp(string type, bool nullable)
     };
 
     return nullable ? $"{fsType} option" : fsType;
+}
+
+void GenerateTypeScript(TypeDef def, string domain, string outDir)
+{
+    var dir = Path.Combine(outDir, "typescript", domain.ToLower());
+    Directory.CreateDirectory(dir);
+    var file = Path.Combine(dir, $"{ToSnakeCase(def.Name)}.ts");
+
+    var sb = new System.Text.StringBuilder();
+
+    foreach (var e in def.Enums)
+    {
+        sb.AppendLine($"export type {e.Name} = {string.Join(" | ", e.Values.Select(v => $"'{ToSnakeCase(v)}'"))};");
+        sb.AppendLine();
+    }
+
+    if (!string.IsNullOrEmpty(def.Doc))
+        sb.AppendLine($"/** {def.Doc} */");
+    sb.AppendLine($"export interface {def.Name} {{");
+
+    foreach (var p in def.Properties)
+    {
+        var tsType = CSharpToTypeScript(p.Type, p.IsNullable);
+        var fieldName = ToSnakeCase(p.Name);
+        var optional = p.IsNullable ? "?" : "";
+        sb.AppendLine($"  {fieldName}{optional}: {tsType};");
+    }
+
+    sb.AppendLine("}");
+    File.WriteAllText(file, sb.ToString());
+    Console.WriteLine($"    typescript: ok");
+}
+
+string CSharpToTypeScript(string type, bool nullable)
+{
+    if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
+        type.StartsWith("List<", StringComparison.Ordinal) ||
+        type.StartsWith("IEnumerable<", StringComparison.Ordinal))
+    {
+#pragma warning disable CA1865, CA1307
+        var innerType = type.Substring(type.IndexOf('<') + 1).TrimEnd('>');
+#pragma warning restore CA1865, CA1307
+        var tsInner = CSharpToTypeScript(innerType, false);
+        return $"{tsInner}[]";
+    }
+
+    var tsType = type switch
+    {
+        "Guid" or "string" => "string",
+        "int" or "long" => "number",
+        "bool" => "boolean",
+        "DateTime" or "DateTimeOffset" => "string",
+        _ => type
+    };
+
+    return nullable ? $"{tsType} | null" : tsType;
 }
 
 record PropertyDef(string Name, string Type, bool IsNullable, bool IsRequired, string? DefaultValue);
