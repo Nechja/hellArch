@@ -11,6 +11,7 @@ type Config struct {
 	HTTPAddress       string
 	DatabaseURL       string
 	RedisURL          string
+	RabbitMQURL       string
 	JWTPrivateKeyPath string
 	JWTPublicKeyPath  string
 	OAuth             OAuthConfig
@@ -35,6 +36,7 @@ func Load() (*Config, error) {
 		HTTPAddress:       getEnv("HTTP_ADDRESS", ":5001"),
 		DatabaseURL:       getEnv("AUTH_DATABASE_URL", "postgres://hellarch:hellarch@localhost:5432/auth_db"),
 		RedisURL:          getEnv("REDIS_URL", "redis://localhost:6379"),
+		RabbitMQURL:       getEnv("RABBITMQ_URL", "amqp://hellarch:hellarch@localhost:5672"),
 		JWTPrivateKeyPath: getEnv("JWT_PRIVATE_KEY_PATH", "./infra/keys/dev-private.pem"),
 		JWTPublicKeyPath:  getEnv("JWT_PUBLIC_KEY_PATH", "./infra/keys/dev-public.pem"),
 		OAuth: OAuthConfig{

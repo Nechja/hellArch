@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/nechja/hellarch/auth/internal/config"
+	"github.com/nechja/hellarch/auth/internal/events"
 	"github.com/nechja/hellarch/auth/internal/jwt"
 	"github.com/nechja/hellarch/auth/internal/oauth"
 	"github.com/nechja/hellarch/auth/internal/store"
@@ -32,6 +33,7 @@ type AuthHandler struct {
 	redis        *store.Redis
 	jwtService   *jwt.Service
 	oauthService *oauth.Service
+	publisher    *events.Publisher
 	config       *config.Config
 }
 
@@ -40,6 +42,7 @@ func NewAuthHandler(
 	redis *store.Redis,
 	jwtService *jwt.Service,
 	oauthService *oauth.Service,
+	publisher *events.Publisher,
 	cfg *config.Config,
 ) *AuthHandler {
 	return &AuthHandler{
@@ -47,6 +50,7 @@ func NewAuthHandler(
 		redis:        redis,
 		jwtService:   jwtService,
 		oauthService: oauthService,
+		publisher:    publisher,
 		config:       cfg,
 	}
 }
@@ -111,10 +115,26 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 	}
 
 	// Find or create user
-	user, err := h.findOrCreateUser(ctx, userInfo)
+	user, isNewUser, err := h.findOrCreateUser(ctx, userInfo)
 	if err != nil {
 		slog.Error("failed to find or create user", "error", err)
 		return nil, status.Error(codes.Internal, "failed to create user")
+	}
+
+	// Publish user.created event for new users
+	if isNewUser {
+		if err := h.publisher.PublishUserCreated(ctx, events.UserCreatedData{
+			UserID:         user.ID,
+			Email:          user.Email,
+			Username:       userInfo.Username,
+			Provider:       string(provider),
+			ProviderUserID: userInfo.ID,
+			AvatarURL:      userInfo.AvatarURL,
+			CreatedAt:      user.CreatedAt.Format(time.RFC3339),
+		}); err != nil {
+			slog.Error("failed to publish user.created event", "error", err, "user_id", user.ID)
+			// Don't fail the auth flow for event publishing errors
+		}
 	}
 
 	// Generate tokens
@@ -144,21 +164,21 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 	}, nil
 }
 
-func (h *AuthHandler) findOrCreateUser(ctx context.Context, info *oauth.UserInfo) (*store.User, error) {
+func (h *AuthHandler) findOrCreateUser(ctx context.Context, info *oauth.UserInfo) (*store.User, bool, error) {
 	// Try to find existing user by provider ID
 	user, err := h.postgres.GetUserByProviderID(ctx, string(info.Provider), info.ID)
 	if err == nil {
-		return user, nil
+		return user, false, nil
 	}
 
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, err
+		return nil, false, err
 	}
 
 	// Create new user
 	user, err = h.postgres.CreateUser(ctx, info.Email, info.Username)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	// Link the OAuth account
@@ -171,10 +191,10 @@ func (h *AuthHandler) findOrCreateUser(ctx context.Context, info *oauth.UserInfo
 		AvatarURL:      ptr(info.AvatarURL),
 	})
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	return user, nil
+	return user, true, nil
 }
 
 func (h *AuthHandler) generateTokens(user *store.User, info *oauth.UserInfo) (string, string, error) {

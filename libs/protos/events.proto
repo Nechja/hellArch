@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package hellarch.events.v1;
+
+option csharp_namespace = "HellArch.Events.V1";
+option go_package = "github.com/nechja/hellarch/events/proto;eventspb";
+
+import "google/protobuf/timestamp.proto";
+
+// ============================================================================
+// CloudEvents Payloads
+// These are the `data` payloads for CloudEvents messages.
+// The CloudEvents envelope (id, source, type, time, traceparent) is handled
+// by the CloudEvents SDK in each language.
+// ============================================================================
+
+// Event types:
+// - hellarch.auth.user.created.v1
+// - hellarch.auth.user.updated.v1
+// - hellarch.auth.user.deleted.v1
+// - hellarch.auth.session.created.v1
+// - hellarch.auth.session.ended.v1
+// - hellarch.auth.account.linked.v1
+// - hellarch.auth.account.unlinked.v1
+
+// ============================================================================
+// User Events
+// ============================================================================
+
+// Published when a new user is created via OAuth
+message UserCreated {
+    string user_id = 1;
+    string email = 2;
+    string username = 3;
+    string provider = 4;
+    string provider_user_id = 5;
+    string avatar_url = 6;
+    google.protobuf.Timestamp created_at = 7;
+}
+
+// Published when user info is updated
+message UserUpdated {
+    string user_id = 1;
+    string email = 2;
+    string username = 3;
+    google.protobuf.Timestamp updated_at = 4;
+}
+
+// Published when a user is deleted
+message UserDeleted {
+    string user_id = 1;
+    google.protobuf.Timestamp deleted_at = 2;
+}
+
+// ============================================================================
+// Session Events
+// ============================================================================
+
+// Published when a new session is created
+message SessionCreated {
+    string session_id = 1;
+    string user_id = 2;
+    string ip_address = 3;
+    string user_agent = 4;
+    google.protobuf.Timestamp created_at = 5;
+    google.protobuf.Timestamp expires_at = 6;
+}
+
+// Published when a session ends (logout or expiry)
+message SessionEnded {
+    string session_id = 1;
+    string user_id = 2;
+    SessionEndReason reason = 3;
+    google.protobuf.Timestamp ended_at = 4;
+}
+
+enum SessionEndReason {
+    SESSION_END_REASON_UNSPECIFIED = 0;
+    SESSION_END_REASON_LOGOUT = 1;
+    SESSION_END_REASON_EXPIRED = 2;
+    SESSION_END_REASON_REVOKED = 3;
+}
+
+// ============================================================================
+// Linked Account Events
+// ============================================================================
+
+// Published when an OAuth account is linked to a user
+message AccountLinked {
+    string user_id = 1;
+    string provider = 2;
+    string provider_user_id = 3;
+    string email = 4;
+    google.protobuf.Timestamp linked_at = 5;
+}
+
+// Published when an OAuth account is unlinked from a user
+message AccountUnlinked {
+    string user_id = 1;
+    string provider = 2;
+    google.protobuf.Timestamp unlinked_at = 3;
+}

@@ -24,10 +24,10 @@ dc_resource('rabbitmq', labels=['infra'])
 
 docker_compose('./infra/docker/docker-compose.services.yml')
 
-# Label service resources (depend on migrations for auto-setup)
-dc_resource('gateway', labels=['services'], resource_deps=['migrate-auth', 'redis'], links=['http://localhost:5000'])
-dc_resource('auth', labels=['services'], resource_deps=['migrate-auth', 'redis', 'rabbitmq'], links=['http://localhost:5001'])
-dc_resource('user', labels=['services'], resource_deps=['migrate-user', 'redis'], links=['http://localhost:5002'])
+# Label service resources (DBs now run migrations on startup)
+dc_resource('gateway', labels=['services'], resource_deps=['auth-db', 'redis'], links=['http://localhost:5000'])
+dc_resource('auth', labels=['services'], resource_deps=['auth-db', 'redis', 'rabbitmq'], links=['http://localhost:5001'])
+dc_resource('user', labels=['services'], resource_deps=['user-db', 'redis'], links=['http://localhost:5002'])
 # Login client (Blazor WASM - runs locally with mise-managed dotnet)
 local_resource(
     'login',
@@ -59,24 +59,3 @@ local_resource(
     trigger_mode=TRIGGER_MODE_MANUAL
 )
 
-# ============================================================================
-# Database Migrations (auto-run on startup)
-# ============================================================================
-
-local_resource(
-    'migrate-auth',
-    cmd='mise exec -- dotnet ef database update --context AuthDbContext --project src/schema/Schema/Schema.csproj',
-    deps=['src/schema/Schema/Migrations/Auth'],
-    labels=['migrations'],
-    resource_deps=['auth-db'],
-    auto_init=True
-)
-
-local_resource(
-    'migrate-user',
-    cmd='mise exec -- dotnet ef database update --context UserDbContext --project src/schema/Schema/Schema.csproj',
-    deps=['src/schema/Schema/Migrations/User'],
-    labels=['migrations'],
-    resource_deps=['user-db'],
-    auto_init=True
-)

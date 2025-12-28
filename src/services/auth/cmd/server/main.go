@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/nechja/hellarch/auth/internal/config"
+	"github.com/nechja/hellarch/auth/internal/events"
 	"github.com/nechja/hellarch/auth/internal/handler"
 	"github.com/nechja/hellarch/auth/internal/jwt"
 	"github.com/nechja/hellarch/auth/internal/oauth"
@@ -48,6 +49,14 @@ func main() {
 	}
 	defer redisStore.Close()
 
+	// Initialize event publisher
+	eventPublisher, err := events.NewPublisher(ctx, cfg.RabbitMQURL, "hellarch/auth")
+	if err != nil {
+		slog.Error("failed to connect to RabbitMQ", "error", err)
+		os.Exit(1)
+	}
+	defer eventPublisher.Close()
+
 	// Initialize services
 	jwtService, err := jwt.NewService(cfg.JWTPrivateKeyPath, cfg.JWTPublicKeyPath)
 	if err != nil {
@@ -58,7 +67,7 @@ func main() {
 	oauthService := oauth.NewService(cfg.OAuth)
 
 	// Initialize handlers
-	authHandler := handler.NewAuthHandler(pgStore, redisStore, jwtService, oauthService, cfg)
+	authHandler := handler.NewAuthHandler(pgStore, redisStore, jwtService, oauthService, eventPublisher, cfg)
 	httpHandler := handler.NewHTTPHandler(authHandler)
 
 	// Initialize gRPC server
