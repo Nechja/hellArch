@@ -11,7 +11,7 @@ from fixtures.db import auth_db_connection
 
 
 @dataclass
-class TestUser:
+class AuthUser:
     id: str
     email: str
     username: str
@@ -19,7 +19,7 @@ class TestUser:
 
 
 @dataclass
-class TestSession:
+class AuthSession:
     id: str
     user_id: str
     token: str
@@ -30,7 +30,7 @@ async def create_test_user(
     conn: psycopg.AsyncConnection,
     email: str = "test@example.com",
     username: str = "testuser",
-) -> TestUser:
+) -> AuthUser:
     user_id = str(uuid4())
     now = datetime.now(timezone.utc)
 
@@ -42,7 +42,7 @@ async def create_test_user(
         (user_id, email, username, now, now),
     )
 
-    return TestUser(id=user_id, email=email, username=username)
+    return AuthUser(id=user_id, email=email, username=username)
 
 
 async def create_test_session(
@@ -51,7 +51,7 @@ async def create_test_session(
     expires_in: timedelta = timedelta(days=30),
     ip_address: str = "127.0.0.1",
     user_agent: str = "pytest",
-) -> TestSession:
+) -> AuthSession:
     session_id = str(uuid4())
     token = secrets.token_urlsafe(32)
     now = datetime.now(timezone.utc)
@@ -65,14 +65,14 @@ async def create_test_session(
         (session_id, user_id, token, expires_at, now, ip_address, user_agent),
     )
 
-    return TestSession(id=session_id, user_id=user_id, token=token, expires_at=expires_at)
+    return AuthSession(id=session_id, user_id=user_id, token=token, expires_at=expires_at)
 
 
 @pytest_asyncio.fixture
-async def test_user_factory() -> Callable[..., TestUser]:
+async def test_user_factory() -> Callable[..., AuthUser]:
     created_users: list[str] = []
 
-    async def _create(email: str = "test@example.com", username: str = "testuser") -> TestUser:
+    async def _create(email: str = "test@example.com", username: str = "testuser") -> AuthUser:
         async with auth_db_connection() as conn:
             user = await create_test_user(conn, email, username)
             created_users.append(user.id)
@@ -88,12 +88,12 @@ async def test_user_factory() -> Callable[..., TestUser]:
 
 
 @pytest_asyncio.fixture
-async def test_user(test_user_factory: Callable[..., TestUser]) -> TestUser:
+async def test_user(test_user_factory: Callable[..., AuthUser]) -> AuthUser:
     return await test_user_factory()
 
 
 @pytest_asyncio.fixture
-async def test_session(test_user: TestUser) -> TestSession:
+async def test_session(test_user: AuthUser) -> AuthSession:
     async with auth_db_connection() as conn:
         session = await create_test_session(conn, test_user.id)
         await conn.commit()

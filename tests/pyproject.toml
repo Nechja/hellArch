@@ -18,6 +18,9 @@ dependencies = [
     "hellarch-types",
 ]
 
+[tool.uv]
+package = false
+
 [tool.uv.sources]
 hellarch-types = { path = "../libs/data_types/python" }
 
@@ -25,7 +28,3 @@ hellarch-types = { path = "../libs/data_types/python" }
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["api", "integration", "e2e"]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"

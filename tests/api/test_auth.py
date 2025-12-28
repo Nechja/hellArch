@@ -4,7 +4,7 @@ from typing import Callable
 import httpx
 import pytest
 
-from fixtures.auth import TestSession, TestUser
+from fixtures.auth import AuthSession, AuthUser
 
 
 class TestHealthEndpoint:
@@ -24,7 +24,7 @@ class TestValidateEndpoint:
         self,
         http_client: httpx.AsyncClient,
         base_urls: dict[str, str],
-        test_session: TestSession,
+        test_session: AuthSession,
     ):
         response = await http_client.post(
             f"{base_urls['auth']}/auth/validate",
@@ -40,7 +40,7 @@ class TestValidateEndpoint:
         self,
         http_client: httpx.AsyncClient,
         base_urls: dict[str, str],
-        test_user: TestUser,
+        test_user: AuthUser,
         create_access_token: Callable[..., str],
     ):
         token = create_access_token(
@@ -88,7 +88,7 @@ class TestRefreshEndpoint:
         self,
         http_client: httpx.AsyncClient,
         base_urls: dict[str, str],
-        test_user: TestUser,
+        test_user: AuthUser,
         create_refresh_token: Callable[..., str],
     ):
         refresh_token = create_refresh_token(user_id=test_user.id)
@@ -120,7 +120,7 @@ class TestRefreshEndpoint:
         self,
         http_client: httpx.AsyncClient,
         base_urls: dict[str, str],
-        test_user: TestUser,
+        test_user: AuthUser,
         create_refresh_token: Callable[..., str],
     ):
         expired_token = create_refresh_token(
@@ -141,7 +141,7 @@ class TestMeEndpoint:
         self,
         http_client: httpx.AsyncClient,
         base_urls: dict[str, str],
-        test_session: TestSession,
+        test_session: AuthSession,
     ):
         response = await http_client.get(
             f"{base_urls['auth']}/auth/me",
@@ -156,7 +156,7 @@ class TestMeEndpoint:
         self,
         http_client: httpx.AsyncClient,
         base_urls: dict[str, str],
-        test_session: TestSession,
+        test_session: AuthSession,
     ):
         response = await http_client.get(
             f"{base_urls['auth']}/auth/me",
