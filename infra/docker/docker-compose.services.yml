@@ -69,6 +69,18 @@ services:
       - hellarch
     restart: unless-stopped
 
+  events-worker:
+    build:
+      context: ../../src/workers/events
+      dockerfile: Dockerfile
+    container_name: hellarch-events-worker
+    environment:
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - RUST_LOG=info
+    networks:
+      - hellarch
+    restart: unless-stopped
+
 volumes:
   gateway-nuget:
   auth-go-cache:
