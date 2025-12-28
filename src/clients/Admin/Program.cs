@@ -30,19 +30,18 @@ builder.Logging.AddJsonConsole(options =>
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// HTTP clients for backend services
-var authUrl = Environment.GetEnvironmentVariable("AUTH_URL") ?? "http://localhost:5001";
-var userUrl = Environment.GetEnvironmentVariable("USER_URL") ?? "http://localhost:5002";
+// HTTP client for Gateway (routes to backend services via YARP)
+var gatewayUrl = Environment.GetEnvironmentVariable("GATEWAY_URL") ?? "http://localhost:5000";
 
 builder.Services.AddHttpClient("AuthService", client =>
 {
-    client.BaseAddress = new Uri(authUrl);
+    client.BaseAddress = new Uri(gatewayUrl + "/api");
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
 builder.Services.AddHttpClient("UserService", client =>
 {
-    client.BaseAddress = new Uri(userUrl);
+    client.BaseAddress = new Uri(gatewayUrl + "/api");
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 

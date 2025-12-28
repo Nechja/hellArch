@@ -94,8 +94,7 @@ services:
       - "5003:5003"
     environment:
       - PORT=5003
-      - AUTH_URL=http://hellarch-auth:5001
-      - USER_URL=http://hellarch-user:5002
+      - GATEWAY_URL=http://hellarch-gateway:5000
       - REDIS_URL=redis:6379
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug

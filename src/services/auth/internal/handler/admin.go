@@ -23,11 +23,11 @@ func NewAdminHandler(postgres *store.Postgres, redis *store.Redis) *AdminHandler
 }
 
 func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /admin/users", h.handleListUsers)
-	mux.HandleFunc("GET /admin/users/{id}", h.handleGetUser)
-	mux.HandleFunc("GET /admin/users/{id}/sessions", h.handleGetUserSessions)
-	mux.HandleFunc("DELETE /admin/sessions/{id}", h.handleDeleteSession)
-	mux.HandleFunc("GET /admin/stats", h.handleGetStats)
+	mux.HandleFunc("GET /auth/admin/users", h.handleListUsers)
+	mux.HandleFunc("GET /auth/admin/users/{id}", h.handleGetUser)
+	mux.HandleFunc("GET /auth/admin/users/{id}/sessions", h.handleGetUserSessions)
+	mux.HandleFunc("DELETE /auth/admin/sessions/{id}", h.handleDeleteSession)
+	mux.HandleFunc("GET /auth/admin/stats", h.handleGetStats)
 }
 
 func (h *AdminHandler) handleListUsers(w http.ResponseWriter, r *http.Request) {

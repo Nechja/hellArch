@@ -13,7 +13,7 @@ public sealed class AuthAdminFacade(
         try
         {
             var response = await _client.GetFromJsonAsync<UsersResponse>(
-                $"/admin/users?page={page}&pageSize={pageSize}", ct);
+                $"/auth/admin/users?page={page}&pageSize={pageSize}", ct);
             return response ?? new UsersResponse([], 0, page, pageSize);
         }
         catch (Exception ex)
@@ -27,7 +27,7 @@ public sealed class AuthAdminFacade(
     {
         try
         {
-            return await _client.GetFromJsonAsync<UserDetail>($"/admin/users/{userId}", ct);
+            return await _client.GetFromJsonAsync<UserDetail>($"/auth/admin/users/{userId}", ct);
         }
         catch (Exception ex)
         {
@@ -41,7 +41,7 @@ public sealed class AuthAdminFacade(
         try
         {
             var response = await _client.GetFromJsonAsync<SessionsResponse>(
-                $"/admin/users/{userId}/sessions", ct);
+                $"/auth/admin/users/{userId}/sessions", ct);
             return response?.Sessions ?? [];
         }
         catch (Exception ex)
@@ -55,7 +55,7 @@ public sealed class AuthAdminFacade(
     {
         try
         {
-            var response = await _client.DeleteAsync($"/admin/sessions/{sessionId}", ct);
+            var response = await _client.DeleteAsync($"/auth/admin/sessions/{sessionId}", ct);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -69,7 +69,7 @@ public sealed class AuthAdminFacade(
     {
         try
         {
-            var response = await _client.GetFromJsonAsync<AdminStats>("/admin/stats", ct);
+            var response = await _client.GetFromJsonAsync<AdminStats>("/auth/admin/stats", ct);
             return response ?? new AdminStats(0, 0, 0);
         }
         catch (Exception ex)
