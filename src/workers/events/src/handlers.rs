@@ -1,9 +1,8 @@
 use tracing::info;
 
-use crate::{AccountLinkedData, SessionCreatedData, UserCreatedData, WorkerError};
+use crate::{AccountLinked, SessionCreated, UserCreated, WorkerError};
 
-/// Handle user.created events
-pub async fn handle_user_created(data: &UserCreatedData) -> Result<(), WorkerError> {
+pub async fn handle_user_created(data: &UserCreated) -> Result<(), WorkerError> {
     info!(
         user_id = %data.user_id,
         username = %data.username,
@@ -18,8 +17,7 @@ pub async fn handle_user_created(data: &UserCreatedData) -> Result<(), WorkerErr
     Ok(())
 }
 
-/// Handle session.created events
-pub async fn handle_session_created(data: &SessionCreatedData) -> Result<(), WorkerError> {
+pub async fn handle_session_created(data: &SessionCreated) -> Result<(), WorkerError> {
     info!(
         session_id = %data.session_id,
         user_id = %data.user_id,
@@ -36,8 +34,7 @@ pub async fn handle_session_created(data: &SessionCreatedData) -> Result<(), Wor
     Ok(())
 }
 
-/// Handle account.linked events
-pub async fn handle_account_linked(data: &AccountLinkedData) -> Result<(), WorkerError> {
+pub async fn handle_account_linked(data: &AccountLinked) -> Result<(), WorkerError> {
     info!(
         user_id = %data.user_id,
         provider = %data.provider,
@@ -52,7 +49,7 @@ pub async fn handle_account_linked(data: &AccountLinkedData) -> Result<(), Worke
     Ok(())
 }
 
-async fn send_welcome_email(data: &UserCreatedData) -> Result<(), WorkerError> {
+async fn send_welcome_email(data: &UserCreated) -> Result<(), WorkerError> {
     // TODO: Integrate with email service (SendGrid, SES, Resend)
     // TODO: Use templated email with username, onboarding CTA
     // TODO: Track email delivery status
@@ -64,7 +61,7 @@ async fn send_welcome_email(data: &UserCreatedData) -> Result<(), WorkerError> {
     Ok(())
 }
 
-async fn track_signup(data: &UserCreatedData) -> Result<(), WorkerError> {
+async fn track_signup(data: &UserCreated) -> Result<(), WorkerError> {
     // TODO: Send to analytics platform (Segment, Amplitude, PostHog)
     // TODO: Track signup source, provider, referral if available
     // TODO: Trigger onboarding flow / product tours

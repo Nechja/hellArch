@@ -1,14 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SessionEndReason {
-    Logout,
-    Expired,
-    Revoked,
-}
-
 /// Published when a new session is created.
 /// Event type: hellarch.auth.session.created.v1
 #[derive(Debug, Clone, Deserialize)]

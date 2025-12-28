@@ -75,6 +75,9 @@ let main args =
 
     app.MapGet("/user/health", Func<HttpContext, _>(Handlers.health)) |> ignore
 
+    app.MapGet("/user/me", Func<HttpContext, _>(fun ctx -> Handlers.getMe dbConfig ctx))
+    |> ignore
+
     app.MapGet(
         "/user/{userId:guid}",
         Func<Guid, HttpContext, _>(fun userId ctx -> Handlers.getProfile dbConfig userId ctx)

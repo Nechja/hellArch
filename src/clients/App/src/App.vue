@@ -5,7 +5,8 @@ import NavBar from './components/NavBar.vue'
 interface User {
   id: string
   email: string
-  username: string
+  display_name: string
+  avatar_url: string
 }
 
 const user = ref<User | null>(null)
@@ -13,7 +14,7 @@ const loading = ref(true)
 
 onMounted(async () => {
   try {
-    const res = await fetch('/api/auth/me')
+    const res = await fetch('/api/user/me')
     if (res.ok) {
       user.value = await res.json()
     }

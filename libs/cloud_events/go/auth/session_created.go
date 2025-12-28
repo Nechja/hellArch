@@ -2,14 +2,6 @@ package auth
 
 import "time"
 
-type SessionEndReason string
-
-const (
-	SessionEndReasonLogout SessionEndReason = "logout"
-	SessionEndReasonExpired SessionEndReason = "expired"
-	SessionEndReasonRevoked SessionEndReason = "revoked"
-)
-
 // Published when a new session is created.
 // Event type: hellarch.auth.session.created.v1
 type SessionCreated struct {

@@ -2,6 +2,10 @@ use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use thiserror::Error;
 
+pub use hellarch_cloud_events::auth::{
+    AccountLinked, SessionCreated, UserCreated,
+};
+
 #[derive(Debug, Error)]
 pub enum WorkerError {
     #[error("RabbitMQ connection failed: {0}")]
@@ -42,34 +46,4 @@ pub struct CloudEvent<T> {
     pub datacontenttype: String,
     pub time: DateTime<Utc>,
     pub data: T,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UserCreatedData {
-    pub user_id: String,
-    pub email: String,
-    pub username: String,
-    pub provider: String,
-    pub provider_user_id: String,
-    pub avatar_url: String,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct SessionCreatedData {
-    pub session_id: String,
-    pub user_id: String,
-    pub ip_address: String,
-    pub user_agent: String,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct AccountLinkedData {
-    pub user_id: String,
-    pub provider: String,
-    pub provider_user_id: String,
-    pub email: String,
-    pub linked_at: DateTime<Utc>,
 }

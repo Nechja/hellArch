@@ -42,7 +42,7 @@ foreach (var file in csFiles)
 
 Console.WriteLine("\nDone!");
 
-TypeDef ParseClass(ClassDeclarationSyntax classDecl, string namespaceName, List<EnumDef> enums)
+TypeDef ParseClass(ClassDeclarationSyntax classDecl, string namespaceName, List<EnumDef> allEnums)
 {
     var className = classDecl.Identifier.Text;
     var doc = GetDocComment(classDecl);
@@ -63,7 +63,10 @@ TypeDef ParseClass(ClassDeclarationSyntax classDecl, string namespaceName, List<
         properties.Add(new PropertyDef(propName, baseType, isNullable));
     }
 
-    return new TypeDef(className, namespaceName, doc, properties, enums);
+    var usedTypes = properties.Select(p => p.Type).ToHashSet();
+    var usedEnums = allEnums.Where(e => usedTypes.Contains(e.Name)).ToList();
+
+    return new TypeDef(className, namespaceName, doc, properties, usedEnums);
 }
 
 string GetDocComment(SyntaxNode node)
@@ -164,7 +167,7 @@ string CSharpToGo(string type, bool nullable, List<EnumDef> enums)
 
 void GenerateRust(TypeDef def, string domain, string outDir)
 {
-    var dir = Path.Combine(outDir, "rust", domain);
+    var dir = Path.Combine(outDir, "rust", "src", domain);
     Directory.CreateDirectory(dir);
     var file = Path.Combine(dir, $"{ToSnakeCase(def.Name)}.rs");
 

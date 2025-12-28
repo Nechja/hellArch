@@ -40,8 +40,8 @@ internal sealed partial class AuthRedirectMiddleware(
         // Handle root path redirect
         if (path == "/")
         {
-            var isAuthenticated = await ValidateSession(context).ConfigureAwait(false);
-            var redirectTo = isAuthenticated ? _defaultRedirect : _loginPath;
+            var userId = await ValidateSession(context).ConfigureAwait(false);
+            var redirectTo = userId is not null ? _defaultRedirect : _loginPath;
             context.Response.Redirect(redirectTo);
             return;
         }
@@ -57,9 +57,9 @@ internal sealed partial class AuthRedirectMiddleware(
         // Check if path is protected
         if (IsProtectedPath(path))
         {
-            var isAuthenticated = await ValidateSession(context).ConfigureAwait(false);
+            var userId = await ValidateSession(context).ConfigureAwait(false);
 
-            if (!isAuthenticated)
+            if (userId is null)
             {
                 LogRedirectingToLogin(path);
                 var returnUrl = Uri.EscapeDataString(context.Request.Path + context.Request.QueryString);
@@ -67,6 +67,8 @@ internal sealed partial class AuthRedirectMiddleware(
                 return;
             }
 
+            // Add user ID header for downstream services
+            context.Request.Headers["X-User-ID"] = userId;
             LogSessionValidated(path);
         }
 
@@ -109,11 +111,11 @@ internal sealed partial class AuthRedirectMiddleware(
         return false;
     }
 
-    private async Task<bool> ValidateSession(HttpContext context)
+    private async Task<string?> ValidateSession(HttpContext context)
     {
         if (!context.Request.Cookies.TryGetValue(_cookieName, out var sessionToken) || string.IsNullOrEmpty(sessionToken))
         {
-            return false;
+            return null;
         }
 
         try
@@ -124,18 +126,32 @@ internal sealed partial class AuthRedirectMiddleware(
 
             using var response = await client.SendAsync(request).ConfigureAwait(false);
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                return true;
+                LogValidationFailed($"Status {response.StatusCode}");
+                return null;
             }
 
-            LogValidationFailed($"Status {response.StatusCode}");
-            return false;
+            var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(content);
+
+            if (doc.RootElement.TryGetProperty("user_id", out var userIdElement))
+            {
+                return userIdElement.GetString();
+            }
+
+            LogValidationFailed("No user_id in response");
+            return null;
         }
         catch (HttpRequestException ex)
         {
             LogValidationFailed(ex.Message);
-            return false;
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            LogValidationFailed($"JSON parse error: {ex.Message}");
+            return null;
         }
     }
 }

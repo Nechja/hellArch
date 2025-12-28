@@ -149,3 +149,22 @@ module Handlers =
         }
 
     let health (ctx: HttpContext) = task { do! writeJson ctx 200 {| status = "healthy" |} }
+
+    let getMe (dbConfig: Database.DatabaseConfig) (ctx: HttpContext) =
+        task {
+            match ctx.Request.Headers.TryGetValue("X-User-ID") with
+            | false, _ ->
+                do! writeJson ctx 401 {| error = "unauthorized"; message = "No user ID in request" |}
+            | true, values ->
+                match Guid.TryParse(values.ToString()) with
+                | false, _ ->
+                    do! writeJson ctx 400 {| error = "bad_request"; message = "Invalid user ID format" |}
+                | true, userId ->
+                    let! result = Database.getProfile dbConfig userId |> Async.StartAsTask
+
+                    match result with
+                    | Ok profile ->
+                        let dto = Mapping.UserProfile.toDto profile
+                        do! writeJson ctx 200 dto
+                    | Error err -> do! handleError ctx err
+        }

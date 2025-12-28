@@ -4,7 +4,8 @@ import { computed } from 'vue'
 interface User {
   id: string
   email: string
-  username: string
+  display_name: string
+  avatar_url: string
 }
 
 const props = defineProps<{
@@ -12,8 +13,9 @@ const props = defineProps<{
 }>()
 
 const initials = computed(() => {
-  if (!props.user?.username) return '?'
-  return props.user.username.slice(0, 2).toUpperCase()
+  const name = props.user?.display_name || props.user?.email
+  if (!name) return '?'
+  return name.slice(0, 2).toUpperCase()
 })
 </script>
 
@@ -37,7 +39,13 @@ const initials = computed(() => {
 
           <!-- User Menu -->
           <div v-if="user" class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full bg-accent flex-center text-sm font-medium text-white">
+            <img
+              v-if="user.avatar_url"
+              :src="user.avatar_url"
+              :alt="user.display_name || user.email"
+              class="w-8 h-8 rounded-full"
+            />
+            <div v-else class="w-8 h-8 rounded-full bg-accent flex-center text-sm font-medium text-white">
               {{ initials }}
             </div>
             <a

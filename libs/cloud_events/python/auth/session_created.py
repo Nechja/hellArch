@@ -3,11 +3,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-class SessionEndReason(Enum):
-    LOGOUT = "logout"
-    EXPIRED = "expired"
-    REVOKED = "revoked"
-
 @dataclass
 class SessionCreated:
     """Published when a new session is created.

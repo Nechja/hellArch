@@ -23,6 +23,7 @@ func (h *HTTPHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/{provider}/callback", h.handleOAuthCallback)
 	mux.HandleFunc("POST /auth/refresh", h.handleRefresh)
 	mux.HandleFunc("POST /auth/validate", h.handleValidate)
+	mux.HandleFunc("GET /auth/me", h.handleMe)
 	mux.HandleFunc("GET /auth/health", h.handleHealth)
 }
 
@@ -178,6 +179,44 @@ func (h *HTTPHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status": "healthy",
+	}); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
+}
+
+func (h *HTTPHandler) handleMe(w http.ResponseWriter, r *http.Request) {
+	sessionToken := r.Header.Get("X-Session-Token")
+	if sessionToken == "" {
+		cookie, err := r.Cookie("hellarch_session")
+		if err == nil {
+			sessionToken = cookie.Value
+		}
+	}
+
+	if sessionToken == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		if err := json.NewEncoder(w).Encode(map[string]string{
+			"error": "no session token",
+		}); err != nil {
+			slog.Error("failed to encode response", "error", err)
+		}
+		return
+	}
+
+	userID, err := h.auth.ValidateSession(r.Context(), sessionToken)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		if err := json.NewEncoder(w).Encode(map[string]string{
+			"error": "invalid session",
+		}); err != nil {
+			slog.Error("failed to encode response", "error", err)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"user_id": userID,
 	}); err != nil {
 		slog.Error("failed to encode response", "error", err)
 	}

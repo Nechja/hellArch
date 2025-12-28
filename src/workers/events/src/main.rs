@@ -111,15 +111,15 @@ async fn process_message(
 
     match event_type {
         EventType::UserCreated => {
-            let event: CloudEvent<UserCreatedData> = serde_json::from_str(&body_str)?;
+            let event: CloudEvent<UserCreated> = serde_json::from_str(&body_str)?;
             handlers::handle_user_created(&event.data).await
         }
         EventType::SessionCreated => {
-            let event: CloudEvent<SessionCreatedData> = serde_json::from_str(&body_str)?;
+            let event: CloudEvent<SessionCreated> = serde_json::from_str(&body_str)?;
             handlers::handle_session_created(&event.data).await
         }
         EventType::AccountLinked => {
-            let event: CloudEvent<AccountLinkedData> = serde_json::from_str(&body_str)?;
+            let event: CloudEvent<AccountLinked> = serde_json::from_str(&body_str)?;
             handlers::handle_account_linked(&event.data).await
         }
     }
