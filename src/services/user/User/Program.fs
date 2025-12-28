@@ -42,6 +42,7 @@ let main args =
         .ConfigureResource(fun resource -> resource.AddService("user") |> ignore)
         .WithTracing(fun tracing ->
             tracing
+                .AddSource("hellarch/user/events")
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddNpgsql()

@@ -144,6 +144,24 @@ module Events =
             let handler =
                 AsyncEventHandler<BasicDeliverEventArgs>(fun _ args ->
                     task {
+                        // Extract trace context from headers
+                        let parentContext =
+                            match args.BasicProperties.Headers with
+                            | null -> PropagationContext.Empty
+                            | headers ->
+                                let dict = Dictionary<string, obj>()
+                                for kvp in headers do
+                                    dict.[kvp.Key] <- kvp.Value
+                                extractTraceContext dict
+
+                        // Start a span for this message
+                        use activity =
+                            activitySource.StartActivity(
+                                "rabbitmq.consume",
+                                ActivityKind.Consumer,
+                                parentContext.ActivityContext
+                            )
+
                         try
                             let body = Encoding.UTF8.GetString(args.Body.ToArray())
                             printfn "Received event: %s" body
@@ -157,6 +175,13 @@ module Events =
                                         Some(Encoding.UTF8.GetString(value :?> byte array))
                                     | _ -> None
 
+                            if not (isNull activity) then
+                                activity.SetTag("messaging.system", "rabbitmq") |> ignore
+                                activity.SetTag("messaging.destination.name", "hellarch.events") |> ignore
+                                match eventType with
+                                | Some et -> activity.SetTag("messaging.cloudevents.type", et) |> ignore
+                                | None -> ()
+
                             match eventType with
                             | Some "hellarch.auth.user.created.v1" ->
                                 try
@@ -164,6 +189,8 @@ module Events =
                                     do! handleUserCreated dbConfig event.data
                                 with ex ->
                                     printfn "Failed to deserialize event: %s" ex.Message
+                                    if not (isNull activity) then
+                                        activity.SetStatus(ActivityStatusCode.Error, ex.Message) |> ignore
 
                             | Some eventType -> printfn "Ignoring event type: %s" eventType
                             | None -> printfn "Event missing type header"
@@ -171,6 +198,8 @@ module Events =
                             do! channel.BasicAckAsync(args.DeliveryTag, multiple = false).AsTask()
                         with ex ->
                             printfn "Error processing event: %s" ex.Message
+                            if not (isNull activity) then
+                                activity.SetStatus(ActivityStatusCode.Error, ex.Message) |> ignore
                             // Nack and requeue on error
                             do! channel.BasicNackAsync(args.DeliveryTag, multiple = false, requeue = true).AsTask()
                     })
