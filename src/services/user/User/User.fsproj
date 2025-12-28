@@ -9,6 +9,7 @@
     <Compile Include="Domain/Types.fs" />
     <Compile Include="Domain/UserProfile.fs" />
     <Compile Include="Infrastructure/Database.fs" />
+    <Compile Include="Infrastructure/Events.fs" />
     <Compile Include="Api/Handlers.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
@@ -16,6 +17,7 @@
   <ItemGroup>
     <PackageReference Include="Npgsql.FSharp" Version="5.7.0" />
     <PackageReference Include="Npgsql" Version="9.0.0" />
+    <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
   </ItemGroup>
 
 </Project>

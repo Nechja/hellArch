@@ -3,12 +3,14 @@ namespace HellArch.DataTypes.User;
 /// <summary>
 /// Extended user profile information.
 /// Linked to auth user via AuthUserId.
+/// Email is denormalized from auth for read performance.
 /// </summary>
 public class UserProfile
 {
     public Guid Id { get; set; }
     public Guid AuthUserId { get; set; }
 
+    public required string Email { get; set; }
     public string? DisplayName { get; set; }
     public string? Bio { get; set; }
     public string? AvatarUrl { get; set; }

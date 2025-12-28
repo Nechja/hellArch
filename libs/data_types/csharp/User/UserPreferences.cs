@@ -11,7 +11,11 @@ public class UserPreferences
     public Theme Theme { get; set; } = Theme.System;
     public string? Locale { get; set; }
     public string? Timezone { get; set; }
+
+    // Notification settings
     public bool EmailNotifications { get; set; } = true;
+    public bool PushNotifications { get; set; } = true;
+    public bool InAppNotifications { get; set; } = true;
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

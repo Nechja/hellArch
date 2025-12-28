@@ -24,6 +24,10 @@ pub struct UserPreferences {
     pub timezone: Option<String>,
     #[serde(rename = "email_notifications")]
     pub email_notifications: bool,
+    #[serde(rename = "push_notifications")]
+    pub push_notifications: bool,
+    #[serde(rename = "in_app_notifications")]
+    pub in_app_notifications: bool,
     #[serde(rename = "created_at")]
     pub created_at: DateTime<Utc>,
     #[serde(rename = "updated_at")]

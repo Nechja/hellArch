@@ -18,6 +18,8 @@ type UserPreferences struct {
 	Locale *string `json:"locale,omitempty"`
 	Timezone *string `json:"timezone,omitempty"`
 	EmailNotifications bool `json:"email_notifications"`
+	PushNotifications bool `json:"push_notifications"`
+	InAppNotifications bool `json:"in_app_notifications"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	UserProfile *UserProfile `json:"user_profile,omitempty"`

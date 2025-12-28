@@ -3,12 +3,15 @@ use chrono::{DateTime, Utc};
 
 /// Extended user profile information.
 Linked to auth user via AuthUserId.
+Email is denormalized from auth for read performance.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserProfile {
     #[serde(rename = "id")]
     pub id: String,
     #[serde(rename = "auth_user_id")]
     pub auth_user_id: String,
+    #[serde(rename = "email")]
+    pub email: String,
     #[serde(rename = "display_name")]
     pub display_name: Option<String>,
     #[serde(rename = "bio")]

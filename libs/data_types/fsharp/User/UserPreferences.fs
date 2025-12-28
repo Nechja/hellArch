@@ -15,6 +15,8 @@ type UserPreferences = {
     Locale: string option
     Timezone: string option
     EmailNotifications: bool
+    PushNotifications: bool
+    InAppNotifications: bool
     CreatedAt: DateTime
     UpdatedAt: DateTime
     UserProfile: UserProfile option

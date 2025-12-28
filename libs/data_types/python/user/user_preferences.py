@@ -18,4 +18,6 @@ class UserPreferences:
     locale: str | None = None
     timezone: str | None = None
     email_notifications: bool = true
+    push_notifications: bool = true
+    in_app_notifications: bool = true
     user_profile: UserProfile | None = None
