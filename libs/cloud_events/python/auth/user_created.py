@@ -1,0 +1,17 @@
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import Optional
+
+@dataclass
+class UserCreated:
+    """Published when a new user is created via OAuth.
+    Event type: hellarch.auth.user.created.v1
+    """
+    user_id: str
+    email: str
+    username: str
+    provider: str
+    provider_user_id: str
+    avatar_url: str
+    created_at: datetime
