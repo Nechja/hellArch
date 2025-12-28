@@ -13,7 +13,7 @@ pub struct User {
     #[serde(rename = "is_active")]
     pub is_active: bool,
     #[serde(rename = "permissions")]
-    pub permissions: Option<Dictionary<string, bool>>,
+    pub permissions: Option<HashMap<String, bool>>,
     #[serde(rename = "created_at")]
     pub created_at: DateTime<Utc>,
     #[serde(rename = "updated_at")]

@@ -7,7 +7,7 @@ export interface User {
   email: string;
   username: string;
   is_active: boolean;
-  permissions?: Dictionary<string, bool> | null;
+  permissions?: Record<string, boolean> | null;
   created_at: string;
   updated_at: string;
   sessions: Session[];

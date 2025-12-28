@@ -140,10 +140,34 @@ func (h *HTTPHandler) handleValidate(w http.ResponseWriter, r *http.Request) {
 	if sessionToken != "" {
 		userID, err := h.auth.ValidateSession(r.Context(), sessionToken)
 		if err == nil {
+			// Fetch full user to get permissions and is_active
+			user, err := h.auth.GetUserByID(r.Context(), userID)
+			if err != nil {
+				slog.Error("failed to get user", "error", err, "user_id", userID)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			// Check if user is active
+			if !user.IsActive {
+				w.WriteHeader(http.StatusForbidden)
+				if err := json.NewEncoder(w).Encode(map[string]interface{}{
+					"valid": false,
+					"error": "user_inactive",
+				}); err != nil {
+					slog.Error("failed to encode response", "error", err)
+				}
+				return
+			}
+
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(map[string]interface{}{
-				"valid":   true,
-				"user_id": userID,
+				"valid":       true,
+				"user_id":     user.ID,
+				"email":       user.Email,
+				"username":    user.Username,
+				"is_active":   user.IsActive,
+				"permissions": user.Permissions,
 			}); err != nil {
 				slog.Error("failed to encode response", "error", err)
 			}
@@ -156,13 +180,22 @@ func (h *HTTPHandler) handleValidate(w http.ResponseWriter, r *http.Request) {
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		claims, err := h.auth.ValidateToken(r.Context(), token)
 		if err == nil {
+			// For JWT, permissions are in the custom claims
 			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			response := map[string]interface{}{
 				"valid":    true,
 				"user_id":  claims.UserID,
 				"email":    claims.Email,
 				"username": claims.Username,
-			}); err != nil {
+			}
+			// Parse permissions from custom claims if present
+			if permStr, ok := claims.Custom["permissions"]; ok {
+				var perms map[string]bool
+				if err := json.Unmarshal([]byte(permStr), &perms); err == nil {
+					response["permissions"] = perms
+				}
+			}
+			if err := json.NewEncoder(w).Encode(response); err != nil {
 				slog.Error("failed to encode response", "error", err)
 			}
 			return

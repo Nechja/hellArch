@@ -14,6 +14,6 @@ class User(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_active: bool = True
-    permissions: Dictionary<string, bool> | None = None
+    permissions: dict[str, bool] | None = None
     sessions: list[Session] = []
     linked_accounts: list[LinkedAccount] = []

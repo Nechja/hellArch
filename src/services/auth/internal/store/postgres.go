@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/exaring/otelpgx"
@@ -43,27 +44,35 @@ func (p *Postgres) Close() {
 
 func (p *Postgres) GetUserByID(ctx context.Context, id string) (*User, error) {
 	var user User
+	var permissionsJSON []byte
 	err := p.pool.QueryRow(ctx,
-		`SELECT id, email, username, created_at, updated_at FROM users WHERE id = $1`,
+		`SELECT id, email, username, is_active, COALESCE(permissions, '{}'::jsonb), created_at, updated_at FROM users WHERE id = $1`,
 		id,
-	).Scan(&user.ID, &user.Email, &user.Username, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&user.ID, &user.Email, &user.Username, &user.IsActive, &permissionsJSON, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
+	}
+	if len(permissionsJSON) > 0 {
+		_ = json.Unmarshal(permissionsJSON, &user.Permissions)
 	}
 	return &user, nil
 }
 
 func (p *Postgres) GetUserByProviderID(ctx context.Context, provider, providerUserID string) (*User, error) {
 	var user User
+	var permissionsJSON []byte
 	err := p.pool.QueryRow(ctx,
-		`SELECT u.id, u.email, u.username, u.created_at, u.updated_at
+		`SELECT u.id, u.email, u.username, u.is_active, COALESCE(u.permissions, '{}'::jsonb), u.created_at, u.updated_at
 		 FROM users u
 		 JOIN linked_accounts la ON u.id = la.user_id
 		 WHERE la.provider = $1 AND la.provider_user_id = $2`,
 		provider, providerUserID,
-	).Scan(&user.ID, &user.Email, &user.Username, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&user.ID, &user.Email, &user.Username, &user.IsActive, &permissionsJSON, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
+	}
+	if len(permissionsJSON) > 0 {
+		_ = json.Unmarshal(permissionsJSON, &user.Permissions)
 	}
 	return &user, nil
 }
@@ -156,7 +165,7 @@ func (p *Postgres) ListUsers(ctx context.Context, limit, offset int) ([]*User, i
 	}
 
 	rows, err := p.pool.Query(ctx,
-		`SELECT id, email, username, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+		`SELECT id, email, username, is_active, COALESCE(permissions, '{}'::jsonb), created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
 		limit, offset,
 	)
 	if err != nil {
@@ -167,8 +176,12 @@ func (p *Postgres) ListUsers(ctx context.Context, limit, offset int) ([]*User, i
 	var users []*User
 	for rows.Next() {
 		var user User
-		if err := rows.Scan(&user.ID, &user.Email, &user.Username, &user.CreatedAt, &user.UpdatedAt); err != nil {
+		var permissionsJSON []byte
+		if err := rows.Scan(&user.ID, &user.Email, &user.Username, &user.IsActive, &permissionsJSON, &user.CreatedAt, &user.UpdatedAt); err != nil {
 			return nil, 0, err
+		}
+		if len(permissionsJSON) > 0 {
+			_ = json.Unmarshal(permissionsJSON, &user.Permissions)
 		}
 		users = append(users, &user)
 	}
@@ -216,4 +229,61 @@ func (p *Postgres) CountLinkedAccounts(ctx context.Context) (int, error) {
 	var count int
 	err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM linked_accounts`).Scan(&count)
 	return count, err
+}
+
+// Permission management methods
+
+func (p *Postgres) GetUserPermissions(ctx context.Context, userID string) (map[string]bool, error) {
+	var permissionsJSON []byte
+	err := p.pool.QueryRow(ctx,
+		`SELECT COALESCE(permissions, '{}'::jsonb) FROM users WHERE id = $1`,
+		userID,
+	).Scan(&permissionsJSON)
+	if err != nil {
+		return nil, err
+	}
+	var permissions map[string]bool
+	if len(permissionsJSON) > 0 {
+		_ = json.Unmarshal(permissionsJSON, &permissions)
+	}
+	if permissions == nil {
+		permissions = make(map[string]bool)
+	}
+	return permissions, nil
+}
+
+func (p *Postgres) SetUserPermissions(ctx context.Context, userID string, permissions map[string]bool) error {
+	permissionsJSON, err := json.Marshal(permissions)
+	if err != nil {
+		return fmt.Errorf("failed to marshal permissions: %w", err)
+	}
+	_, err = p.pool.Exec(ctx,
+		`UPDATE users SET permissions = $1, updated_at = NOW() WHERE id = $2`,
+		permissionsJSON, userID,
+	)
+	return err
+}
+
+func (p *Postgres) GrantPermission(ctx context.Context, userID, permission string) error {
+	_, err := p.pool.Exec(ctx,
+		`UPDATE users SET permissions = jsonb_set(COALESCE(permissions, '{}'::jsonb), $2, 'true'::jsonb), updated_at = NOW() WHERE id = $1`,
+		userID, []string{permission},
+	)
+	return err
+}
+
+func (p *Postgres) RevokePermission(ctx context.Context, userID, permission string) error {
+	_, err := p.pool.Exec(ctx,
+		`UPDATE users SET permissions = permissions - $2, updated_at = NOW() WHERE id = $1`,
+		userID, permission,
+	)
+	return err
+}
+
+func (p *Postgres) SetUserActive(ctx context.Context, userID string, isActive bool) error {
+	_, err := p.pool.Exec(ctx,
+		`UPDATE users SET is_active = $1, updated_at = NOW() WHERE id = $2`,
+		isActive, userID,
+	)
+	return err
 }

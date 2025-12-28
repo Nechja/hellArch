@@ -182,6 +182,14 @@ func (h *AuthHandler) generateTokens(user *store.User, info *oauth.UserInfo) (st
 		Provider: string(info.Provider),
 	}
 
+	// Add permissions to custom claims if present
+	if user.Permissions != nil && len(user.Permissions) > 0 {
+		permJSON, _ := json.Marshal(user.Permissions)
+		claims.Custom = map[string]string{
+			"permissions": string(permJSON),
+		}
+	}
+
 	accessToken, err := h.jwtService.GenerateAccessToken(claims, AccessTokenDuration)
 	if err != nil {
 		return "", "", err
@@ -250,6 +258,11 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, refreshToken string) (st
 		return "", "", status.Error(codes.NotFound, "user not found")
 	}
 
+	// Check if user is active
+	if !user.IsActive {
+		return "", "", status.Error(codes.PermissionDenied, "user is inactive")
+	}
+
 	accounts, err := h.postgres.GetLinkedAccounts(ctx, user.ID)
 	if err != nil || len(accounts) == 0 {
 		return "", "", status.Error(codes.Internal, "no linked accounts")
@@ -260,6 +273,14 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, refreshToken string) (st
 		Email:    user.Email,
 		Username: deref(accounts[0].Username),
 		Provider: accounts[0].Provider,
+	}
+
+	// Add permissions to custom claims if present
+	if user.Permissions != nil && len(user.Permissions) > 0 {
+		permJSON, _ := json.Marshal(user.Permissions)
+		newClaims.Custom = map[string]string{
+			"permissions": string(permJSON),
+		}
 	}
 
 	accessToken, err := h.jwtService.GenerateAccessToken(newClaims, AccessTokenDuration)
@@ -277,6 +298,10 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, refreshToken string) (st
 
 func (h *AuthHandler) ValidateToken(ctx context.Context, token string) (*jwt.Claims, error) {
 	return h.jwtService.ValidateToken(token)
+}
+
+func (h *AuthHandler) GetUserByID(ctx context.Context, userID string) (*store.User, error) {
+	return h.postgres.GetUserByID(ctx, userID)
 }
 
 func (h *AuthHandler) InvalidateSession(ctx context.Context, sessionToken string) error {

@@ -8,7 +8,7 @@ type User = {
     Email: string
     Username: string
     IsActive: bool
-    Permissions: Dictionary<string, bool> option
+    Permissions: Map<string, bool> option
     CreatedAt: DateTime
     UpdatedAt: DateTime
     Sessions: Session list
