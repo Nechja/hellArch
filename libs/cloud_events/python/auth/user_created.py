@@ -1,13 +1,15 @@
-from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-@dataclass
-class UserCreated:
+from pydantic import BaseModel, ConfigDict
+
+class UserCreated(BaseModel):
     """Published when a new user is created via OAuth.
     Event type: hellarch.auth.user.created.v1
     """
+    model_config = ConfigDict(populate_by_name=True)
+
     user_id: str
     email: str
     username: str

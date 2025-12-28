@@ -269,7 +269,6 @@ void GeneratePython(TypeDef def, string domain, string outDir)
     var file = Path.Combine(dir, $"{ToSnakeCase(def.Name)}.py");
 
     var sb = new System.Text.StringBuilder();
-    sb.AppendLine("from dataclasses import dataclass");
 
     if (def.Properties.Any(p => p.Type is "DateTime" or "DateTimeOffset"))
         sb.AppendLine("from datetime import datetime");
@@ -277,18 +276,20 @@ void GeneratePython(TypeDef def, string domain, string outDir)
     if (def.Enums.Count > 0)
         sb.AppendLine("from enum import Enum");
 
+    sb.AppendLine("from typing import Optional");
+    sb.AppendLine();
+    sb.AppendLine("from pydantic import BaseModel, ConfigDict");
     sb.AppendLine();
 
     foreach (var e in def.Enums)
     {
-        sb.AppendLine($"class {e.Name}(Enum):");
+        sb.AppendLine($"class {e.Name}(str, Enum):");
         foreach (var v in e.Values)
             sb.AppendLine($"    {v.ToUpper()} = \"{v.ToLower()}\"");
         sb.AppendLine();
     }
 
-    sb.AppendLine("@dataclass");
-    sb.AppendLine($"class {def.Name}:");
+    sb.AppendLine($"class {def.Name}(BaseModel):");
     if (!string.IsNullOrEmpty(def.Doc))
     {
         var docLines = SplitDocLines(def.Doc);
@@ -302,6 +303,8 @@ void GeneratePython(TypeDef def, string domain, string outDir)
             sb.AppendLine("    \"\"\"");
         }
     }
+    sb.AppendLine("    model_config = ConfigDict(populate_by_name=True)");
+    sb.AppendLine();
 
     var required = def.Properties.Where(p => !p.IsNullable && p.DefaultValue is null).ToList();
     var optional = def.Properties.Where(p => p.IsNullable || p.DefaultValue is not null).ToList();

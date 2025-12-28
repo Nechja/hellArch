@@ -1,9 +1,12 @@
-from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
-@dataclass
-class User:
+from pydantic import BaseModel, ConfigDict
+
+class User(BaseModel):
     """Core user identity in the auth system."""
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     email: str
     username: str

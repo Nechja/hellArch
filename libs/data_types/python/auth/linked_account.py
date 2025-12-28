@@ -1,12 +1,15 @@
-from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
-@dataclass
-class LinkedAccount:
+from pydantic import BaseModel, ConfigDict
+
+class LinkedAccount(BaseModel):
     """OAuth provider account linked to a user.
     Stores provider-specific identity info. Token storage is optional
     (only needed if we want to call provider APIs on behalf of user).
     """
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     user_id: str
     provider: str

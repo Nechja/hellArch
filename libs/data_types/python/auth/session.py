@@ -1,9 +1,12 @@
-from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
-@dataclass
-class Session:
+from pydantic import BaseModel, ConfigDict
+
+class Session(BaseModel):
     """User session for cookie-based authentication."""
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     user_id: str
     token: str
