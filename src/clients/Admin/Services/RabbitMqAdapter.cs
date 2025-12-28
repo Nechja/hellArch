@@ -15,7 +15,9 @@ public sealed class RabbitMqAdapter(
     private HttpClient GetClient()
     {
         if (_client is not null)
+        {
             return _client;
+        }
 
         _client = httpClientFactory.CreateClient("RabbitMQ");
 

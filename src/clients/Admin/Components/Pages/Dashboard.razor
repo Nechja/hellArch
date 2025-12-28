@@ -3,6 +3,7 @@
 @inject RedisBrowserAdapter RedisBrowser
 @inject RabbitMqAdapter RabbitMq
 @inject IHttpClientFactory HttpClientFactory
+@inject ILogger<Dashboard> Logger
 
 <PageTitle>Dashboard - HellArch Admin</PageTitle>
 
@@ -113,15 +114,21 @@
         _rabbitmqHealthy = rabbitmqOverview != null;
     }
 
-    private static async Task<bool> CheckServiceHealth(HttpClient client, string endpoint)
+    private async Task<bool> CheckServiceHealth(HttpClient client, string endpoint)
     {
         try
         {
             var response = await client.GetAsync(endpoint);
             return response.IsSuccessStatusCode;
         }
-        catch
+        catch (HttpRequestException ex)
         {
+            Logger.LogWarning(ex, "Health check failed for {Endpoint}", endpoint);
+            return false;
+        }
+        catch (TaskCanceledException ex)
+        {
+            Logger.LogWarning(ex, "Health check timed out for {Endpoint}", endpoint);
             return false;
         }
     }

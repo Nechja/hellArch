@@ -2,12 +2,21 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 )
+
+// hashToken creates a SHA-256 hash of a token for secure storage
+// This prevents token exposure if Redis is compromised
+func hashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
+}
 
 type Redis struct {
 	client *redis.Client
@@ -50,17 +59,20 @@ func (r *Redis) DeleteOAuthState(ctx context.Context, state string) error {
 	return r.client.Del(ctx, "oauth:state:"+state).Err()
 }
 
-// Session cache
-func (r *Redis) CacheSession(ctx context.Context, sessionID string, userID string, ttl time.Duration) error {
-	return r.client.Set(ctx, "session:"+sessionID, userID, ttl).Err()
+// Session cache - tokens are hashed before storage for security
+func (r *Redis) CacheSession(ctx context.Context, sessionToken string, userID string, ttl time.Duration) error {
+	hashedToken := hashToken(sessionToken)
+	return r.client.Set(ctx, "session:"+hashedToken, userID, ttl).Err()
 }
 
-func (r *Redis) GetCachedSession(ctx context.Context, sessionID string) (string, error) {
-	return r.client.Get(ctx, "session:"+sessionID).Result()
+func (r *Redis) GetCachedSession(ctx context.Context, sessionToken string) (string, error) {
+	hashedToken := hashToken(sessionToken)
+	return r.client.Get(ctx, "session:"+hashedToken).Result()
 }
 
-func (r *Redis) InvalidateSession(ctx context.Context, sessionID string) error {
-	return r.client.Del(ctx, "session:"+sessionID).Err()
+func (r *Redis) InvalidateSession(ctx context.Context, sessionToken string) error {
+	hashedToken := hashToken(sessionToken)
+	return r.client.Del(ctx, "session:"+hashedToken).Err()
 }
 
 // Token revocation list

@@ -87,7 +87,7 @@ func (h *AuthHandler) GetOAuthURL(ctx context.Context, provider oauth.Provider, 
 }
 
 // HandleOAuthCallback processes the OAuth callback and creates/updates user
-func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Provider, code, state string) (*AuthResult, error) {
+func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Provider, code, state, ipAddress, userAgent string) (*AuthResult, error) {
 	// Validate state
 	stateData, err := h.redis.GetOAuthState(ctx, state)
 	if err != nil {
@@ -143,8 +143,8 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 		return nil, status.Error(codes.Internal, "failed to generate tokens")
 	}
 
-	// Create session
-	sessionToken, err := h.createSession(ctx, user.ID, "", "")
+	// Create session with client info for audit trail
+	sessionToken, err := h.createSession(ctx, user.ID, ipAddress, userAgent)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to create session")
 	}
