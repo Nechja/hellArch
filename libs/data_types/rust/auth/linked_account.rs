@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 
 /// OAuth provider account linked to a user.
-Stores provider-specific identity info. Token storage is optional
-(only needed if we want to call provider APIs on behalf of user).
+/// Stores provider-specific identity info. Token storage is optional
+/// (only needed if we want to call provider APIs on behalf of user).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LinkedAccount {
     #[serde(rename = "id")]

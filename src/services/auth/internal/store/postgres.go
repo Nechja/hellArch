@@ -3,48 +3,19 @@ package store
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nechja/hellarch/datatypes/auth"
 )
 
 type Postgres struct {
 	pool *pgxpool.Pool
 }
 
-type User struct {
-	ID        string
-	Email     string
-	Username  string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
-type LinkedAccount struct {
-	ID             string
-	UserID         string
-	Provider       string
-	ProviderUserID string
-	Email          *string
-	Username       *string
-	AvatarURL      *string
-	AccessToken    *string
-	RefreshToken   *string
-	TokenExpiresAt *time.Time
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-}
-
-type Session struct {
-	ID        string
-	UserID    string
-	Token     string
-	IPAddress *string
-	UserAgent *string
-	ExpiresAt time.Time
-	CreatedAt time.Time
-}
+type User = auth.User
+type LinkedAccount = auth.LinkedAccount
+type Session = auth.Session
 
 func NewPostgres(ctx context.Context, databaseURL string) (*Postgres, error) {
 	cfg, err := pgxpool.ParseConfig(databaseURL)

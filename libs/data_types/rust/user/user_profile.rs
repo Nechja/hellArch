@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 
 /// Extended user profile information.
-Linked to auth user via AuthUserId.
-Email is denormalized from auth for read performance.
+/// Linked to auth user via AuthUserId.
+/// Email is denormalized from auth for read performance.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserProfile {
     #[serde(rename = "id")]

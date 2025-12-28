@@ -4,8 +4,9 @@ from datetime import datetime
 @dataclass
 class UserProfile:
     """Extended user profile information.
-Linked to auth user via AuthUserId.
-Email is denormalized from auth for read performance."""
+    Linked to auth user via AuthUserId.
+    Email is denormalized from auth for read performance.
+    """
     id: str
     auth_user_id: str
     email: str

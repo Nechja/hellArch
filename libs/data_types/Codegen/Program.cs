@@ -100,6 +100,25 @@ string GetDocComment(SyntaxNode node)
 string ToSnakeCase(string name) =>
     System.Text.RegularExpressions.Regex.Replace(name, "(?<!^)([A-Z])", "_$1").ToLower();
 
+string[] SplitDocLines(string doc) =>
+    doc.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+       .Select(line => line.Trim())
+       .ToArray();
+
+string ToGoFieldName(string name)
+{
+    // Go convention: acronyms like ID, URL, IP should be all caps
+    return name
+        .Replace("Id", "ID")
+        .Replace("Url", "URL")
+        .Replace("Ip", "IP")
+        .Replace("Api", "API")
+        .Replace("Uuid", "UUID")
+        .Replace("Http", "HTTP")
+        .Replace("Https", "HTTPS")
+        .Replace("Sql", "SQL");
+}
+
 void GenerateGo(TypeDef def, string domain, string outDir)
 {
     var dir = Path.Combine(outDir, "go", domain.ToLower());
@@ -128,15 +147,17 @@ void GenerateGo(TypeDef def, string domain, string outDir)
     }
 
     if (!string.IsNullOrEmpty(def.Doc))
-        sb.AppendLine($"// {def.Name} {def.Doc}");
+        foreach (var line in SplitDocLines(def.Doc))
+            sb.AppendLine($"// {line}");
     sb.AppendLine($"type {def.Name} struct {{");
 
     foreach (var p in def.Properties)
     {
         var goType = CSharpToGo(p.Type, p.IsNullable);
+        var goField = ToGoFieldName(p.Name);
         var jsonTag = ToSnakeCase(p.Name);
         var omit = p.IsNullable ? ",omitempty" : "";
-        sb.AppendLine($"\t{p.Name} {goType} `json:\"{jsonTag}{omit}\"`");
+        sb.AppendLine($"\t{goField} {goType} `json:\"{jsonTag}{omit}\"`");
     }
 
     sb.AppendLine("}");
@@ -197,7 +218,8 @@ void GenerateRust(TypeDef def, string domain, string outDir)
     }
 
     if (!string.IsNullOrEmpty(def.Doc))
-        sb.AppendLine($"/// {def.Doc}");
+        foreach (var line in SplitDocLines(def.Doc))
+            sb.AppendLine($"/// {line}");
     sb.AppendLine("#[derive(Debug, Clone, Serialize, Deserialize)]");
     sb.AppendLine($"pub struct {def.Name} {{");
 
@@ -268,7 +290,18 @@ void GeneratePython(TypeDef def, string domain, string outDir)
     sb.AppendLine("@dataclass");
     sb.AppendLine($"class {def.Name}:");
     if (!string.IsNullOrEmpty(def.Doc))
-        sb.AppendLine($"    \"\"\"{def.Doc}\"\"\"");
+    {
+        var docLines = SplitDocLines(def.Doc);
+        if (docLines.Length == 1)
+            sb.AppendLine($"    \"\"\"{docLines[0]}\"\"\"");
+        else
+        {
+            sb.AppendLine($"    \"\"\"{docLines[0]}");
+            foreach (var line in docLines.Skip(1))
+                sb.AppendLine($"    {line}");
+            sb.AppendLine("    \"\"\"");
+        }
+    }
 
     var required = def.Properties.Where(p => !p.IsNullable && p.DefaultValue is null).ToList();
     var optional = def.Properties.Where(p => p.IsNullable || p.DefaultValue is not null).ToList();
@@ -336,10 +369,8 @@ void GenerateFSharp(TypeDef def, string domain, string outDir)
     }
 
     if (!string.IsNullOrEmpty(def.Doc))
-    {
-        foreach (var line in def.Doc.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-            sb.AppendLine($"/// {line.Trim()}");
-    }
+        foreach (var line in SplitDocLines(def.Doc))
+            sb.AppendLine($"/// {line}");
     sb.AppendLine($"type {def.Name} = {{");
 
     foreach (var p in def.Properties)

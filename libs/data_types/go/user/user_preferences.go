@@ -10,10 +10,10 @@ const (
 	ThemeDark Theme = "dark"
 )
 
-// UserPreferences User preferences and settings.
+// User preferences and settings.
 type UserPreferences struct {
-	Id string `json:"id"`
-	UserProfileId string `json:"user_profile_id"`
+	ID string `json:"id"`
+	UserProfileID string `json:"user_profile_id"`
 	Theme Theme `json:"theme"`
 	Locale *string `json:"locale,omitempty"`
 	Timezone *string `json:"timezone,omitempty"`

@@ -4,8 +4,9 @@ from datetime import datetime
 @dataclass
 class LinkedAccount:
     """OAuth provider account linked to a user.
-Stores provider-specific identity info. Token storage is optional
-(only needed if we want to call provider APIs on behalf of user)."""
+    Stores provider-specific identity info. Token storage is optional
+    (only needed if we want to call provider APIs on behalf of user).
+    """
     id: str
     user_id: str
     provider: str
