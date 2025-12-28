@@ -190,6 +190,20 @@ string CSharpToGo(string type, bool nullable)
         return $"[]*{goInner}";
     }
 
+    // Handle Dictionary<K, V> -> map[K]V
+    if (type.StartsWith("Dictionary<", StringComparison.Ordinal))
+    {
+        var inner = type.Substring(11).TrimEnd('>'); // Remove "Dictionary<" and ">"
+        var parts = inner.Split(',', 2);
+        if (parts.Length == 2)
+        {
+            var keyType = CSharpToGo(parts[0].Trim(), false);
+            var valType = CSharpToGo(parts[1].Trim(), false);
+            var mapType = $"map[{keyType}]{valType}";
+            return nullable ? mapType : mapType; // maps are reference types in Go
+        }
+    }
+
     var goType = type switch
     {
         "Guid" => "string",
