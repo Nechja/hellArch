@@ -275,6 +275,20 @@ string CSharpToRust(string type, bool nullable)
         return $"Vec<{rustInner}>";
     }
 
+    // Handle Dictionary<K, V> -> HashMap<K, V>
+    if (type.StartsWith("Dictionary<", StringComparison.Ordinal))
+    {
+        var inner = type.Substring(11).TrimEnd('>');
+        var parts = inner.Split(',', 2);
+        if (parts.Length == 2)
+        {
+            var keyType = CSharpToRust(parts[0].Trim(), false);
+            var valType = CSharpToRust(parts[1].Trim(), false);
+            var mapType = $"HashMap<{keyType}, {valType}>";
+            return nullable ? $"Option<{mapType}>" : mapType;
+        }
+    }
+
     var rustType = type switch
     {
         "Guid" or "string" => "String",
@@ -366,6 +380,20 @@ string CSharpToPython(string type, bool nullable)
         return $"list[{pyInner}]";
     }
 
+    // Handle Dictionary<K, V> -> dict[K, V]
+    if (type.StartsWith("Dictionary<", StringComparison.Ordinal))
+    {
+        var inner = type.Substring(11).TrimEnd('>');
+        var parts = inner.Split(',', 2);
+        if (parts.Length == 2)
+        {
+            var keyType = CSharpToPython(parts[0].Trim(), false);
+            var valType = CSharpToPython(parts[1].Trim(), false);
+            var dictType = $"dict[{keyType}, {valType}]";
+            return nullable ? $"{dictType} | None" : dictType;
+        }
+    }
+
     var pyType = type switch
     {
         "Guid" or "string" => "str",
@@ -441,6 +469,20 @@ string CSharpToFSharp(string type, bool nullable)
 #pragma warning restore CA1865, CA1307
         var fsInner = CSharpToFSharp(innerType, false);
         return $"{fsInner} list";
+    }
+
+    // Handle Dictionary<K, V> -> Map<K, V>
+    if (type.StartsWith("Dictionary<", StringComparison.Ordinal))
+    {
+        var inner = type.Substring(11).TrimEnd('>');
+        var parts = inner.Split(',', 2);
+        if (parts.Length == 2)
+        {
+            var keyType = CSharpToFSharp(parts[0].Trim(), false);
+            var valType = CSharpToFSharp(parts[1].Trim(), false);
+            var mapType = $"Map<{keyType}, {valType}>";
+            return nullable ? $"{mapType} option" : mapType;
+        }
     }
 
     var fsType = type switch
@@ -549,7 +591,8 @@ List<string> ExtractReferencedTypes(string type)
 }
 
 bool IsPrimitiveType(string type) =>
-    type is "Guid" or "string" or "int" or "long" or "bool" or "DateTime" or "DateTimeOffset";
+    type is "Guid" or "string" or "int" or "long" or "bool" or "DateTime" or "DateTimeOffset"
+    || type.StartsWith("Dictionary<", StringComparison.Ordinal);
 
 string CSharpToTypeScript(string type, bool nullable)
 {
@@ -562,6 +605,20 @@ string CSharpToTypeScript(string type, bool nullable)
 #pragma warning restore CA1865, CA1307
         var tsInner = CSharpToTypeScript(innerType, false);
         return $"{tsInner}[]";
+    }
+
+    // Handle Dictionary<K, V> -> Record<K, V>
+    if (type.StartsWith("Dictionary<", StringComparison.Ordinal))
+    {
+        var inner = type.Substring(11).TrimEnd('>');
+        var parts = inner.Split(',', 2);
+        if (parts.Length == 2)
+        {
+            var keyType = CSharpToTypeScript(parts[0].Trim(), false);
+            var valType = CSharpToTypeScript(parts[1].Trim(), false);
+            var recordType = $"Record<{keyType}, {valType}>";
+            return nullable ? $"{recordType} | null" : recordType;
+        }
     }
 
     var tsType = type switch
