@@ -46,6 +46,7 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
       - ../../src/services/auth:/app
+      - ../../libs:/libs
       - ../../infra/keys:/keys:ro
       - auth-go-cache:/go/pkg/mod
     networks:
