@@ -61,7 +61,7 @@ dc_resource('admin', labels=['clients'], resource_deps=['auth', 'user', 'redis']
 # Uses mise tasks for orchestration - see .mise.toml for details
 local_resource(
     'clients',
-    cmd='mise run clients:all && docker restart hellarch-gateway',
+    cmd='mise run clients:all',
     deps=[
         'libs/design/tokens.css',
         'libs/design/uno.config.ts',
@@ -74,6 +74,14 @@ local_resource(
         '**/bin', '**/obj', '**/node_modules', '**/dist',
         '**/*.g.cs', '**/package-lock.json', '**/.build',
     ],
+    labels=['clients'],
+)
+
+# Reload gateway after clients build to pick up new static files
+local_resource(
+    'clients-reload',
+    cmd='docker compose -f infra/docker/docker-compose.services.yml restart gateway',
+    resource_deps=['clients'],
     labels=['clients'],
 )
 
