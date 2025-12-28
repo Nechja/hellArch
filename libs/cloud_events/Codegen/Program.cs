@@ -317,12 +317,13 @@ void GenerateFSharp(TypeDef def, string domain, string outDir)
     if (!string.IsNullOrEmpty(def.Doc))
         foreach (var line in SplitDocLines(def.Doc))
             sb.AppendLine($"/// {line}");
+    sb.AppendLine("[<CLIMutable>]");
     sb.AppendLine($"type {def.Name} = {{");
 
     foreach (var p in def.Properties)
     {
         var fsType = CSharpToFSharp(p.Type, p.IsNullable, def.Enums);
-        sb.AppendLine($"    {p.Name}: {fsType}");
+        sb.AppendLine($"    {ToSnakeCase(p.Name)}: {fsType}");
     }
 
     sb.AppendLine("}");

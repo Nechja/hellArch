@@ -18,10 +18,10 @@ class UserPreferences(BaseModel):
     user_profile_id: str
     created_at: datetime
     updated_at: datetime
-    theme: Theme = Theme.System
+    theme: Theme = Theme.SYSTEM
     locale: str | None = None
     timezone: str | None = None
-    email_notifications: bool = true
-    push_notifications: bool = true
-    in_app_notifications: bool = true
+    email_notifications: bool = True
+    push_notifications: bool = True
+    in_app_notifications: bool = True
     user_profile: UserProfile | None = None

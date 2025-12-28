@@ -4,7 +4,8 @@ open System
 
 /// Published when a user is deleted.
 /// Event type: hellarch.auth.user.deleted.v1
+[<CLIMutable>]
 type UserDeleted = {
-    UserId: string
-    DeletedAt: DateTimeOffset
+    user_id: string
+    deleted_at: DateTimeOffset
 }

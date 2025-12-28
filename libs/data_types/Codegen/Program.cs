@@ -319,7 +319,7 @@ void GeneratePython(TypeDef def, string domain, string outDir)
     foreach (var p in optional)
     {
         var pyType = CSharpToPython(p.Type, p.IsNullable);
-        var defaultVal = p.IsNullable ? " = None" : $" = {p.DefaultValue}";
+        var defaultVal = p.IsNullable ? " = None" : $" = {CSharpToPythonDefault(p.DefaultValue!)}";
         sb.AppendLine($"    {ToSnakeCase(p.Name)}: {pyType}{defaultVal}");
     }
 
@@ -350,6 +350,21 @@ string CSharpToPython(string type, bool nullable)
     };
 
     return nullable ? $"{pyType} | None" : pyType;
+}
+
+string CSharpToPythonDefault(string value)
+{
+    if (value == "true") return "True";
+    if (value == "false") return "False";
+
+    if (value.Contains('.'))
+    {
+        var parts = value.Split('.');
+        if (parts.Length == 2)
+            return $"{parts[0]}.{parts[1].ToUpper()}";
+    }
+
+    return value;
 }
 
 void GenerateFSharp(TypeDef def, string domain, string outDir)

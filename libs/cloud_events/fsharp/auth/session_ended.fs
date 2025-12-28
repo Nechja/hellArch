@@ -9,9 +9,10 @@ type SessionEndReason =
 
 /// Published when a session ends (logout or expiry).
 /// Event type: hellarch.auth.session.ended.v1
+[<CLIMutable>]
 type SessionEnded = {
-    SessionId: string
-    UserId: string
-    Reason: SessionEndReason
-    EndedAt: DateTimeOffset
+    session_id: string
+    user_id: string
+    reason: SessionEndReason
+    ended_at: DateTimeOffset
 }
