@@ -3,6 +3,7 @@ services:
     build:
       context: ../../src/gateway
       dockerfile: Dockerfile
+      target: dev
     container_name: hellarch-gateway
     user: "${UID:-1000}:${GID:-1000}"
     ports:
@@ -23,6 +24,7 @@ services:
     build:
       context: ../../src/services/auth
       dockerfile: Dockerfile
+      target: dev
     container_name: hellarch-auth
     user: "${UID:-1000}:${GID:-1000}"
     ports:
@@ -54,6 +56,7 @@ services:
     build:
       context: ../../src/services/user
       dockerfile: Dockerfile
+      target: dev
     container_name: hellarch-user
     user: "${UID:-1000}:${GID:-1000}"
     ports:
@@ -77,10 +80,15 @@ services:
     build:
       context: ../../src/workers/events
       dockerfile: Dockerfile
+      target: dev
     container_name: hellarch-events-worker
     environment:
       - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
       - RUST_LOG=info
+    volumes:
+      - ../../src/workers/events:/app
+      - events-cargo:/usr/local/cargo/registry
+      - events-target:/app/target
     networks:
       - hellarch
     restart: unless-stopped
@@ -89,6 +97,7 @@ services:
     build:
       context: ../../src/clients/Admin
       dockerfile: Dockerfile
+      target: dev
     container_name: hellarch-admin
     user: "${UID:-1000}:${GID:-1000}"
     ports:
@@ -117,6 +126,8 @@ volumes:
   auth-go-cache:
   user-nuget:
   admin-nuget:
+  events-cargo:
+  events-target:
 
 networks:
   hellarch:
