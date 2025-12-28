@@ -35,7 +35,7 @@ public sealed class AdminAuthMiddleware(
             var client = httpClientFactory.CreateClient(AuthServiceName);
             client.DefaultRequestHeaders.Add("X-Session-Token", sessionToken);
 
-            var response = await client.PostAsync("/auth/validate", null);
+            var response = await client.PostAsync("auth/validate", null);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -74,9 +74,16 @@ public sealed class AdminAuthMiddleware(
 
     private static void RedirectToLogin(HttpContext context)
     {
-        // Redirect to auth service login with return URL
-        var returnUrl = Uri.EscapeDataString($"http://localhost:5003{context.Request.Path}");
-        context.Response.Redirect($"http://localhost:5000/api/auth/discord/login?redirect={returnUrl}");
+        // Build return URL using forwarded headers when behind proxy
+        var scheme = context.Request.Headers["X-Forwarded-Proto"].FirstOrDefault()
+            ?? context.Request.Scheme;
+        var host = context.Request.Headers["X-Forwarded-Host"].FirstOrDefault()
+            ?? context.Request.Host.ToString();
+        var pathBase = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault()
+            ?? "/admin";
+
+        var returnUrl = Uri.EscapeDataString($"{scheme}://{host}{pathBase}{context.Request.Path}");
+        context.Response.Redirect($"{scheme}://{host}/api/auth/discord/login?redirect={returnUrl}");
     }
 
     private sealed record ValidateResponse(

@@ -161,6 +161,7 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 			AvatarURL: userInfo.AvatarURL,
 			Provider:  string(provider),
 		},
+		RedirectURI: stateInfo["redirect_uri"],
 	}, nil
 }
 
@@ -318,6 +319,7 @@ type AuthResult struct {
 	SessionToken string
 	ExpiresIn    int64
 	User         *UserInfo
+	RedirectURI  string
 }
 
 // UserInfo represents user information returned after authentication

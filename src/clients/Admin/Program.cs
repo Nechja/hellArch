@@ -35,13 +35,13 @@ var gatewayUrl = Environment.GetEnvironmentVariable("GATEWAY_URL") ?? "http://lo
 
 builder.Services.AddHttpClient("AuthService", client =>
 {
-    client.BaseAddress = new Uri(gatewayUrl + "/api");
+    client.BaseAddress = new Uri(gatewayUrl + "/api/");
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
 builder.Services.AddHttpClient("UserService", client =>
 {
-    client.BaseAddress = new Uri(gatewayUrl + "/api");
+    client.BaseAddress = new Uri(gatewayUrl + "/api/");
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 

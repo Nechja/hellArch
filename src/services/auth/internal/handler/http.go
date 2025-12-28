@@ -80,7 +80,13 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 		MaxAge:   30 * 24 * 60 * 60, // 30 days
 	})
 
-	// Return tokens in response
+	// If redirect URI was provided, redirect back to it
+	if result.RedirectURI != "" {
+		http.Redirect(w, r, result.RedirectURI, http.StatusTemporaryRedirect)
+		return
+	}
+
+	// Return tokens in response (API clients without redirect)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"access_token":  result.AccessToken,
