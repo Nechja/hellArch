@@ -18,7 +18,6 @@ if (args.Length < 2)
 var contextType = args[0].ToLowerInvariant();
 var connectionString = args[1];
 
-// Set up OTEL if endpoint is configured
 using var tracerProvider = BuildTracerProvider();
 
 using var activity = activitySource.StartActivity("database.migrate", ActivityKind.Client);

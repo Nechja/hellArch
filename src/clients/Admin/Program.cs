@@ -62,12 +62,10 @@ builder.Services.AddHttpClient("RabbitMQ", client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
-// Services
 builder.Services.AddScoped<AuthAdminFacade>();
 builder.Services.AddScoped<RedisBrowserAdapter>();
 builder.Services.AddScoped<RabbitMqAdapter>();
 
-// OpenTelemetry
 var otelEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT")
     ?? "http://localhost:4318";
 
@@ -97,7 +95,6 @@ app.Use((context, next) =>
     return next();
 });
 
-// Serve static files from wwwroot (css, js, images)
 app.UseStaticFiles();
 
 app.UseAntiforgery();

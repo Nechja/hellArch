@@ -22,7 +22,6 @@ public sealed class AdminAuthMiddleware(
             return;
         }
 
-        // Check for session cookie
         if (!context.Request.Cookies.TryGetValue(SessionCookieName, out var sessionToken) ||
             string.IsNullOrEmpty(sessionToken))
         {
@@ -31,7 +30,6 @@ public sealed class AdminAuthMiddleware(
             return;
         }
 
-        // Validate session against auth service
         try
         {
             var client = httpClientFactory.CreateClient(AuthServiceName);
