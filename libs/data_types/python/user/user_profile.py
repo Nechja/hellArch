@@ -12,3 +12,4 @@ Linked to auth user via AuthUserId."""
     display_name: str | None = None
     bio: str | None = None
     avatar_url: str | None = None
+    preferences: UserPreferences | None = None

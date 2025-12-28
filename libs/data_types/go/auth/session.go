@@ -11,4 +11,5 @@ type Session struct {
 	UserAgent *string `json:"user_agent,omitempty"`
 	ExpiresAt time.Time `json:"expires_at"`
 	CreatedAt time.Time `json:"created_at"`
+	User *User `json:"user,omitempty"`
 }

@@ -11,3 +11,4 @@ class Session:
     created_at: datetime
     ip_address: str | None = None
     user_agent: str | None = None
+    user: User | None = None

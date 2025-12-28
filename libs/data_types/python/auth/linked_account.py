@@ -18,3 +18,4 @@ Stores provider-specific identity info. Token storage is optional
     access_token: str | None = None
     refresh_token: str | None = None
     token_expires_at: datetime | None = None
+    user: User | None = None

@@ -18,4 +18,5 @@ type LinkedAccount struct {
 	TokenExpiresAt *time.Time `json:"token_expires_at,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	User *User `json:"user,omitempty"`
 }

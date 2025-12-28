@@ -9,4 +9,6 @@ type User struct {
 	Username string `json:"username"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	Sessions ICollection<Session> `json:"sessions"`
+	LinkedAccounts ICollection<LinkedAccount> `json:"linked_accounts"`
 }

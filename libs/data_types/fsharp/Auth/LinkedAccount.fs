@@ -18,4 +18,5 @@ type LinkedAccount = {
     TokenExpiresAt: DateTime option
     CreatedAt: DateTime
     UpdatedAt: DateTime
+    User: User option
 }

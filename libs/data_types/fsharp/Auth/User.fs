@@ -9,4 +9,6 @@ type User = {
     Username: string
     CreatedAt: DateTime
     UpdatedAt: DateTime
+    Sessions: ICollection<Session>
+    LinkedAccounts: ICollection<LinkedAccount>
 }

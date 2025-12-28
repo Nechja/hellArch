@@ -30,4 +30,6 @@ pub struct LinkedAccount {
     pub created_at: DateTime<Utc>,
     #[serde(rename = "updated_at")]
     pub updated_at: DateTime<Utc>,
+    #[serde(rename = "user")]
+    pub user: Option<User>,
 }

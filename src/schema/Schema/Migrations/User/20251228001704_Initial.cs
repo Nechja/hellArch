@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Schema.Migrations.User
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -17,11 +17,11 @@ namespace Schema.Migrations.User
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     auth_user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    avatar_url = table.Column<string>(type: "text", nullable: false),
-                    bio = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
-                    display_name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
+                    display_name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    bio = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    avatar_url = table.Column<string>(type: "text", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
                 },
                 constraints: table =>
                 {
@@ -33,13 +33,13 @@ namespace Schema.Migrations.User
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
-                    email_notifications = table.Column<bool>(type: "boolean", nullable: false),
-                    locale = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
+                    user_profile_id = table.Column<Guid>(type: "uuid", nullable: false),
                     theme = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    timezone = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
-                    user_profile_id = table.Column<Guid>(type: "uuid", nullable: false)
+                    locale = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: true),
+                    timezone = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    email_notifications = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
                 },
                 constraints: table =>
                 {

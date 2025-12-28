@@ -25,18 +25,22 @@ type LinkedAccount struct {
 	UserID         string
 	Provider       string
 	ProviderUserID string
-	Email          string
-	Username       string
-	AvatarURL      string
+	Email          *string
+	Username       *string
+	AvatarURL      *string
+	AccessToken    *string
+	RefreshToken   *string
+	TokenExpiresAt *time.Time
 	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 type Session struct {
 	ID        string
 	UserID    string
 	Token     string
-	IPAddress string
-	UserAgent string
+	IPAddress *string
+	UserAgent *string
 	ExpiresAt time.Time
 	CreatedAt time.Time
 }

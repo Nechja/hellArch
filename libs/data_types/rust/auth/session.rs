@@ -18,4 +18,6 @@ pub struct Session {
     pub expires_at: DateTime<Utc>,
     #[serde(rename = "created_at")]
     pub created_at: DateTime<Utc>,
+    #[serde(rename = "user")]
+    pub user: Option<User>,
 }

@@ -20,4 +20,5 @@ type UserPreferences struct {
 	EmailNotifications bool `json:"email_notifications"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	UserProfile *UserProfile `json:"user_profile,omitempty"`
 }

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Schema.Migrations.Auth
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -16,10 +16,10 @@ namespace Schema.Migrations.Auth
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
                     email = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
-                    username = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false)
+                    username = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
                 },
                 constraints: table =>
                 {
@@ -31,17 +31,17 @@ namespace Schema.Migrations.Auth
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    access_token = table.Column<string>(type: "text", nullable: false),
-                    avatar_url = table.Column<string>(type: "text", nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
-                    email = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    expires_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
                     provider = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     provider_user_id = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    refresh_token = table.Column<string>(type: "text", nullable: false),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    username = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false)
+                    email = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    username = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    avatar_url = table.Column<string>(type: "text", nullable: true),
+                    access_token = table.Column<string>(type: "text", nullable: true),
+                    refresh_token = table.Column<string>(type: "text", nullable: true),
+                    token_expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
                 },
                 constraints: table =>
                 {
@@ -59,10 +59,12 @@ namespace Schema.Migrations.Auth
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
-                    expires_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
                     token = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false)
+                    ip_address = table.Column<string>(type: "text", nullable: true),
+                    user_agent = table.Column<string>(type: "text", nullable: true),
+                    expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
                 },
                 constraints: table =>
                 {

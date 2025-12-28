@@ -12,4 +12,7 @@ public class Session
     public string? UserAgent { get; set; }
     public DateTime ExpiresAt { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    // Navigation properties (EF Core)
+    public User? User { get; set; }
 }

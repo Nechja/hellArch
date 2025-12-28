@@ -19,4 +19,6 @@ pub struct UserProfile {
     pub created_at: DateTime<Utc>,
     #[serde(rename = "updated_at")]
     pub updated_at: DateTime<Utc>,
+    #[serde(rename = "preferences")]
+    pub preferences: Option<UserPreferences>,
 }

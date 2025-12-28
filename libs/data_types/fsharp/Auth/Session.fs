@@ -11,4 +11,5 @@ type Session = {
     UserAgent: string option
     ExpiresAt: DateTime
     CreatedAt: DateTime
+    User: User option
 }

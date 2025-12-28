@@ -18,3 +18,4 @@ class UserPreferences:
     locale: str | None = None
     timezone: str | None = None
     email_notifications: bool = true
+    user_profile: UserProfile | None = None

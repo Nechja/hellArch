@@ -44,6 +44,14 @@ local_resource(
 # ============================================================================
 
 local_resource(
+    'generate-types',
+    cmd='cd libs/data_types && mise exec -- dotnet run --project Codegen/Codegen.csproj -- csharp .',
+    deps=['libs/data_types/csharp'],
+    labels=['tools'],
+    auto_init=True
+)
+
+local_resource(
     'generate-protos',
     cmd='./scripts/generate-protos.sh',
     deps=['protos'],

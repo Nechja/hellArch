@@ -17,4 +17,5 @@ type UserPreferences = {
     EmailNotifications: bool
     CreatedAt: DateTime
     UpdatedAt: DateTime
+    UserProfile: UserProfile option
 }

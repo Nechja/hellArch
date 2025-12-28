@@ -15,4 +15,7 @@ public class UserProfile
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+    // Navigation properties (EF Core)
+    public UserPreferences? Preferences { get; set; }
 }

@@ -12,4 +12,5 @@ type UserProfile struct {
 	AvatarUrl *string `json:"avatar_url,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	Preferences *UserPreferences `json:"preferences,omitempty"`
 }

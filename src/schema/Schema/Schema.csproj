@@ -17,7 +17,7 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
   </ItemGroup>
 
-  <!-- Include generated data types from JSON Schema -->
+  <!-- Include source-of-truth C# entities -->
   <ItemGroup>
     <Compile Include="..\..\..\libs\data_types\csharp\Auth\*.cs" Link="Generated\Auth\%(Filename)%(Extension)" />
     <Compile Include="..\..\..\libs\data_types\csharp\User\*.cs" Link="Generated\User\%(Filename)%(Extension)" />

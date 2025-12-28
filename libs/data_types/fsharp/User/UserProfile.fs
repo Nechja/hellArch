@@ -12,4 +12,5 @@ type UserProfile = {
     AvatarUrl: string option
     CreatedAt: DateTime
     UpdatedAt: DateTime
+    Preferences: UserPreferences option
 }
