@@ -17,6 +17,8 @@
   <ItemGroup>
     <!-- Entity types from codegen -->
     <ProjectReference Include="../../../../libs/data_types/fsharp/HellArch.DataTypes.fsproj" />
+    <!-- CloudEvents types from codegen -->
+    <ProjectReference Include="../../../../libs/cloud_events/fsharp/HellArch.CloudEvents.fsproj" />
     <!-- DTO types from proto (F# generated) -->
     <ProjectReference Include="../../../../libs/protos/fsharp/HellArch.Protos.FSharp.fsproj" />
   </ItemGroup>

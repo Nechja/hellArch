@@ -17,6 +17,7 @@ open OpenTelemetry.Context.Propagation
 open RabbitMQ.Client
 open RabbitMQ.Client.Events
 open User.Domain
+open HellArch.CloudEvents.Auth
 
 module Events =
 
@@ -49,18 +50,6 @@ module Events =
             data: 'T
         }
 
-    [<CLIMutable>]
-    type UserCreatedData =
-        {
-            user_id: string
-            email: string
-            username: string
-            provider: string
-            provider_user_id: string
-            avatar_url: string
-            created_at: string
-        }
-
     type EventsConfig = { RabbitMQUrl: string; QueueName: string; Logger: ILogger }
 
     let private jsonOptions =
@@ -68,7 +57,7 @@ module Events =
         options.PropertyNameCaseInsensitive <- true
         options
 
-    let private handleUserCreated (logger: ILogger) (dbConfig: Database.DatabaseConfig) (data: UserCreatedData) =
+    let private handleUserCreated (logger: ILogger) (dbConfig: Database.DatabaseConfig) (data: UserCreated) =
         task {
             let authUserId = Guid.Parse(data.user_id)
             let! existingProfile = Database.getProfileByAuthUserId dbConfig authUserId |> Async.StartAsTask
@@ -190,7 +179,7 @@ module Events =
                             | Some "hellarch.auth.user.created.v1" ->
                                 try
                                     let event =
-                                        JsonSerializer.Deserialize<CloudEvent<UserCreatedData>>(body, jsonOptions)
+                                        JsonSerializer.Deserialize<CloudEvent<UserCreated>>(body, jsonOptions)
 
                                     do! handleUserCreated config.Logger dbConfig event.data
                                 with ex ->

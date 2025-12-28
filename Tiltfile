@@ -57,8 +57,9 @@ dc_resource('auth', labels=['services'], resource_deps=['auth-db', 'redis', 'rab
 dc_resource('user', labels=['services'], resource_deps=['user-db', 'redis', 'rabbitmq'], links=['http://localhost:5002'])
 dc_resource('events-worker', labels=['workers'], resource_deps=['rabbitmq'])
 dc_resource('admin', labels=['clients'], resource_deps=['auth', 'user', 'redis'], links=['http://localhost:5003'])
-# All frontend clients (design system + login + app)
-# Uses mise tasks for orchestration - see .mise.toml for details
+
+# Frontend clients (design system + login + app)
+# Built to src/gateway/Gateway/wwwroot/ - volume mount picks up changes immediately
 local_resource(
     'clients',
     cmd='mise run clients:all',
@@ -74,14 +75,6 @@ local_resource(
         '**/bin', '**/obj', '**/node_modules', '**/dist',
         '**/*.g.cs', '**/package-lock.json', '**/.build',
     ],
-    labels=['clients'],
-)
-
-# Reload gateway after clients build to pick up new static files
-local_resource(
-    'clients-reload',
-    cmd='docker compose -f infra/docker/docker-compose.services.yml restart gateway',
-    resource_deps=['clients'],
     labels=['clients'],
 )
 

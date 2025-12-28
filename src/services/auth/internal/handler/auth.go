@@ -105,14 +105,14 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 	}
 
 	if isNewUser {
-		if err := h.publisher.PublishUserCreated(ctx, events.UserCreatedData{
+		if err := h.publisher.PublishUserCreated(ctx, events.UserCreated{
 			UserID:         user.ID,
 			Email:          user.Email,
 			Username:       userInfo.Username,
 			Provider:       string(provider),
 			ProviderUserID: userInfo.ID,
 			AvatarURL:      userInfo.AvatarURL,
-			CreatedAt:      user.CreatedAt.Format(time.RFC3339),
+			CreatedAt:      user.CreatedAt,
 		}); err != nil {
 			slog.Error("failed to publish user.created event", "error", err, "user_id", user.ID)
 		}

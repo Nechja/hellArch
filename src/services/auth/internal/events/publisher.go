@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	cloudevents "github.com/nechja/hellarch/cloudevents/auth"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -190,44 +191,18 @@ func (p *Publisher) Publish(ctx context.Context, eventType string, data any, tra
 	return nil
 }
 
-// UserCreatedData represents the data payload for user.created events
-type UserCreatedData struct {
-	UserID         string `json:"user_id"`
-	Email          string `json:"email"`
-	Username       string `json:"username"`
-	Provider       string `json:"provider"`
-	ProviderUserID string `json:"provider_user_id"`
-	AvatarURL      string `json:"avatar_url"`
-	CreatedAt      string `json:"created_at"`
-}
+type UserCreated = cloudevents.UserCreated
+type SessionCreated = cloudevents.SessionCreated
+type AccountLinked = cloudevents.AccountLinked
 
-func (p *Publisher) PublishUserCreated(ctx context.Context, data UserCreatedData) error {
+func (p *Publisher) PublishUserCreated(ctx context.Context, data UserCreated) error {
 	return p.Publish(ctx, EventTypeUserCreated, data, "")
 }
 
-// SessionCreatedData represents the data payload for session.created events
-type SessionCreatedData struct {
-	SessionID string `json:"session_id"`
-	UserID    string `json:"user_id"`
-	IPAddress string `json:"ip_address"`
-	UserAgent string `json:"user_agent"`
-	CreatedAt string `json:"created_at"`
-	ExpiresAt string `json:"expires_at"`
-}
-
-func (p *Publisher) PublishSessionCreated(ctx context.Context, data SessionCreatedData) error {
+func (p *Publisher) PublishSessionCreated(ctx context.Context, data SessionCreated) error {
 	return p.Publish(ctx, EventTypeSessionCreated, data, "")
 }
 
-// AccountLinkedData represents the data payload for account.linked events
-type AccountLinkedData struct {
-	UserID         string `json:"user_id"`
-	Provider       string `json:"provider"`
-	ProviderUserID string `json:"provider_user_id"`
-	Email          string `json:"email"`
-	LinkedAt       string `json:"linked_at"`
-}
-
-func (p *Publisher) PublishAccountLinked(ctx context.Context, data AccountLinkedData) error {
+func (p *Publisher) PublishAccountLinked(ctx context.Context, data AccountLinked) error {
 	return p.Publish(ctx, EventTypeAccountLinked, data, "")
 }
