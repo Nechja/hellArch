@@ -15,6 +15,7 @@ type Postgres struct {
 type User struct {
 	ID        string
 	Email     string
+	Username  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -60,9 +61,9 @@ func (p *Postgres) Close() {
 func (p *Postgres) GetUserByID(ctx context.Context, id string) (*User, error) {
 	var user User
 	err := p.pool.QueryRow(ctx,
-		`SELECT id, email, created_at, updated_at FROM users WHERE id = $1`,
+		`SELECT id, email, username, created_at, updated_at FROM users WHERE id = $1`,
 		id,
-	).Scan(&user.ID, &user.Email, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&user.ID, &user.Email, &user.Username, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -72,25 +73,25 @@ func (p *Postgres) GetUserByID(ctx context.Context, id string) (*User, error) {
 func (p *Postgres) GetUserByProviderID(ctx context.Context, provider, providerUserID string) (*User, error) {
 	var user User
 	err := p.pool.QueryRow(ctx,
-		`SELECT u.id, u.email, u.created_at, u.updated_at
+		`SELECT u.id, u.email, u.username, u.created_at, u.updated_at
 		 FROM users u
 		 JOIN linked_accounts la ON u.id = la.user_id
 		 WHERE la.provider = $1 AND la.provider_user_id = $2`,
 		provider, providerUserID,
-	).Scan(&user.ID, &user.Email, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&user.ID, &user.Email, &user.Username, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	return &user, nil
 }
 
-func (p *Postgres) CreateUser(ctx context.Context, email string) (*User, error) {
+func (p *Postgres) CreateUser(ctx context.Context, email, username string) (*User, error) {
 	var user User
 	err := p.pool.QueryRow(ctx,
-		`INSERT INTO users (email) VALUES ($1)
-		 RETURNING id, email, created_at, updated_at`,
-		email,
-	).Scan(&user.ID, &user.Email, &user.CreatedAt, &user.UpdatedAt)
+		`INSERT INTO users (email, username) VALUES ($1, $2)
+		 RETURNING id, email, username, created_at, updated_at`,
+		email, username,
+	).Scan(&user.ID, &user.Email, &user.Username, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}

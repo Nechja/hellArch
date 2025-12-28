@@ -1,28 +1,21 @@
-// Example code that deserializes and serializes the model.
-// extern crate serde;
-// #[macro_use]
-// extern crate serde_derive;
-// extern crate serde_json;
-//
-// use generated_module::session;
-//
-// fn main() {
-//     let json = r#"{"answer": 42}"#;
-//     let model: session = serde_json::from_str(&json).unwrap();
-// }
+use serde::{Deserialize, Serialize};
+use chrono::{DateTime, Utc};
 
-use serde::{Serialize, Deserialize};
-
-/// User session for cookie-based auth
-#[derive(Debug, Serialize, Deserialize)]
+/// User session for cookie-based authentication.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
-    pub created_at: String,
-
-    pub expires_at: String,
-
+    #[serde(rename = "id")]
     pub id: String,
-
-    pub token: String,
-
+    #[serde(rename = "user_id")]
     pub user_id: String,
+    #[serde(rename = "token")]
+    pub token: String,
+    #[serde(rename = "ip_address")]
+    pub ip_address: Option<String>,
+    #[serde(rename = "user_agent")]
+    pub user_agent: Option<String>,
+    #[serde(rename = "expires_at")]
+    pub expires_at: DateTime<Utc>,
+    #[serde(rename = "created_at")]
+    pub created_at: DateTime<Utc>,
 }

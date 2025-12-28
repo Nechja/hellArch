@@ -155,7 +155,7 @@ func (h *AuthHandler) findOrCreateUser(ctx context.Context, info *oauth.UserInfo
 	}
 
 	// Create new user
-	user, err = h.postgres.CreateUser(ctx, info.Email)
+	user, err = h.postgres.CreateUser(ctx, info.Email, info.Username)
 	if err != nil {
 		return nil, err
 	}

@@ -1,28 +1,17 @@
-// Example code that deserializes and serializes the model.
-// extern crate serde;
-// #[macro_use]
-// extern crate serde_derive;
-// extern crate serde_json;
-//
-// use generated_module::user;
-//
-// fn main() {
-//     let json = r#"{"answer": 42}"#;
-//     let model: user = serde_json::from_str(&json).unwrap();
-// }
+use serde::{Deserialize, Serialize};
+use chrono::{DateTime, Utc};
 
-use serde::{Serialize, Deserialize};
-
-/// Core user identity
-#[derive(Debug, Serialize, Deserialize)]
+/// Core user identity in the auth system.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
-    pub created_at: String,
-
-    pub email: String,
-
+    #[serde(rename = "id")]
     pub id: String,
-
-    pub updated_at: String,
-
+    #[serde(rename = "email")]
+    pub email: String,
+    #[serde(rename = "username")]
     pub username: String,
+    #[serde(rename = "created_at")]
+    pub created_at: DateTime<Utc>,
+    #[serde(rename = "updated_at")]
+    pub updated_at: DateTime<Utc>,
 }

@@ -1,24 +1,14 @@
-from uuid import UUID
-from typing import Optional
+from dataclasses import dataclass
 from datetime import datetime
 
-
+@dataclass
 class UserProfile:
-    """Extended user profile info"""
-
-    auth_user_id: UUID
-    avatar_url: Optional[str]
-    bio: Optional[str]
+    """Extended user profile information.
+Linked to auth user via AuthUserId."""
+    id: str
+    auth_user_id: str
     created_at: datetime
-    display_name: Optional[str]
-    id: UUID
     updated_at: datetime
-
-    def __init__(self, auth_user_id: UUID, avatar_url: Optional[str], bio: Optional[str], created_at: datetime, display_name: Optional[str], id: UUID, updated_at: datetime) -> None:
-        self.auth_user_id = auth_user_id
-        self.avatar_url = avatar_url
-        self.bio = bio
-        self.created_at = created_at
-        self.display_name = display_name
-        self.id = id
-        self.updated_at = updated_at
+    display_name: str | None = None
+    bio: str | None = None
+    avatar_url: str | None = None

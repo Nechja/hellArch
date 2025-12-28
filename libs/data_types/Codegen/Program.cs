@@ -1,0 +1,339 @@
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+var sourceDir = args.Length > 0 ? args[0] : "../csharp";
+var outputDir = args.Length > 1 ? args[1] : "..";
+
+var csFiles = Directory.GetFiles(sourceDir, "*.cs", SearchOption.AllDirectories);
+Console.WriteLine($"Found {csFiles.Length} C# files");
+
+foreach (var file in csFiles)
+{
+    var code = File.ReadAllText(file);
+    var tree = CSharpSyntaxTree.ParseText(code);
+    var root = tree.GetRoot();
+
+    var ns = root.DescendantNodes().OfType<BaseNamespaceDeclarationSyntax>().FirstOrDefault();
+    if (ns is null) continue;
+
+    var namespaceName = ns.Name.ToString();
+    var domain = namespaceName.Split('.').Last();
+
+    foreach (var classDecl in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
+    {
+        var typeDef = ParseClass(classDecl, namespaceName);
+        Console.WriteLine($"  {namespaceName}.{typeDef.Name}");
+
+        GenerateGo(typeDef, domain, outputDir);
+        GenerateRust(typeDef, domain, outputDir);
+        GeneratePython(typeDef, domain, outputDir);
+        GenerateFSharp(typeDef, domain, outputDir);
+    }
+
+    foreach (var enumDecl in root.DescendantNodes().OfType<EnumDeclarationSyntax>()
+        .Where(e => e.Parent is BaseNamespaceDeclarationSyntax))
+    {
+        // Standalone enums are handled separately if needed
+    }
+}
+
+Console.WriteLine("\nDone!");
+
+TypeDef ParseClass(ClassDeclarationSyntax classDecl, string namespaceName)
+{
+    var className = classDecl.Identifier.Text;
+    var doc = GetDocComment(classDecl);
+
+    var properties = new List<PropertyDef>();
+    foreach (var prop in classDecl.Members.OfType<PropertyDeclarationSyntax>())
+    {
+        var propName = prop.Identifier.Text;
+        var typeSyntax = prop.Type;
+        var typeStr = typeSyntax.ToString();
+
+        var isNullable = typeSyntax is NullableTypeSyntax;
+        var isRequired = prop.Modifiers.Any(m => m.IsKind(SyntaxKind.RequiredKeyword));
+
+        var baseType = isNullable
+            ? ((NullableTypeSyntax)typeSyntax).ElementType.ToString()
+            : typeStr;
+
+        string? defaultValue = null;
+        if (prop.Initializer is not null)
+        {
+            defaultValue = prop.Initializer.Value.ToString();
+        }
+
+        properties.Add(new PropertyDef(propName, baseType, isNullable, isRequired, defaultValue));
+    }
+
+    var enums = new List<EnumDef>();
+    foreach (var enumDecl in classDecl.Parent!.DescendantNodes().OfType<EnumDeclarationSyntax>())
+    {
+        var enumName = enumDecl.Identifier.Text;
+        var values = enumDecl.Members.Select(m => m.Identifier.Text).ToList();
+        enums.Add(new EnumDef(enumName, values));
+    }
+
+    return new TypeDef(className, namespaceName, doc, properties, enums);
+}
+
+string GetDocComment(SyntaxNode node)
+{
+    var trivia = node.GetLeadingTrivia()
+        .Where(t => t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia))
+        .FirstOrDefault();
+
+    if (trivia == default) return "";
+
+    var xml = trivia.ToString();
+    var summaryMatch = System.Text.RegularExpressions.Regex.Match(
+        xml, @"<summary>\s*(.*?)\s*</summary>", System.Text.RegularExpressions.RegexOptions.Singleline);
+
+    if (!summaryMatch.Success) return "";
+
+    return System.Text.RegularExpressions.Regex.Replace(
+        summaryMatch.Groups[1].Value, @"///\s*", "").Trim();
+}
+
+string ToSnakeCase(string name) =>
+    System.Text.RegularExpressions.Regex.Replace(name, "(?<!^)([A-Z])", "_$1").ToLower();
+
+void GenerateGo(TypeDef def, string domain, string outDir)
+{
+    var dir = Path.Combine(outDir, "go", domain.ToLower());
+    Directory.CreateDirectory(dir);
+    var file = Path.Combine(dir, $"{ToSnakeCase(def.Name)}.go");
+
+    var sb = new System.Text.StringBuilder();
+    sb.AppendLine($"package {domain.ToLower()}");
+    sb.AppendLine();
+
+    if (def.Properties.Any(p => p.Type is "DateTime" or "DateTimeOffset"))
+    {
+        sb.AppendLine("import \"time\"");
+        sb.AppendLine();
+    }
+
+    foreach (var e in def.Enums)
+    {
+        sb.AppendLine($"type {e.Name} string");
+        sb.AppendLine();
+        sb.AppendLine("const (");
+        foreach (var v in e.Values)
+            sb.AppendLine($"\t{e.Name}{v} {e.Name} = \"{v.ToLower()}\"");
+        sb.AppendLine(")");
+        sb.AppendLine();
+    }
+
+    if (!string.IsNullOrEmpty(def.Doc))
+        sb.AppendLine($"// {def.Name} {def.Doc}");
+    sb.AppendLine($"type {def.Name} struct {{");
+
+    foreach (var p in def.Properties)
+    {
+        var goType = CSharpToGo(p.Type, p.IsNullable);
+        var jsonTag = ToSnakeCase(p.Name);
+        var omit = p.IsNullable ? ",omitempty" : "";
+        sb.AppendLine($"\t{p.Name} {goType} `json:\"{jsonTag}{omit}\"`");
+    }
+
+    sb.AppendLine("}");
+    File.WriteAllText(file, sb.ToString());
+    Console.WriteLine($"    go: ok");
+}
+
+string CSharpToGo(string type, bool nullable)
+{
+    var goType = type switch
+    {
+        "Guid" => "string",
+        "string" => "string",
+        "int" => "int",
+        "long" => "int64",
+        "bool" => "bool",
+        "DateTime" or "DateTimeOffset" => "time.Time",
+        _ => type
+    };
+
+    return nullable ? $"*{goType}" : goType;
+}
+
+void GenerateRust(TypeDef def, string domain, string outDir)
+{
+    var dir = Path.Combine(outDir, "rust", domain.ToLower());
+    Directory.CreateDirectory(dir);
+    var file = Path.Combine(dir, $"{ToSnakeCase(def.Name)}.rs");
+
+    var sb = new System.Text.StringBuilder();
+    sb.AppendLine("use serde::{Deserialize, Serialize};");
+
+    if (def.Properties.Any(p => p.Type is "DateTime" or "DateTimeOffset"))
+        sb.AppendLine("use chrono::{DateTime, Utc};");
+
+    sb.AppendLine();
+
+    foreach (var e in def.Enums)
+    {
+        sb.AppendLine("#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]");
+        sb.AppendLine("#[serde(rename_all = \"snake_case\")]");
+        sb.AppendLine($"pub enum {e.Name} {{");
+        foreach (var v in e.Values)
+            sb.AppendLine($"    {v},");
+        sb.AppendLine("}");
+        sb.AppendLine();
+    }
+
+    if (!string.IsNullOrEmpty(def.Doc))
+        sb.AppendLine($"/// {def.Doc}");
+    sb.AppendLine("#[derive(Debug, Clone, Serialize, Deserialize)]");
+    sb.AppendLine($"pub struct {def.Name} {{");
+
+    foreach (var p in def.Properties)
+    {
+        var rustType = CSharpToRust(p.Type, p.IsNullable);
+        var fieldName = ToSnakeCase(p.Name);
+        sb.AppendLine($"    #[serde(rename = \"{fieldName}\")]");
+        sb.AppendLine($"    pub {fieldName}: {rustType},");
+    }
+
+    sb.AppendLine("}");
+    File.WriteAllText(file, sb.ToString());
+    Console.WriteLine($"    rust: ok");
+}
+
+string CSharpToRust(string type, bool nullable)
+{
+    var rustType = type switch
+    {
+        "Guid" or "string" => "String",
+        "int" => "i32",
+        "long" => "i64",
+        "bool" => "bool",
+        "DateTime" or "DateTimeOffset" => "DateTime<Utc>",
+        _ => type
+    };
+
+    return nullable ? $"Option<{rustType}>" : rustType;
+}
+
+void GeneratePython(TypeDef def, string domain, string outDir)
+{
+    var dir = Path.Combine(outDir, "python", domain.ToLower());
+    Directory.CreateDirectory(dir);
+    var file = Path.Combine(dir, $"{ToSnakeCase(def.Name)}.py");
+
+    var sb = new System.Text.StringBuilder();
+    sb.AppendLine("from dataclasses import dataclass");
+
+    if (def.Properties.Any(p => p.Type is "DateTime" or "DateTimeOffset"))
+        sb.AppendLine("from datetime import datetime");
+
+    if (def.Enums.Count > 0)
+        sb.AppendLine("from enum import Enum");
+
+    sb.AppendLine();
+
+    foreach (var e in def.Enums)
+    {
+        sb.AppendLine($"class {e.Name}(Enum):");
+        foreach (var v in e.Values)
+            sb.AppendLine($"    {v.ToUpper()} = \"{v.ToLower()}\"");
+        sb.AppendLine();
+    }
+
+    sb.AppendLine("@dataclass");
+    sb.AppendLine($"class {def.Name}:");
+    if (!string.IsNullOrEmpty(def.Doc))
+        sb.AppendLine($"    \"\"\"{def.Doc}\"\"\"");
+
+    var required = def.Properties.Where(p => !p.IsNullable && p.DefaultValue is null).ToList();
+    var optional = def.Properties.Where(p => p.IsNullable || p.DefaultValue is not null).ToList();
+
+    foreach (var p in required)
+    {
+        var pyType = CSharpToPython(p.Type, false);
+        sb.AppendLine($"    {ToSnakeCase(p.Name)}: {pyType}");
+    }
+
+    foreach (var p in optional)
+    {
+        var pyType = CSharpToPython(p.Type, p.IsNullable);
+        var defaultVal = p.IsNullable ? " = None" : $" = {p.DefaultValue}";
+        sb.AppendLine($"    {ToSnakeCase(p.Name)}: {pyType}{defaultVal}");
+    }
+
+    File.WriteAllText(file, sb.ToString());
+    Console.WriteLine($"    python: ok");
+}
+
+string CSharpToPython(string type, bool nullable)
+{
+    var pyType = type switch
+    {
+        "Guid" or "string" => "str",
+        "int" or "long" => "int",
+        "bool" => "bool",
+        "DateTime" or "DateTimeOffset" => "datetime",
+        _ => type
+    };
+
+    return nullable ? $"{pyType} | None" : pyType;
+}
+
+void GenerateFSharp(TypeDef def, string domain, string outDir)
+{
+    var dir = Path.Combine(outDir, "fsharp", domain);
+    Directory.CreateDirectory(dir);
+    var file = Path.Combine(dir, $"{def.Name}.fs");
+
+    var sb = new System.Text.StringBuilder();
+    sb.AppendLine($"namespace HellArch.DataTypes.{domain}");
+    sb.AppendLine();
+    sb.AppendLine("open System");
+    sb.AppendLine();
+
+    foreach (var e in def.Enums)
+    {
+        sb.AppendLine($"type {e.Name} =");
+        foreach (var v in e.Values)
+            sb.AppendLine($"    | {v}");
+        sb.AppendLine();
+    }
+
+    if (!string.IsNullOrEmpty(def.Doc))
+        sb.AppendLine($"/// {def.Doc}");
+    sb.AppendLine($"type {def.Name} = {{");
+
+    foreach (var p in def.Properties)
+    {
+        var fsType = CSharpToFSharp(p.Type, p.IsNullable);
+        sb.AppendLine($"    {p.Name}: {fsType}");
+    }
+
+    sb.AppendLine("}");
+    File.WriteAllText(file, sb.ToString());
+    Console.WriteLine($"    fsharp: ok");
+}
+
+string CSharpToFSharp(string type, bool nullable)
+{
+    var fsType = type switch
+    {
+        "Guid" => "Guid",
+        "string" => "string",
+        "int" => "int",
+        "long" => "int64",
+        "bool" => "bool",
+        "DateTime" => "DateTime",
+        "DateTimeOffset" => "DateTimeOffset",
+        _ => type
+    };
+
+    return nullable ? $"{fsType} option" : fsType;
+}
+
+record PropertyDef(string Name, string Type, bool IsNullable, bool IsRequired, string? DefaultValue);
+record EnumDef(string Name, List<string> Values);
+record TypeDef(string Name, string Namespace, string Doc, List<PropertyDef> Properties, List<EnumDef> Enums);

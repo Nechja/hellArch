@@ -7,6 +7,7 @@ type Theme =
     | Light
     | Dark
 
+/// User preferences and settings.
 type UserPreferences = {
     Id: Guid
     UserProfileId: Guid

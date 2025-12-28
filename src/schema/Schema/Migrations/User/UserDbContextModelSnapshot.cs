@@ -27,43 +27,53 @@ namespace Schema.Migrations.User
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
+                        .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
                         .HasDefaultValueSql("now()");
 
                     b.Property<bool>("EmailNotifications")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("email_notifications");
 
                     b.Property<string>("Locale")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("locale");
 
                     b.Property<string>("Theme")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("theme");
 
                     b.Property<string>("Timezone")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("timezone");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
                         .HasDefaultValueSql("now()");
 
                     b.Property<Guid>("UserProfileId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_profile_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_user_preferences");
 
                     b.HasIndex("UserProfileId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_preferences_user_profile_id");
 
                     b.ToTable("user_preferences", (string)null);
                 });
@@ -73,39 +83,48 @@ namespace Schema.Migrations.User
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
+                        .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<Guid>("AuthUserId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("auth_user_id");
 
                     b.Property<string>("AvatarUrl")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("avatar_url");
 
                     b.Property<string>("Bio")
                         .IsRequired()
                         .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("bio");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
                         .HasDefaultValueSql("now()");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("display_name");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
                         .HasDefaultValueSql("now()");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_user_profiles");
 
                     b.HasIndex("AuthUserId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_profiles_auth_user_id");
 
                     b.ToTable("user_profiles", (string)null);
                 });
@@ -116,7 +135,8 @@ namespace Schema.Migrations.User
                         .WithOne("Preferences")
                         .HasForeignKey("HellArch.DataTypes.User.UserPreferences", "UserProfileId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_user_preferences_user_profiles_user_profile_id");
 
                     b.Navigation("UserProfile");
                 });

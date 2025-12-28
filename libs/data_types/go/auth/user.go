@@ -1,10 +1,12 @@
+package auth
+
 import "time"
 
-// Core user identity
+// User Core user identity in the auth system.
 type User struct {
+	Id string `json:"id"`
+	Email string `json:"email"`
+	Username string `json:"username"`
 	CreatedAt time.Time `json:"created_at"`
-	Email     string    `json:"email"`
-	ID        string    `json:"id"`
 	UpdatedAt time.Time `json:"updated_at"`
-	Username  string    `json:"username"`
 }

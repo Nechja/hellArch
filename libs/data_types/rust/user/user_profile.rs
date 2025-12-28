@@ -1,32 +1,22 @@
-// Example code that deserializes and serializes the model.
-// extern crate serde;
-// #[macro_use]
-// extern crate serde_derive;
-// extern crate serde_json;
-//
-// use generated_module::user_profile;
-//
-// fn main() {
-//     let json = r#"{"answer": 42}"#;
-//     let model: user_profile = serde_json::from_str(&json).unwrap();
-// }
+use serde::{Deserialize, Serialize};
+use chrono::{DateTime, Utc};
 
-use serde::{Serialize, Deserialize};
-
-/// Extended user profile info
-#[derive(Debug, Serialize, Deserialize)]
+/// Extended user profile information.
+Linked to auth user via AuthUserId.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserProfile {
-    pub auth_user_id: String,
-
-    pub avatar_url: Option<String>,
-
-    pub bio: Option<String>,
-
-    pub created_at: String,
-
-    pub display_name: Option<String>,
-
+    #[serde(rename = "id")]
     pub id: String,
-
-    pub updated_at: String,
+    #[serde(rename = "auth_user_id")]
+    pub auth_user_id: String,
+    #[serde(rename = "display_name")]
+    pub display_name: Option<String>,
+    #[serde(rename = "bio")]
+    pub bio: Option<String>,
+    #[serde(rename = "avatar_url")]
+    pub avatar_url: Option<String>,
+    #[serde(rename = "created_at")]
+    pub created_at: DateTime<Utc>,
+    #[serde(rename = "updated_at")]
+    pub updated_at: DateTime<Utc>,
 }

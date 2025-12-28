@@ -1,42 +1,33 @@
-// Example code that deserializes and serializes the model.
-// extern crate serde;
-// #[macro_use]
-// extern crate serde_derive;
-// extern crate serde_json;
-//
-// use generated_module::linked_account;
-//
-// fn main() {
-//     let json = r#"{"answer": 42}"#;
-//     let model: linked_account = serde_json::from_str(&json).unwrap();
-// }
+use serde::{Deserialize, Serialize};
+use chrono::{DateTime, Utc};
 
-use serde::{Serialize, Deserialize};
-
-/// OAuth provider linked to a user
-#[derive(Debug, Serialize, Deserialize)]
+/// OAuth provider account linked to a user.
+Stores provider-specific identity info. Token storage is optional
+(only needed if we want to call provider APIs on behalf of user).
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LinkedAccount {
-    pub access_token: Option<String>,
-
-    pub avatar_url: Option<String>,
-
-    pub created_at: String,
-
-    pub email: Option<String>,
-
-    pub expires_at: Option<String>,
-
+    #[serde(rename = "id")]
     pub id: String,
-
-    pub provider: String,
-
-    pub provider_user_id: String,
-
-    pub refresh_token: Option<String>,
-
-    pub updated_at: String,
-
+    #[serde(rename = "user_id")]
     pub user_id: String,
-
+    #[serde(rename = "provider")]
+    pub provider: String,
+    #[serde(rename = "provider_user_id")]
+    pub provider_user_id: String,
+    #[serde(rename = "email")]
+    pub email: Option<String>,
+    #[serde(rename = "username")]
     pub username: Option<String>,
+    #[serde(rename = "avatar_url")]
+    pub avatar_url: Option<String>,
+    #[serde(rename = "access_token")]
+    pub access_token: Option<String>,
+    #[serde(rename = "refresh_token")]
+    pub refresh_token: Option<String>,
+    #[serde(rename = "token_expires_at")]
+    pub token_expires_at: Option<DateTime<Utc>>,
+    #[serde(rename = "created_at")]
+    pub created_at: DateTime<Utc>,
+    #[serde(rename = "updated_at")]
+    pub updated_at: DateTime<Utc>,
 }

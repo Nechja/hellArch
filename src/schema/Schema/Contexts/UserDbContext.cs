@@ -8,6 +8,11 @@ public sealed class UserDbContext(DbContextOptions<UserDbContext> options) : DbC
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<UserPreferences> UserPreferences => Set<UserPreferences>();
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.UseSnakeCaseNamingConvention();
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<UserProfile>(entity =>

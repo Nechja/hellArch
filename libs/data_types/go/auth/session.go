@@ -1,10 +1,14 @@
+package auth
+
 import "time"
 
-// User session for cookie-based auth
+// Session User session for cookie-based authentication.
 type Session struct {
-	CreatedAt time.Time `json:"created_at"`
+	Id string `json:"id"`
+	UserId string `json:"user_id"`
+	Token string `json:"token"`
+	IpAddress *string `json:"ip_address,omitempty"`
+	UserAgent *string `json:"user_agent,omitempty"`
 	ExpiresAt time.Time `json:"expires_at"`
-	ID        string    `json:"id"`
-	Token     string    `json:"token"`
-	UserID    string    `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
 }

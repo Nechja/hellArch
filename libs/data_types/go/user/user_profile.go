@@ -1,12 +1,15 @@
+package user
+
 import "time"
 
-// Extended user profile info
+// UserProfile Extended user profile information.
+Linked to auth user via AuthUserId.
 type UserProfile struct {
-	AuthUserID  string    `json:"auth_user_id"`
-	AvatarURL   *string   `json:"avatar_url"`
-	Bio         *string   `json:"bio"`
-	CreatedAt   time.Time `json:"created_at"`
-	DisplayName *string   `json:"display_name"`
-	ID          string    `json:"id"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	Id string `json:"id"`
+	AuthUserId string `json:"auth_user_id"`
+	DisplayName *string `json:"display_name,omitempty"`
+	Bio *string `json:"bio,omitempty"`
+	AvatarUrl *string `json:"avatar_url,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

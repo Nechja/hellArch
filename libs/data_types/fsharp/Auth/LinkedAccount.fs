@@ -2,6 +2,9 @@ namespace HellArch.DataTypes.Auth
 
 open System
 
+/// OAuth provider account linked to a user.
+Stores provider-specific identity info. Token storage is optional
+(only needed if we want to call provider APIs on behalf of user).
 type LinkedAccount = {
     Id: Guid
     UserId: Guid
@@ -12,7 +15,7 @@ type LinkedAccount = {
     AvatarUrl: string option
     AccessToken: string option
     RefreshToken: string option
-    ExpiresAt: DateTime option
+    TokenExpiresAt: DateTime option
     CreatedAt: DateTime
     UpdatedAt: DateTime
 }

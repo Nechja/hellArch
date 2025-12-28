@@ -1,17 +1,21 @@
+package auth
+
 import "time"
 
-// OAuth provider linked to a user
+// LinkedAccount OAuth provider account linked to a user.
+Stores provider-specific identity info. Token storage is optional
+(only needed if we want to call provider APIs on behalf of user).
 type LinkedAccount struct {
-	AccessToken    *string    `json:"access_token"`
-	AvatarURL      *string    `json:"avatar_url"`
-	CreatedAt      time.Time  `json:"created_at"`
-	Email          *string    `json:"email"`
-	ExpiresAt      *time.Time `json:"expires_at"`
-	ID             string     `json:"id"`
-	Provider       string     `json:"provider"`
-	ProviderUserID string     `json:"provider_user_id"`
-	RefreshToken   *string    `json:"refresh_token"`
-	UpdatedAt      time.Time  `json:"updated_at"`
-	UserID         string     `json:"user_id"`
-	Username       *string    `json:"username"`
+	Id string `json:"id"`
+	UserId string `json:"user_id"`
+	Provider string `json:"provider"`
+	ProviderUserId string `json:"provider_user_id"`
+	Email *string `json:"email,omitempty"`
+	Username *string `json:"username,omitempty"`
+	AvatarUrl *string `json:"avatar_url,omitempty"`
+	AccessToken *string `json:"access_token,omitempty"`
+	RefreshToken *string `json:"refresh_token,omitempty"`
+	TokenExpiresAt *time.Time `json:"token_expires_at,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
