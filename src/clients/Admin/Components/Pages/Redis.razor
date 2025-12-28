@@ -18,10 +18,10 @@
         <button @onclick="Search" class="btn btn-primary">Search</button>
     </div>
     <div class="quick-filters">
-        <button @onclick="() => SearchPattern('session:*')" class="btn btn-sm">Sessions</button>
-        <button @onclick="() => SearchPattern('oauth:state:*')" class="btn btn-sm">OAuth States</button>
-        <button @onclick="() => SearchPattern('revoked:*')" class="btn btn-sm">Revoked Tokens</button>
-        <button @onclick="() => SearchPattern('*')" class="btn btn-sm">All Keys</button>
+        <button @onclick='() => SearchPattern("session:*")' class="btn btn-sm">Sessions</button>
+        <button @onclick='() => SearchPattern("oauth:state:*")' class="btn btn-sm">OAuth States</button>
+        <button @onclick='() => SearchPattern("revoked:*")' class="btn btn-sm">Revoked Tokens</button>
+        <button @onclick='() => SearchPattern("*")' class="btn btn-sm">All Keys</button>
     </div>
 </section>
 

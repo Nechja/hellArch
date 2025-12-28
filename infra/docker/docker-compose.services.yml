@@ -84,10 +84,33 @@ services:
       - hellarch
     restart: unless-stopped
 
+  admin:
+    build:
+      context: ../../src/clients/Admin
+      dockerfile: Dockerfile
+    container_name: hellarch-admin
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "5003:5003"
+    environment:
+      - PORT=5003
+      - AUTH_URL=http://hellarch-auth:5001
+      - USER_URL=http://hellarch-user:5002
+      - REDIS_URL=redis:6379
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - LOG_LEVEL=debug
+    volumes:
+      - ../../src/clients/Admin:/app
+      - admin-nuget:/root/.nuget
+    networks:
+      - hellarch
+    restart: unless-stopped
+
 volumes:
   gateway-nuget:
   auth-go-cache:
   user-nuget:
+  admin-nuget:
 
 networks:
   hellarch:

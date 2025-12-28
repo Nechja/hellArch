@@ -56,6 +56,7 @@ dc_resource('gateway', labels=['services'], resource_deps=['auth-db', 'redis'], 
 dc_resource('auth', labels=['services'], resource_deps=['auth-db', 'redis', 'rabbitmq'], links=['http://localhost:5001'])
 dc_resource('user', labels=['services'], resource_deps=['user-db', 'redis', 'rabbitmq'], links=['http://localhost:5002'])
 dc_resource('events-worker', labels=['workers'], resource_deps=['rabbitmq'])
+dc_resource('admin', labels=['clients'], resource_deps=['auth', 'user', 'redis'], links=['http://localhost:5003'])
 # Login client (Blazor WASM - runs locally with mise-managed dotnet)
 local_resource(
     'login',

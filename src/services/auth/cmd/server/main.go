@@ -91,6 +91,7 @@ func main() {
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(pgStore, redisStore, jwtService, oauthService, eventPublisher, cfg)
 	httpHandler := handler.NewHTTPHandler(authHandler)
+	adminHandler := handler.NewAdminHandler(pgStore, redisStore)
 
 	// Initialize gRPC server with OTel instrumentation
 	grpcServer := grpc.NewServer(
@@ -105,6 +106,7 @@ func main() {
 	// Initialize HTTP server with OTel instrumentation
 	mux := http.NewServeMux()
 	httpHandler.RegisterRoutes(mux)
+	adminHandler.RegisterRoutes(mux)
 	httpServer := &http.Server{
 		Addr:    cfg.HTTPAddress,
 		Handler: otelhttp.NewHandler(mux, "auth-http"),

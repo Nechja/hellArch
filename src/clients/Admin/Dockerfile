@@ -1,17 +1,13 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-WORKDIR /src
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS dev
+
+WORKDIR /app
+
+# Hot reload
+ENV DOTNET_USE_POLLING_FILE_WATCHER=1
 
 COPY *.csproj ./
 RUN dotnet restore
 
 COPY . .
-RUN dotnet publish -c Release -o /app --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
-WORKDIR /app
-COPY --from=build /app .
-
-ENV ASPNETCORE_ENVIRONMENT=Production
-EXPOSE 5003
-
-ENTRYPOINT ["dotnet", "Admin.dll"]
+ENTRYPOINT ["dotnet", "watch", "run", "--no-launch-profile"]
