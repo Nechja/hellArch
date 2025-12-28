@@ -1,0 +1,13 @@
+[package]
+name = "hellarch-protos"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+prost = "0.13"
+prost-types = "0.13"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+
+[build-dependencies]
+prost-build = "0.13"

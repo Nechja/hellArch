@@ -1,0 +1,15 @@
+{
+  "name": "@hellarch/design",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./tokens.css": "./tokens.css",
+    "./uno.config": "./uno.config.ts"
+  },
+  "devDependencies": {
+    "unocss": "^0.65.3"
+  },
+  "scripts": {
+    "build": "unocss \"../clients/**/src/**/*.{vue,ts,razor,html}\" -o dist/utilities.css --config uno.config.ts"
+  }
+}

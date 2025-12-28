@@ -242,6 +242,15 @@ tmp/
 # Gateway static assets (built from clients)
 src/gateway/Gateway/wwwroot/login/
 src/gateway/Gateway/wwwroot/app/
+src/gateway/Gateway/wwwroot/shared/
+
+# Build output
+.build/
+
+# Node.js in libs and clients
+libs/*/node_modules/
+src/clients/*/node_modules/
+src/clients/*/dist/
 
 # Generated protos (commit these if you want reproducible builds)
 # src/services/*/proto/

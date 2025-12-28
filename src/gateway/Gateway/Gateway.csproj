@@ -35,4 +35,25 @@
     <RemoveDir Directories="$(ProjectDir)wwwroot/login" />
   </Target>
 
+  <!-- Build Vue App client and copy to wwwroot/app -->
+  <Target Name="BuildAppClient" BeforeTargets="Build" Condition="'$(BuildApp)' == 'true'">
+    <PropertyGroup>
+      <AppClientPath>$(ProjectDir)../../../clients/App</AppClientPath>
+    </PropertyGroup>
+    <Message Importance="High" Text="Building Vue App client..." />
+    <Exec Command="npm install" WorkingDirectory="$(AppClientPath)" />
+    <Exec Command="npm run build" WorkingDirectory="$(AppClientPath)" />
+    <ItemGroup>
+      <AppFiles Include="$(AppClientPath)/dist/**/*" />
+    </ItemGroup>
+    <MakeDir Directories="$(ProjectDir)wwwroot/app" />
+    <Copy SourceFiles="@(AppFiles)" DestinationFolder="$(ProjectDir)wwwroot/app/%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Message Importance="High" Text="Vue App client copied to wwwroot/app" />
+  </Target>
+
+  <!-- Clean App artifacts -->
+  <Target Name="CleanAppClient" AfterTargets="Clean">
+    <RemoveDir Directories="$(ProjectDir)wwwroot/app" />
+  </Target>
+
 </Project>
