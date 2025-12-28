@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Admin.Services;
@@ -16,9 +17,19 @@ public sealed class AuthAdminFacade(
                 $"auth/admin/users?page={page}&pageSize={pageSize}", ct);
             return response ?? new UsersResponse([], 0, page, pageSize);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Failed to get users");
+            logger.LogWarning(ex, "HTTP error getting users");
+            return new UsersResponse([], 0, page, pageSize);
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout getting users");
+            return new UsersResponse([], 0, page, pageSize);
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse users response");
             return new UsersResponse([], 0, page, pageSize);
         }
     }
@@ -29,9 +40,19 @@ public sealed class AuthAdminFacade(
         {
             return await _client.GetFromJsonAsync<UserDetail>($"auth/admin/users/{userId}", ct);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Failed to get user {UserId}", userId);
+            logger.LogWarning(ex, "HTTP error getting user {UserId}", userId);
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout getting user {UserId}", userId);
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse user response for {UserId}", userId);
             return null;
         }
     }
@@ -44,9 +65,19 @@ public sealed class AuthAdminFacade(
                 $"auth/admin/users/{userId}/sessions", ct);
             return response?.Sessions ?? [];
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Failed to get sessions for user {UserId}", userId);
+            logger.LogWarning(ex, "HTTP error getting sessions for user {UserId}", userId);
+            return [];
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout getting sessions for user {UserId}", userId);
+            return [];
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse sessions response for user {UserId}", userId);
             return [];
         }
     }
@@ -58,9 +89,14 @@ public sealed class AuthAdminFacade(
             var response = await _client.DeleteAsync($"auth/admin/sessions/{sessionId}", ct);
             return response.IsSuccessStatusCode;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Failed to revoke session {SessionId}", sessionId);
+            logger.LogWarning(ex, "HTTP error revoking session {SessionId}", sessionId);
+            return false;
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout revoking session {SessionId}", sessionId);
             return false;
         }
     }
@@ -72,9 +108,19 @@ public sealed class AuthAdminFacade(
             var response = await _client.GetFromJsonAsync<AdminStats>("auth/admin/stats", ct);
             return response ?? new AdminStats(0, 0, 0);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Failed to get stats");
+            logger.LogWarning(ex, "HTTP error getting stats");
+            return new AdminStats(0, 0, 0);
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout getting stats");
+            return new AdminStats(0, 0, 0);
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse stats response");
             return new AdminStats(0, 0, 0);
         }
     }

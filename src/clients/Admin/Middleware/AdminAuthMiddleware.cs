@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Admin.Middleware;
 
 public sealed class AdminAuthMiddleware(
@@ -62,9 +64,21 @@ public sealed class AdminAuthMiddleware(
 
             logger.LogDebug("Authenticated user {UserId}", result.UserId);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Failed to validate session");
+            logger.LogWarning(ex, "HTTP error validating session");
+            RedirectToLogin(context);
+            return;
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Session validation timed out");
+            RedirectToLogin(context);
+            return;
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse session validation response");
             RedirectToLogin(context);
             return;
         }

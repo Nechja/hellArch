@@ -37,7 +37,7 @@ let main args =
         | Some "warn"
         | Some "warning" -> LogLevel.Warning
         | Some "error" -> LogLevel.Error
-        | _ -> LogLevel.Debug // Default to debug for dev
+        | _ -> LogLevel.Debug
 
     builder.Logging.ClearProviders() |> ignore
     builder.Logging.SetMinimumLevel(logLevel) |> ignore
@@ -73,10 +73,8 @@ let main args =
     let dbConfig: Database.DatabaseConfig =
         { ConnectionString = getRequiredEnv "USER_DATABASE_URL" }
 
-    // Health endpoint
     app.MapGet("/user/health", Func<HttpContext, _>(Handlers.health)) |> ignore
 
-    // Profile endpoints
     app.MapGet(
         "/user/{userId:guid}",
         Func<Guid, HttpContext, _>(fun userId ctx -> Handlers.getProfile dbConfig userId ctx)
@@ -92,7 +90,6 @@ let main args =
     )
     |> ignore
 
-    // Preferences endpoints
     app.MapGet(
         "/user/{userId:guid}/preferences",
         Func<Guid, HttpContext, _>(fun userId ctx -> Handlers.getPreferences dbConfig userId ctx)
@@ -107,7 +104,6 @@ let main args =
 
     let logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("User")
 
-    // RabbitMQ consumer configuration
     let eventsConfig: Events.EventsConfig =
         {
             RabbitMQUrl = getRequiredEnv "RABBITMQ_URL"
@@ -115,11 +111,9 @@ let main args =
             Logger = logger
         }
 
-    // Start consumer as background task
     let cts = new CancellationTokenSource()
     let consumerTask = Events.startConsumer eventsConfig dbConfig cts.Token
 
-    // Handle graceful shutdown
     app.Lifetime.ApplicationStopping.Register(fun () ->
         logger.LogInformation("Shutting down event consumer...")
         cts.Cancel()

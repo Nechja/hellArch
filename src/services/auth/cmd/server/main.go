@@ -48,7 +48,6 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Initialize OpenTelemetry
 	shutdownTelemetry, err := telemetry.Setup(ctx, "auth")
 	if err != nil {
 		slog.Warn("failed to initialize telemetry, continuing without tracing", "error", err)
@@ -56,7 +55,6 @@ func main() {
 		defer shutdownTelemetry(ctx)
 	}
 
-	// Initialize stores
 	pgStore, err := store.NewPostgres(ctx, cfg.DatabaseURL)
 	if err != nil {
 		slog.Error("failed to connect to postgres", "error", err)
@@ -71,7 +69,6 @@ func main() {
 	}
 	defer redisStore.Close()
 
-	// Initialize event publisher
 	eventPublisher, err := events.NewPublisher(ctx, cfg.RabbitMQURL, "hellarch/auth")
 	if err != nil {
 		slog.Error("failed to connect to RabbitMQ", "error", err)
@@ -79,7 +76,6 @@ func main() {
 	}
 	defer eventPublisher.Close()
 
-	// Initialize services
 	jwtService, err := jwt.NewService(cfg.JWTPrivateKeyPath, cfg.JWTPublicKeyPath)
 	if err != nil {
 		slog.Error("failed to initialize jwt service", "error", err)
@@ -88,12 +84,10 @@ func main() {
 
 	oauthService := oauth.NewService(cfg.OAuth)
 
-	// Initialize handlers
 	authHandler := handler.NewAuthHandler(pgStore, redisStore, jwtService, oauthService, eventPublisher, cfg)
 	httpHandler := handler.NewHTTPHandler(authHandler)
 	adminHandler := handler.NewAdminHandler(pgStore, redisStore)
 
-	// Initialize gRPC server with OTel instrumentation
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 	)
@@ -103,7 +97,6 @@ func main() {
 		reflection.Register(grpcServer)
 	}
 
-	// Initialize HTTP server with OTel instrumentation
 	mux := http.NewServeMux()
 	httpHandler.RegisterRoutes(mux)
 	adminHandler.RegisterRoutes(mux)
@@ -112,7 +105,6 @@ func main() {
 		Handler: otelhttp.NewHandler(mux, "auth-http"),
 	}
 
-	// Start gRPC server
 	grpcLis, err := net.Listen("tcp", cfg.GRPCAddress)
 	if err != nil {
 		slog.Error("failed to listen for grpc", "error", err, "address", cfg.GRPCAddress)
@@ -126,7 +118,6 @@ func main() {
 		}
 	}()
 
-	// Start HTTP server
 	go func() {
 		slog.Info("HTTP server starting", "address", cfg.HTTPAddress)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -134,7 +125,6 @@ func main() {
 		}
 	}()
 
-	// Graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan

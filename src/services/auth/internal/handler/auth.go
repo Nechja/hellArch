@@ -69,7 +69,6 @@ func (h *AuthHandler) GetOAuthURL(ctx context.Context, provider oauth.Provider, 
 		return "", "", status.Error(codes.Internal, "failed to generate state")
 	}
 
-	// Store state with redirect URI for validation on callback
 	stateData, _ := json.Marshal(map[string]string{
 		"redirect_uri": redirectURI,
 		"created_at":   time.Now().Format(time.RFC3339),
@@ -88,7 +87,6 @@ func (h *AuthHandler) GetOAuthURL(ctx context.Context, provider oauth.Provider, 
 
 // HandleOAuthCallback processes the OAuth callback and creates/updates user
 func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Provider, code, state, ipAddress, userAgent string) (*AuthResult, error) {
-	// Validate state
 	stateData, err := h.redis.GetOAuthState(ctx, state)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid or expired state")
@@ -100,28 +98,24 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 		return nil, status.Error(codes.Internal, "failed to parse state")
 	}
 
-	// Exchange code for token
 	token, err := h.oauthService.Exchange(ctx, provider, code)
 	if err != nil {
 		slog.Error("oauth exchange failed", "error", err, "provider", provider)
 		return nil, status.Error(codes.Unauthenticated, "failed to exchange code")
 	}
 
-	// Get user info from provider
 	userInfo, err := h.oauthService.GetUserInfo(ctx, provider, token)
 	if err != nil {
 		slog.Error("failed to get user info", "error", err, "provider", provider)
 		return nil, status.Error(codes.Internal, "failed to get user info")
 	}
 
-	// Find or create user
 	user, isNewUser, err := h.findOrCreateUser(ctx, userInfo)
 	if err != nil {
 		slog.Error("failed to find or create user", "error", err)
 		return nil, status.Error(codes.Internal, "failed to create user")
 	}
 
-	// Publish user.created event for new users
 	if isNewUser {
 		if err := h.publisher.PublishUserCreated(ctx, events.UserCreatedData{
 			UserID:         user.ID,
@@ -133,17 +127,14 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 			CreatedAt:      user.CreatedAt.Format(time.RFC3339),
 		}); err != nil {
 			slog.Error("failed to publish user.created event", "error", err, "user_id", user.ID)
-			// Don't fail the auth flow for event publishing errors
 		}
 	}
 
-	// Generate tokens
 	accessToken, refreshToken, err := h.generateTokens(user, userInfo)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate tokens")
 	}
 
-	// Create session with client info for audit trail
 	sessionToken, err := h.createSession(ctx, user.ID, ipAddress, userAgent)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to create session")
@@ -166,7 +157,6 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 }
 
 func (h *AuthHandler) findOrCreateUser(ctx context.Context, info *oauth.UserInfo) (*store.User, bool, error) {
-	// Try to find existing user by provider ID
 	user, err := h.postgres.GetUserByProviderID(ctx, string(info.Provider), info.ID)
 	if err == nil {
 		return user, false, nil
@@ -176,13 +166,11 @@ func (h *AuthHandler) findOrCreateUser(ctx context.Context, info *oauth.UserInfo
 		return nil, false, err
 	}
 
-	// Create new user
 	user, err = h.postgres.CreateUser(ctx, info.Email, info.Username)
 	if err != nil {
 		return nil, false, err
 	}
 
-	// Link the OAuth account
 	err = h.postgres.CreateLinkedAccount(ctx, &store.LinkedAccount{
 		UserID:         user.ID,
 		Provider:       string(info.Provider),
@@ -225,7 +213,6 @@ func (h *AuthHandler) createSession(ctx context.Context, userID, ipAddress, user
 		return "", err
 	}
 
-	// Generate a proper UUID for the session ID (database expects UUID type)
 	sessionID := uuid.New().String()
 
 	session := &store.Session{
@@ -241,7 +228,6 @@ func (h *AuthHandler) createSession(ctx context.Context, userID, ipAddress, user
 		return "", err
 	}
 
-	// Cache session in Redis for fast lookups
 	if err := h.redis.CacheSession(ctx, sessionToken, userID, SessionDuration); err != nil {
 		slog.Warn("failed to cache session in redis", "error", err)
 	}
@@ -251,19 +237,16 @@ func (h *AuthHandler) createSession(ctx context.Context, userID, ipAddress, user
 
 // ValidateSession validates a session token and returns the user ID
 func (h *AuthHandler) ValidateSession(ctx context.Context, sessionToken string) (string, error) {
-	// Check Redis cache first
 	userID, err := h.redis.GetCachedSession(ctx, sessionToken)
 	if err == nil {
 		return userID, nil
 	}
 
-	// Fall back to database
 	session, err := h.postgres.GetSessionByToken(ctx, sessionToken)
 	if err != nil {
 		return "", status.Error(codes.Unauthenticated, "invalid session")
 	}
 
-	// Re-cache in Redis
 	_ = h.redis.CacheSession(ctx, sessionToken, session.UserID, time.Until(session.ExpiresAt))
 
 	return session.UserID, nil
@@ -281,7 +264,6 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, refreshToken string) (st
 		return "", "", status.Error(codes.NotFound, "user not found")
 	}
 
-	// Get linked account for additional claims
 	accounts, err := h.postgres.GetLinkedAccounts(ctx, user.ID)
 	if err != nil || len(accounts) == 0 {
 		return "", "", status.Error(codes.Internal, "no linked accounts")

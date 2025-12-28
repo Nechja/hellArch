@@ -25,14 +25,21 @@ public sealed class RedisBrowserAdapter(
                     ttl));
 
                 if (keys.Count >= count)
+                {
                     break;
+                }
             }
 
             return keys;
         }
-        catch (Exception ex)
+        catch (RedisException ex)
         {
-            logger.LogWarning(ex, "Failed to scan Redis keys with pattern {Pattern}", pattern);
+            logger.LogWarning(ex, "Redis error scanning keys with pattern {Pattern}", pattern);
+            return [];
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "Invalid operation scanning Redis keys with pattern {Pattern}", pattern);
             return [];
         }
     }
@@ -57,9 +64,9 @@ public sealed class RedisBrowserAdapter(
 
             return new RedisKeyDetail(key, keyType.ToString(), value, ttl);
         }
-        catch (Exception ex)
+        catch (RedisException ex)
         {
-            logger.LogWarning(ex, "Failed to get Redis key detail for {Key}", key);
+            logger.LogWarning(ex, "Redis error getting key detail for {Key}", key);
             return null;
         }
     }
@@ -71,9 +78,9 @@ public sealed class RedisBrowserAdapter(
             var db = redis.GetDatabase();
             return await db.KeyDeleteAsync(key);
         }
-        catch (Exception ex)
+        catch (RedisException ex)
         {
-            logger.LogWarning(ex, "Failed to delete Redis key {Key}", key);
+            logger.LogWarning(ex, "Redis error deleting key {Key}", key);
             return false;
         }
     }
@@ -91,9 +98,9 @@ public sealed class RedisBrowserAdapter(
                 endpoints.Select(e => e.ToString() ?? "unknown").ToList(),
                 configuration);
         }
-        catch (Exception ex)
+        catch (RedisException ex)
         {
-            logger.LogWarning(ex, "Failed to get Redis connection info");
+            logger.LogWarning(ex, "Redis error getting connection info");
             return new RedisConnectionInfo(false, [], "unknown");
         }
     }

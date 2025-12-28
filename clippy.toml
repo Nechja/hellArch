@@ -1,0 +1,6 @@
+avoid-breaking-exported-api = false
+cognitive-complexity-threshold = 15
+disallowed-names = ["foo", "bar", "baz"]
+doc-valid-idents = ["CloudEvent", "RabbitMQ", "OAuth", "UUID"]
+too-many-arguments-threshold = 7
+type-complexity-threshold = 250

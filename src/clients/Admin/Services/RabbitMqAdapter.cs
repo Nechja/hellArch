@@ -35,9 +35,19 @@ public sealed class RabbitMqAdapter(
         {
             return await GetClient().GetFromJsonAsync<RabbitMqOverview>("api/overview", ct);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Failed to get RabbitMQ overview");
+            logger.LogWarning(ex, "HTTP error getting RabbitMQ overview");
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout getting RabbitMQ overview");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse RabbitMQ overview response");
             return null;
         }
     }
@@ -49,9 +59,19 @@ public sealed class RabbitMqAdapter(
             var queues = await GetClient().GetFromJsonAsync<List<QueueInfo>>("api/queues", ct);
             return queues ?? [];
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Failed to get RabbitMQ queues");
+            logger.LogWarning(ex, "HTTP error getting RabbitMQ queues");
+            return [];
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout getting RabbitMQ queues");
+            return [];
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse RabbitMQ queues response");
             return [];
         }
     }
@@ -63,9 +83,19 @@ public sealed class RabbitMqAdapter(
             var exchanges = await GetClient().GetFromJsonAsync<List<ExchangeInfo>>("api/exchanges", ct);
             return exchanges?.Where(e => !string.IsNullOrEmpty(e.Name)).ToList() ?? [];
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Failed to get RabbitMQ exchanges");
+            logger.LogWarning(ex, "HTTP error getting RabbitMQ exchanges");
+            return [];
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout getting RabbitMQ exchanges");
+            return [];
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse RabbitMQ exchanges response");
             return [];
         }
     }
@@ -99,9 +129,19 @@ public sealed class RabbitMqAdapter(
             var messages = await response.Content.ReadFromJsonAsync<List<RabbitMqMessage>>(ct);
             return messages ?? [];
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Failed to get messages from queue {Queue}", queueName);
+            logger.LogWarning(ex, "HTTP error getting messages from queue {Queue}", queueName);
+            return [];
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout getting messages from queue {Queue}", queueName);
+            return [];
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse messages from queue {Queue}", queueName);
             return [];
         }
     }
@@ -125,7 +165,7 @@ public sealed class RabbitMqAdapter(
                     events.Add(cloudEvent);
                 }
             }
-            catch (Exception ex)
+            catch (JsonException ex)
             {
                 logger.LogDebug(ex, "Failed to parse message as CloudEvent");
             }

@@ -11,6 +11,19 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-all</AnalysisLevel>
     <WarningLevel>9999</WarningLevel>
+    <!-- Suppress pedantic analyzer rules -->
+    <NoWarn>
+      CA1515;<!-- Types should be internal (not applicable for apps) -->
+      CA1848;<!-- Use LoggerMessage.Define (perf optimization) -->
+      CA1307;<!-- Specify StringComparison (noisy for PathString) -->
+      CA1308;<!-- Use ToUpperInvariant -->
+      CA1054;<!-- Uri parameters should be Uri type -->
+      CA1056;<!-- Uri properties should be Uri type -->
+      CA2234;<!-- Pass Uri instead of string -->
+      CA1062;<!-- Validate parameters (nullable handles this) -->
+      CA2007;<!-- ConfigureAwait not needed in ASP.NET Core -->
+      CA1812 <!-- False positives with DI-instantiated classes -->
+    </NoWarn>
   </PropertyGroup>
 
   <!-- C# analyzers -->

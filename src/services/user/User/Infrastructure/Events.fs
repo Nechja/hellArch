@@ -23,7 +23,6 @@ module Events =
     let private activitySource = new ActivitySource("hellarch/user/events")
     let private propagator = Propagators.DefaultTextMapPropagator
 
-    // Helper to extract trace context from RabbitMQ headers
     let private extractTraceContext (headers: IDictionary<string, obj>) =
         let getter =
             Func<IDictionary<string, obj>, string, string seq>(fun carrier key ->
@@ -72,14 +71,11 @@ module Events =
     let private handleUserCreated (logger: ILogger) (dbConfig: Database.DatabaseConfig) (data: UserCreatedData) =
         task {
             let authUserId = Guid.Parse(data.user_id)
-
-            // Check if profile already exists for this auth user
             let! existingProfile = Database.getProfileByAuthUserId dbConfig authUserId |> Async.StartAsTask
 
             match existingProfile with
             | Ok(Some _) -> logger.LogDebug("Profile already exists for auth user {AuthUserId}, skipping", data.user_id)
             | Ok None ->
-                // Create the profile
                 let request: CreateProfileFromEvent =
                     {
                         AuthUserId = authUserId
@@ -115,7 +111,6 @@ module Events =
             let! connection = factory.CreateConnectionAsync(cancellationToken)
             let! channel = connection.CreateChannelAsync(cancellationToken = cancellationToken)
 
-            // Declare exchange (must match publisher)
             do!
                 channel.ExchangeDeclareAsync(
                     exchange = "hellarch.events",
@@ -126,7 +121,6 @@ module Events =
                     cancellationToken = cancellationToken
                 )
 
-            // Declare queue for this service
             let! _ =
                 channel.QueueDeclareAsync(
                     queue = config.QueueName,
@@ -137,7 +131,6 @@ module Events =
                     cancellationToken = cancellationToken
                 )
 
-            // Bind to user events
             do!
                 channel.QueueBindAsync(
                     queue = config.QueueName,
@@ -154,7 +147,6 @@ module Events =
             let handler =
                 AsyncEventHandler<BasicDeliverEventArgs>(fun _ args ->
                     task {
-                        // Extract trace context from headers
                         let parentContext =
                             match args.BasicProperties.Headers with
                             | null -> PropagationContext()
@@ -166,7 +158,6 @@ module Events =
 
                                 extractTraceContext dict
 
-                        // Start a span for this message
                         use activity =
                             activitySource.StartActivity(
                                 "rabbitmq.consume",
@@ -232,7 +223,6 @@ module Events =
                     cancellationToken = cancellationToken
                 )
 
-            // Keep running until cancelled
             while not cancellationToken.IsCancellationRequested do
                 do! Task.Delay(1000, cancellationToken)
 
