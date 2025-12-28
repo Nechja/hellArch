@@ -7,6 +7,7 @@ open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
+open Npgsql
 open OpenTelemetry.Resources
 open OpenTelemetry.Trace
 open User.Api
@@ -43,6 +44,7 @@ let main args =
             tracing
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
+                .AddNpgsql()
                 .AddOtlpExporter(fun options ->
                     options.Endpoint <- Uri(otelEndpoint)
                 ) |> ignore

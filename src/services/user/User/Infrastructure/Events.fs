@@ -5,15 +5,35 @@ namespace User.Infrastructure
 #nowarn "3264" // Downcasting nullness
 
 open System
+open System.Collections.Generic
+open System.Diagnostics
 open System.Text
 open System.Text.Json
 open System.Threading
 open System.Threading.Tasks
+open OpenTelemetry
+open OpenTelemetry.Context.Propagation
 open RabbitMQ.Client
 open RabbitMQ.Client.Events
 open User.Domain
 
 module Events =
+
+    let private activitySource = new ActivitySource("hellarch/user/events")
+    let private propagator = Propagators.DefaultTextMapPropagator
+
+    // Helper to extract trace context from RabbitMQ headers
+    let private extractTraceContext (headers: IDictionary<string, obj>) =
+        let getter =
+            TextMapPropagator.Getter<IDictionary<string, obj>>(fun carrier key ->
+                match carrier.TryGetValue(key) with
+                | true, value when not (isNull value) ->
+                    match value with
+                    | :? (byte array) as bytes -> seq { Encoding.UTF8.GetString(bytes) }
+                    | :? string as s -> seq { s }
+                    | _ -> Seq.empty
+                | _ -> Seq.empty)
+        propagator.Extract(Baggage.Current, headers, getter)
 
     [<CLIMutable>]
     type CloudEvent<'T> =

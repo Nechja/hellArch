@@ -303,7 +303,10 @@ void GenerateFSharp(TypeDef def, string domain, string outDir)
     }
 
     if (!string.IsNullOrEmpty(def.Doc))
-        sb.AppendLine($"/// {def.Doc}");
+    {
+        foreach (var line in def.Doc.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+            sb.AppendLine($"/// {line.Trim()}");
+    }
     sb.AppendLine($"type {def.Name} = {{");
 
     foreach (var p in def.Properties)
@@ -319,6 +322,18 @@ void GenerateFSharp(TypeDef def, string domain, string outDir)
 
 string CSharpToFSharp(string type, bool nullable)
 {
+    // Handle collection types: ICollection<T>, List<T>, IEnumerable<T> -> T list
+    if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
+        type.StartsWith("List<", StringComparison.Ordinal) ||
+        type.StartsWith("IEnumerable<", StringComparison.Ordinal))
+    {
+#pragma warning disable CA1865, CA1307
+        var innerType = type.Substring(type.IndexOf('<') + 1).TrimEnd('>');
+#pragma warning restore CA1865, CA1307
+        var fsInner = CSharpToFSharp(innerType, false);
+        return $"{fsInner} list";
+    }
+
     var fsType = type switch
     {
         "Guid" => "Guid",

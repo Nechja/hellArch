@@ -9,6 +9,12 @@ import (
 
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -27,11 +33,37 @@ const (
 	EventTypeAccountUnlinked = "hellarch.auth.account.unlinked.v1"
 )
 
+var tracer = otel.Tracer("hellarch/auth/events")
+
 // Publisher handles publishing CloudEvents to RabbitMQ
 type Publisher struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
 	source  string
+}
+
+// amqpCarrier implements propagation.TextMapCarrier for AMQP headers
+type amqpCarrier amqp.Table
+
+func (c amqpCarrier) Get(key string) string {
+	if v, ok := c[key]; ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+func (c amqpCarrier) Set(key, value string) {
+	c[key] = value
+}
+
+func (c amqpCarrier) Keys() []string {
+	keys := make([]string, 0, len(c))
+	for k := range c {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // NewPublisher creates a new RabbitMQ event publisher
@@ -93,6 +125,17 @@ type CloudEvent struct {
 
 // Publish publishes a CloudEvent to RabbitMQ
 func (p *Publisher) Publish(ctx context.Context, eventType string, data any, traceParent string) error {
+	ctx, span := tracer.Start(ctx, "rabbitmq.publish",
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(
+			semconv.MessagingSystemRabbitmq,
+			semconv.MessagingDestinationName(ExchangeName),
+			semconv.MessagingRabbitmqDestinationRoutingKey(eventType),
+			attribute.String("messaging.cloudevents.type", eventType),
+		),
+	)
+	defer span.End()
+
 	event := CloudEvent{
 		SpecVersion:     "1.0",
 		ID:              uuid.New().String(),
@@ -111,11 +154,24 @@ func (p *Publisher) Publish(ctx context.Context, eventType string, data any, tra
 
 	body, err := json.Marshal(event)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to marshal event")
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
 	// Use event type as routing key (dots work well with topic exchanges)
 	routingKey := eventType
+
+	// Build headers with CloudEvents metadata and trace context
+	headers := amqp.Table{
+		"ce-specversion": event.SpecVersion,
+		"ce-id":          event.ID,
+		"ce-source":      event.Source,
+		"ce-type":        event.Type,
+	}
+
+	// Inject trace context into headers
+	otel.GetTextMapPropagator().Inject(ctx, amqpCarrier(headers))
 
 	if err := p.channel.PublishWithContext(
 		ctx,
@@ -129,17 +185,15 @@ func (p *Publisher) Publish(ctx context.Context, eventType string, data any, tra
 			MessageId:    event.ID,
 			Timestamp:    time.Now(),
 			Body:         body,
-			Headers: amqp.Table{
-				"ce-specversion": event.SpecVersion,
-				"ce-id":          event.ID,
-				"ce-source":      event.Source,
-				"ce-type":        event.Type,
-			},
+			Headers:      headers,
 		},
 	); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to publish event")
 		return fmt.Errorf("failed to publish event: %w", err)
 	}
 
+	span.SetAttributes(attribute.String("messaging.message.id", event.ID))
 	slog.Debug("published event", "type", eventType, "id", event.ID)
 	return nil
 }
