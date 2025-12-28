@@ -1,5 +1,5 @@
 services:
-  test-auth-db:
+  auth-db:
     image: hellarch-auth-db
     build:
       context: ..
@@ -19,7 +19,7 @@ services:
     networks:
       - hellarch-test
 
-  test-user-db:
+  user-db:
     image: hellarch-user-db
     build:
       context: ..
@@ -39,7 +39,7 @@ services:
     networks:
       - hellarch-test
 
-  test-redis:
+  redis:
     image: redis:7-alpine
     container_name: hellarch-test-redis
     healthcheck:
@@ -50,7 +50,7 @@ services:
     networks:
       - hellarch-test
 
-  test-rabbitmq:
+  rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: hellarch-test-rabbitmq
     environment:

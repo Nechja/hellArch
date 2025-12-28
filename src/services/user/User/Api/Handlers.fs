@@ -170,3 +170,37 @@ module Handlers =
                         do! writeJson ctx 404 {| error = "not_found"; message = "Profile not found" |}
                     | Error err -> do! handleError ctx err
         }
+
+    let updateMe (dbConfig: Database.DatabaseConfig) (ctx: HttpContext) =
+        task {
+            match ctx.Request.Headers.TryGetValue("X-User-ID") with
+            | false, _ ->
+                do! writeJson ctx 401 {| error = "unauthorized"; message = "No user ID in request" |}
+            | true, values ->
+                match Guid.TryParse(values.ToString()) with
+                | false, _ ->
+                    do! writeJson ctx 400 {| error = "bad_request"; message = "Invalid user ID format" |}
+                | true, authUserId ->
+                    let! profileResult = Database.getProfileByAuthUserId dbConfig authUserId |> Async.StartAsTask
+
+                    match profileResult with
+                    | Ok(Some profile) ->
+                        let! bodyNullable = ctx.Request.ReadFromJsonAsync<UpdateProfileRequest>()
+
+                        match Option.ofObj bodyNullable with
+                        | None ->
+                            do! writeJson ctx 400 {| error = "bad_request"; message = "Invalid request body" |}
+                        | Some body ->
+                            let! result =
+                                Database.updateProfile dbConfig profile.Id body.DisplayName body.AvatarUrl body.Bio
+                                |> Async.StartAsTask
+
+                            match result with
+                            | Ok updated ->
+                                let dto = Mapping.UserProfile.toDto updated
+                                do! writeJson ctx 200 dto
+                            | Error err -> do! handleError ctx err
+                    | Ok None ->
+                        do! writeJson ctx 404 {| error = "not_found"; message = "Profile not found" |}
+                    | Error err -> do! handleError ctx err
+        }
