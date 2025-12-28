@@ -179,7 +179,6 @@ func (p *Postgres) DeleteSessionByToken(ctx context.Context, token string) error
 // Admin methods
 
 func (p *Postgres) ListUsers(ctx context.Context, limit, offset int) ([]*User, int, error) {
-	// Get total count
 	var total int
 	if err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM users`).Scan(&total); err != nil {
 		return nil, 0, err

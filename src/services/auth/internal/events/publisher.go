@@ -34,7 +34,6 @@ const (
 
 var tracer = otel.Tracer("hellarch/auth/events")
 
-// Publisher handles publishing CloudEvents to RabbitMQ
 type Publisher struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
@@ -65,7 +64,6 @@ func (c amqpCarrier) Keys() []string {
 	return keys
 }
 
-// NewPublisher creates a new RabbitMQ event publisher
 func NewPublisher(ctx context.Context, amqpURL, source string) (*Publisher, error) {
 	conn, err := amqp.Dial(amqpURL)
 	if err != nil {
@@ -101,7 +99,6 @@ func NewPublisher(ctx context.Context, amqpURL, source string) (*Publisher, erro
 	}, nil
 }
 
-// Close closes the RabbitMQ connection
 func (p *Publisher) Close() error {
 	if err := p.channel.Close(); err != nil {
 		return err
@@ -121,7 +118,6 @@ type CloudEvent struct {
 	Extensions      map[string]string `json:"extensions,omitempty"`
 }
 
-// Publish publishes a CloudEvent to RabbitMQ
 func (p *Publisher) Publish(ctx context.Context, eventType string, data any, traceParent string) error {
 	ctx, span := tracer.Start(ctx, "rabbitmq.publish",
 		trace.WithSpanKind(trace.SpanKindProducer),
@@ -160,7 +156,6 @@ func (p *Publisher) Publish(ctx context.Context, eventType string, data any, tra
 	// Use event type as routing key (dots work well with topic exchanges)
 	routingKey := eventType
 
-	// Build headers with CloudEvents metadata and trace context
 	headers := amqp.Table{
 		"ce-specversion": event.SpecVersion,
 		"ce-id":          event.ID,
@@ -168,7 +163,6 @@ func (p *Publisher) Publish(ctx context.Context, eventType string, data any, tra
 		"ce-type":        event.Type,
 	}
 
-	// Inject trace context into headers
 	otel.GetTextMapPropagator().Inject(ctx, amqpCarrier(headers))
 
 	if err := p.channel.PublishWithContext(
@@ -207,7 +201,6 @@ type UserCreatedData struct {
 	CreatedAt      string `json:"created_at"`
 }
 
-// PublishUserCreated publishes a user.created event
 func (p *Publisher) PublishUserCreated(ctx context.Context, data UserCreatedData) error {
 	return p.Publish(ctx, EventTypeUserCreated, data, "")
 }
@@ -222,7 +215,6 @@ type SessionCreatedData struct {
 	ExpiresAt string `json:"expires_at"`
 }
 
-// PublishSessionCreated publishes a session.created event
 func (p *Publisher) PublishSessionCreated(ctx context.Context, data SessionCreatedData) error {
 	return p.Publish(ctx, EventTypeSessionCreated, data, "")
 }
@@ -236,7 +228,6 @@ type AccountLinkedData struct {
 	LinkedAt       string `json:"linked_at"`
 }
 
-// PublishAccountLinked publishes an account.linked event
 func (p *Publisher) PublishAccountLinked(ctx context.Context, data AccountLinkedData) error {
 	return p.Publish(ctx, EventTypeAccountLinked, data, "")
 }

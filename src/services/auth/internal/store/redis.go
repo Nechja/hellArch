@@ -30,7 +30,6 @@ func NewRedis(ctx context.Context, redisURL string) (*Redis, error) {
 
 	client := redis.NewClient(opt)
 
-	// Enable OTel tracing
 	if err := redisotel.InstrumentTracing(client); err != nil {
 		return nil, fmt.Errorf("failed to instrument redis tracing: %w", err)
 	}

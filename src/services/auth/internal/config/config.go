@@ -5,7 +5,6 @@ import (
 	"os"
 )
 
-// Config holds all application configuration values.
 type Config struct {
 	Environment       string
 	GRPCAddress       string
@@ -18,14 +17,12 @@ type Config struct {
 	OAuth             OAuthConfig
 }
 
-// OAuthConfig holds OAuth provider configurations.
 type OAuthConfig struct {
 	Discord ProviderConfig
 	Google  ProviderConfig
 	GitHub  ProviderConfig
 }
 
-// ProviderConfig holds credentials for a single OAuth provider.
 type ProviderConfig struct {
 	ClientID     string
 	ClientSecret string
