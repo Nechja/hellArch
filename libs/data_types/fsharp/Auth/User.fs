@@ -7,6 +7,8 @@ type User = {
     Id: Guid
     Email: string
     Username: string
+    IsActive: bool
+    Permissions: Dictionary<string, bool> option
     CreatedAt: DateTime
     UpdatedAt: DateTime
     Sessions: Session list

@@ -10,6 +10,10 @@ pub struct User {
     pub email: String,
     #[serde(rename = "username")]
     pub username: String,
+    #[serde(rename = "is_active")]
+    pub is_active: bool,
+    #[serde(rename = "permissions")]
+    pub permissions: Option<Dictionary<string, bool>>,
     #[serde(rename = "created_at")]
     pub created_at: DateTime<Utc>,
     #[serde(rename = "updated_at")]
