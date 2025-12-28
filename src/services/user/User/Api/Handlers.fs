@@ -7,6 +7,13 @@ open User.Domain
 open User.Infrastructure
 open HellArch.User.V1
 
+[<CLIMutable>]
+type UpdateMeRequest = {
+    DisplayName: string
+    AvatarUrl: string
+    Bio: string
+}
+
 module Handlers =
 
     let private jsonOptions =
@@ -43,7 +50,7 @@ module Handlers =
 
     let createProfile (dbConfig: Database.DatabaseConfig) (ctx: HttpContext) =
         task {
-            let! bodyNullable = ctx.Request.ReadFromJsonAsync<CreateProfileRequest>()
+            let! bodyNullable = ctx.Request.ReadFromJsonAsync<CreateProfileRequest>(jsonOptions)
 
             match Option.ofObj bodyNullable with
             | None ->
@@ -83,7 +90,7 @@ module Handlers =
 
     let updateProfile (dbConfig: Database.DatabaseConfig) (userId: Guid) (ctx: HttpContext) =
         task {
-            let! bodyNullable = ctx.Request.ReadFromJsonAsync<UpdateProfileRequest>()
+            let! bodyNullable = ctx.Request.ReadFromJsonAsync<UpdateProfileRequest>(jsonOptions)
 
             match Option.ofObj bodyNullable with
             | None ->
@@ -125,7 +132,7 @@ module Handlers =
 
     let updatePreferences (dbConfig: Database.DatabaseConfig) (userId: Guid) (ctx: HttpContext) =
         task {
-            let! prefsNullable = ctx.Request.ReadFromJsonAsync<HellArch.User.V1.UserPreferences>()
+            let! prefsNullable = ctx.Request.ReadFromJsonAsync<HellArch.User.V1.UserPreferences>(jsonOptions)
 
             match Option.ofObj prefsNullable with
             | None ->
@@ -185,14 +192,18 @@ module Handlers =
 
                     match profileResult with
                     | Ok(Some profile) ->
-                        let! bodyNullable = ctx.Request.ReadFromJsonAsync<UpdateProfileRequest>()
+                        let! bodyNullable = JsonSerializer.DeserializeAsync<UpdateMeRequest>(ctx.Request.Body, jsonOptions)
 
                         match Option.ofObj bodyNullable with
                         | None ->
                             do! writeJson ctx 400 {| error = "bad_request"; message = "Invalid request body" |}
                         | Some body ->
+                            let displayName = if String.IsNullOrEmpty body.DisplayName then None else Some body.DisplayName
+                            let avatarUrl = if String.IsNullOrEmpty body.AvatarUrl then None else Some body.AvatarUrl
+                            let bio = if String.IsNullOrEmpty body.Bio then None else Some body.Bio
+
                             let! result =
-                                Database.updateProfile dbConfig profile.Id body.DisplayName body.AvatarUrl body.Bio
+                                Database.updateProfile dbConfig profile.Id displayName avatarUrl bio
                                 |> Async.StartAsTask
 
                             match result with

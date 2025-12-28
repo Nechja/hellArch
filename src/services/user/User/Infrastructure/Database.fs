@@ -51,15 +51,18 @@ module Database =
     let getProfile (config: DatabaseConfig) (userId: Guid) =
         async {
             try
-                let! result =
+                let! results =
                     config.ConnectionString
                     |> Sql.connect
                     |> Sql.query "SELECT * FROM user_profiles WHERE id = @id"
                     |> Sql.parameters [ "id", Sql.uuid userId ]
-                    |> Sql.executeRowAsync parseProfile
+                    |> Sql.executeAsync parseProfile
                     |> Async.AwaitTask
 
-                return Ok result
+                match results with
+                | [ profile ] -> return Ok profile
+                | [] -> return Error(UserError.NotFound userId)
+                | _ -> return Error(UserError.DatabaseError "Multiple profiles found for same ID")
             with ex ->
                 return Error(UserError.DatabaseError ex.Message)
         }
@@ -83,7 +86,7 @@ module Database =
     let createProfile (config: DatabaseConfig) (request: CreateProfileFromEvent) =
         async {
             try
-                let! result =
+                let! results =
                     config.ConnectionString
                     |> Sql.connect
                     |> Sql.query
@@ -100,11 +103,16 @@ module Database =
                             "display_name", Sql.stringOrNone request.DisplayName
                             "avatar_url", Sql.stringOrNone request.AvatarUrl
                         ]
-                    |> Sql.executeRowAsync parseProfile
+                    |> Sql.executeAsync parseProfile
                     |> Async.AwaitTask
 
-                return Ok result
-            with ex ->
+                match results with
+                | [ profile ] -> return Ok profile
+                | _ -> return Error(UserError.DatabaseError "Insert did not return expected row")
+            with
+            | :? Npgsql.PostgresException as ex when ex.SqlState = "23505" ->
+                return Error(UserError.Conflict "Profile already exists for this user")
+            | ex ->
                 return Error(UserError.DatabaseError ex.Message)
         }
 
@@ -117,7 +125,7 @@ module Database =
         =
         async {
             try
-                let! result =
+                let! results =
                     config.ConnectionString
                     |> Sql.connect
                     |> Sql.query
@@ -137,10 +145,13 @@ module Database =
                             "avatar_url", Sql.stringOrNone avatarUrl
                             "bio", Sql.stringOrNone bio
                         ]
-                    |> Sql.executeRowAsync parseProfile
+                    |> Sql.executeAsync parseProfile
                     |> Async.AwaitTask
 
-                return Ok result
+                match results with
+                | [ profile ] -> return Ok profile
+                | [] -> return Error(UserError.NotFound userId)
+                | _ -> return Error(UserError.DatabaseError "Update returned multiple rows")
             with ex ->
                 return Error(UserError.DatabaseError ex.Message)
         }
