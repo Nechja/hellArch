@@ -55,14 +55,10 @@ func NewAuthHandler(
 	}
 }
 
-// RegisterAuthServiceServer registers a placeholder - actual proto implementation needed
 func RegisterAuthServiceServer(s *grpc.Server, h *AuthHandler) {
-	// Proto-generated code will register the actual service
-	// For now, this is a placeholder that will be replaced when protos are generated
 	slog.Info("auth handler registered (proto registration pending)")
 }
 
-// GetOAuthURL generates an OAuth authorization URL for the specified provider
 func (h *AuthHandler) GetOAuthURL(ctx context.Context, provider oauth.Provider, redirectURI string) (string, string, error) {
 	state, err := generateRandomState()
 	if err != nil {
@@ -85,7 +81,6 @@ func (h *AuthHandler) GetOAuthURL(ctx context.Context, provider oauth.Provider, 
 	return authURL, state, nil
 }
 
-// HandleOAuthCallback processes the OAuth callback and creates/updates user
 func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Provider, code, state, ipAddress, userAgent string) (*AuthResult, error) {
 	stateData, err := h.redis.GetOAuthState(ctx, state)
 	if err != nil {
@@ -235,7 +230,6 @@ func (h *AuthHandler) createSession(ctx context.Context, userID, ipAddress, user
 	return sessionToken, nil
 }
 
-// ValidateSession validates a session token and returns the user ID
 func (h *AuthHandler) ValidateSession(ctx context.Context, sessionToken string) (string, error) {
 	userID, err := h.redis.GetCachedSession(ctx, sessionToken)
 	if err == nil {
@@ -252,7 +246,6 @@ func (h *AuthHandler) ValidateSession(ctx context.Context, sessionToken string) 
 	return session.UserID, nil
 }
 
-// RefreshToken exchanges a refresh token for new access and refresh tokens
 func (h *AuthHandler) RefreshToken(ctx context.Context, refreshToken string) (string, string, error) {
 	claims, err := h.jwtService.ValidateToken(refreshToken)
 	if err != nil {
@@ -289,12 +282,10 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, refreshToken string) (st
 	return accessToken, newRefreshToken, nil
 }
 
-// ValidateToken validates a JWT and returns the claims
 func (h *AuthHandler) ValidateToken(ctx context.Context, token string) (*jwt.Claims, error) {
 	return h.jwtService.ValidateToken(token)
 }
 
-// AuthResult represents the result of a successful authentication
 type AuthResult struct {
 	AccessToken  string
 	RefreshToken string
@@ -304,7 +295,6 @@ type AuthResult struct {
 	RedirectURI  string
 }
 
-// UserInfo represents user information returned after authentication
 type UserInfo struct {
 	ID        string
 	Email     string
@@ -321,12 +311,10 @@ func generateRandomState() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-// ptr returns a pointer to the given string
 func ptr(s string) *string {
 	return &s
 }
 
-// ptrOrNil returns nil if the string is empty, otherwise a pointer to it
 func ptrOrNil(s string) *string {
 	if s == "" {
 		return nil
@@ -334,7 +322,6 @@ func ptrOrNil(s string) *string {
 	return &s
 }
 
-// deref returns the string value or empty string if nil
 func deref(s *string) string {
 	if s == nil {
 		return ""

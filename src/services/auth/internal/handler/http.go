@@ -74,7 +74,6 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Set session cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "hellarch_session",
 		Value:    result.SessionToken,
@@ -85,7 +84,6 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 		MaxAge:   30 * 24 * 60 * 60, // 30 days
 	})
 
-	// If redirect URI was provided, redirect back to it
 	if result.RedirectURI != "" {
 		http.Redirect(w, r, result.RedirectURI, http.StatusTemporaryRedirect)
 		return
@@ -125,76 +123,78 @@ func (h *HTTPHandler) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"access_token":  accessToken,
 		"refresh_token": refreshToken,
 		"expires_in":    int64(AccessTokenDuration.Seconds()),
-	})
+	}); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
 }
 
 func (h *HTTPHandler) handleValidate(w http.ResponseWriter, r *http.Request) {
-	// Check for session token in header (from gateway)
 	sessionToken := r.Header.Get("X-Session-Token")
 	if sessionToken != "" {
 		userID, err := h.auth.ValidateSession(r.Context(), sessionToken)
 		if err == nil {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
 				"valid":   true,
 				"user_id": userID,
-			})
+			}); err != nil {
+				slog.Error("failed to encode response", "error", err)
+			}
 			return
 		}
 	}
 
-	// Check for JWT in Authorization header
 	authHeader := r.Header.Get("Authorization")
 	if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		claims, err := h.auth.ValidateToken(r.Context(), token)
 		if err == nil {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
 				"valid":    true,
 				"user_id":  claims.UserID,
 				"email":    claims.Email,
 				"username": claims.Username,
-			})
+			}); err != nil {
+				slog.Error("failed to encode response", "error", err)
+			}
 			return
 		}
 	}
 
 	w.WriteHeader(http.StatusUnauthorized)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"valid": false,
-	})
+	}); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
 }
 
 func (h *HTTPHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status": "healthy",
-	})
+	}); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
 }
 
-// getClientIP extracts the client IP address from the request,
-// handling proxied requests via X-Forwarded-For and X-Real-IP headers
 func getClientIP(r *http.Request) string {
-	// Check X-Forwarded-For first (may contain multiple IPs)
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		// Take the first IP (original client)
 		if idx := strings.Index(xff, ","); idx != -1 {
 			return strings.TrimSpace(xff[:idx])
 		}
 		return strings.TrimSpace(xff)
 	}
 
-	// Check X-Real-IP
 	if xri := r.Header.Get("X-Real-IP"); xri != "" {
 		return strings.TrimSpace(xri)
 	}
 
-	// Fall back to RemoteAddr (strip port if present)
 	addr := r.RemoteAddr
 	if idx := strings.LastIndex(addr, ":"); idx != -1 {
 		return addr[:idx]

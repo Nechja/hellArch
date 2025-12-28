@@ -9,7 +9,6 @@ import (
 	"github.com/nechja/hellarch/auth/internal/store"
 )
 
-// AdminHandler handles admin API endpoints
 type AdminHandler struct {
 	postgres *store.Postgres
 	redis    *store.Redis
@@ -103,7 +102,6 @@ func (h *AdminHandler) handleGetUserSessions(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Redact token values for security
 	sanitizedSessions := make([]map[string]any, len(sessions))
 	for i, s := range sessions {
 		sanitizedSessions[i] = map[string]any{
@@ -135,7 +133,6 @@ func (h *AdminHandler) handleDeleteSession(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Also invalidate from Redis cache
 	_ = h.redis.InvalidateSession(r.Context(), sessionID)
 
 	slog.Info("session revoked", "session_id", sessionID)
