@@ -30,8 +30,10 @@ async def create_test_user(
     conn: psycopg.AsyncConnection,
     email: str = "test@example.com",
     username: str = "testuser",
+    provider: str = "discord",
 ) -> AuthUser:
     user_id = str(uuid4())
+    provider_user_id = str(uuid4())
     now = datetime.now(timezone.utc)
 
     await conn.execute(
@@ -42,7 +44,15 @@ async def create_test_user(
         (user_id, email, username, now, now),
     )
 
-    return AuthUser(id=user_id, email=email, username=username)
+    await conn.execute(
+        """
+        INSERT INTO linked_accounts (id, user_id, provider, provider_user_id, email, username, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """,
+        (str(uuid4()), user_id, provider, provider_user_id, email, username, now),
+    )
+
+    return AuthUser(id=user_id, email=email, username=username, provider=provider)
 
 
 async def create_test_session(

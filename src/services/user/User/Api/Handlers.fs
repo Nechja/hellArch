@@ -50,9 +50,16 @@ module Handlers =
 
     let createProfile (dbConfig: Database.DatabaseConfig) (ctx: HttpContext) =
         task {
-            let! bodyNullable = ctx.Request.ReadFromJsonAsync<CreateProfileRequest>(jsonOptions)
+            let! bodyResult =
+                task {
+                    try
+                        let! body = ctx.Request.ReadFromJsonAsync<CreateProfileRequest>(jsonOptions)
+                        return Some body
+                    with :? JsonException ->
+                        return None
+                }
 
-            match Option.ofObj bodyNullable with
+            match bodyResult |> Option.bind Option.ofObj with
             | None ->
                 do!
                     writeJson

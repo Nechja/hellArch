@@ -64,12 +64,13 @@ message UpdateProfileResponse {
 
 message UserProfile {
     string id = 1;
-    string email = 2;
-    string display_name = 3;
-    string avatar_url = 4;
-    string bio = 5;
-    google.protobuf.Timestamp created_at = 6;
-    google.protobuf.Timestamp updated_at = 7;
+    string auth_user_id = 2;
+    string email = 3;
+    string display_name = 4;
+    string avatar_url = 5;
+    string bio = 6;
+    google.protobuf.Timestamp created_at = 7;
+    google.protobuf.Timestamp updated_at = 8;
 }
 
 // ============================================================================

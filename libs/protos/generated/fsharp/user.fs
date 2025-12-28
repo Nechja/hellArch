@@ -39,6 +39,7 @@ and UpdateProfileResponse = {
 
 and UserProfile = {
     Id: string
+    AuthUserId: string
     Email: string
     DisplayName: string
     AvatarUrl: string

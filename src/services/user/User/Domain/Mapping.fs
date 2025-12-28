@@ -22,6 +22,7 @@ module Mapping =
         let toDto (entity: UserProfile) : HellArch.User.V1.UserProfile =
             {
                 Id = entity.Id.ToString()
+                AuthUserId = entity.AuthUserId.ToString()
                 Email = entity.Email
                 DisplayName = entity.DisplayName |> Option.defaultValue ""
                 AvatarUrl = entity.AvatarUrl |> Option.defaultValue ""
