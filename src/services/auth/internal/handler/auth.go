@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/nechja/hellarch/auth/internal/config"
 	"github.com/nechja/hellarch/auth/internal/jwt"
@@ -165,9 +166,9 @@ func (h *AuthHandler) findOrCreateUser(ctx context.Context, info *oauth.UserInfo
 		UserID:         user.ID,
 		Provider:       string(info.Provider),
 		ProviderUserID: info.ID,
-		Email:          info.Email,
-		Username:       info.Username,
-		AvatarURL:      info.AvatarURL,
+		Email:          ptr(info.Email),
+		Username:       ptr(info.Username),
+		AvatarURL:      ptr(info.AvatarURL),
 	})
 	if err != nil {
 		return nil, err
@@ -203,17 +204,15 @@ func (h *AuthHandler) createSession(ctx context.Context, userID, ipAddress, user
 		return "", err
 	}
 
-	sessionID, err := generateRandomState()
-	if err != nil {
-		return "", err
-	}
+	// Generate a proper UUID for the session ID (database expects UUID type)
+	sessionID := uuid.New().String()
 
 	session := &store.Session{
 		ID:        sessionID,
 		UserID:    userID,
 		Token:     sessionToken,
-		IPAddress: ipAddress,
-		UserAgent: userAgent,
+		IPAddress: ptrOrNil(ipAddress),
+		UserAgent: ptrOrNil(userAgent),
 		ExpiresAt: time.Now().Add(SessionDuration),
 	}
 
@@ -270,7 +269,7 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, refreshToken string) (st
 	newClaims := &jwt.Claims{
 		UserID:   user.ID,
 		Email:    user.Email,
-		Username: accounts[0].Username,
+		Username: deref(accounts[0].Username),
 		Provider: accounts[0].Provider,
 	}
 
@@ -316,4 +315,25 @@ func generateRandomState() (string, error) {
 		return "", err
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+// ptr returns a pointer to the given string
+func ptr(s string) *string {
+	return &s
+}
+
+// ptrOrNil returns nil if the string is empty, otherwise a pointer to it
+func ptrOrNil(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+// deref returns the string value or empty string if nil
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

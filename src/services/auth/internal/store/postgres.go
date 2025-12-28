@@ -113,7 +113,7 @@ func (p *Postgres) CreateLinkedAccount(ctx context.Context, account *LinkedAccou
 
 func (p *Postgres) GetLinkedAccounts(ctx context.Context, userID string) ([]*LinkedAccount, error) {
 	rows, err := p.pool.Query(ctx,
-		`SELECT id, user_id, provider, provider_user_id, email, username, avatar_url, created_at
+		`SELECT id, user_id, provider, provider_user_id, email, username, avatar_url, created_at, updated_at
 		 FROM linked_accounts WHERE user_id = $1`,
 		userID,
 	)
@@ -127,7 +127,7 @@ func (p *Postgres) GetLinkedAccounts(ctx context.Context, userID string) ([]*Lin
 		var account LinkedAccount
 		if err := rows.Scan(
 			&account.ID, &account.UserID, &account.Provider, &account.ProviderUserID,
-			&account.Email, &account.Username, &account.AvatarURL, &account.CreatedAt,
+			&account.Email, &account.Username, &account.AvatarURL, &account.CreatedAt, &account.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
