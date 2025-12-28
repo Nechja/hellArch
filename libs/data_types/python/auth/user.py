@@ -9,5 +9,5 @@ class User:
     username: str
     created_at: datetime
     updated_at: datetime
-    sessions: ICollection<Session> = []
-    linked_accounts: ICollection<LinkedAccount> = []
+    sessions: list[Session] = []
+    linked_accounts: list[LinkedAccount] = []

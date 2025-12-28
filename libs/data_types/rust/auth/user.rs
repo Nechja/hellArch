@@ -15,7 +15,7 @@ pub struct User {
     #[serde(rename = "updated_at")]
     pub updated_at: DateTime<Utc>,
     #[serde(rename = "sessions")]
-    pub sessions: ICollection<Session>,
+    pub sessions: Vec<Session>,
     #[serde(rename = "linked_accounts")]
-    pub linked_accounts: ICollection<LinkedAccount>,
+    pub linked_accounts: Vec<LinkedAccount>,
 }

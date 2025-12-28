@@ -85,10 +85,6 @@ services:
     environment:
       - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
       - RUST_LOG=info
-    volumes:
-      - ../../src/workers/events:/app
-      - events-cargo:/usr/local/cargo/registry
-      - events-target:/app/target
     networks:
       - hellarch
     restart: unless-stopped
@@ -126,8 +122,6 @@ volumes:
   auth-go-cache:
   user-nuget:
   admin-nuget:
-  events-cargo:
-  events-target:
 
 networks:
   hellarch:

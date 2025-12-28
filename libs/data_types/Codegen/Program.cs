@@ -146,6 +146,17 @@ void GenerateGo(TypeDef def, string domain, string outDir)
 
 string CSharpToGo(string type, bool nullable)
 {
+    if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
+        type.StartsWith("List<", StringComparison.Ordinal) ||
+        type.StartsWith("IEnumerable<", StringComparison.Ordinal))
+    {
+#pragma warning disable CA1865, CA1307
+        var innerType = type.Substring(type.IndexOf('<') + 1).TrimEnd('>');
+#pragma warning restore CA1865, CA1307
+        var goInner = CSharpToGo(innerType, false);
+        return $"[]*{goInner}";
+    }
+
     var goType = type switch
     {
         "Guid" => "string",
@@ -205,6 +216,17 @@ void GenerateRust(TypeDef def, string domain, string outDir)
 
 string CSharpToRust(string type, bool nullable)
 {
+    if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
+        type.StartsWith("List<", StringComparison.Ordinal) ||
+        type.StartsWith("IEnumerable<", StringComparison.Ordinal))
+    {
+#pragma warning disable CA1865, CA1307
+        var innerType = type.Substring(type.IndexOf('<') + 1).TrimEnd('>');
+#pragma warning restore CA1865, CA1307
+        var rustInner = CSharpToRust(innerType, false);
+        return $"Vec<{rustInner}>";
+    }
+
     var rustType = type switch
     {
         "Guid" or "string" => "String",
@@ -270,6 +292,17 @@ void GeneratePython(TypeDef def, string domain, string outDir)
 
 string CSharpToPython(string type, bool nullable)
 {
+    if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
+        type.StartsWith("List<", StringComparison.Ordinal) ||
+        type.StartsWith("IEnumerable<", StringComparison.Ordinal))
+    {
+#pragma warning disable CA1865, CA1307
+        var innerType = type.Substring(type.IndexOf('<') + 1).TrimEnd('>');
+#pragma warning restore CA1865, CA1307
+        var pyInner = CSharpToPython(innerType, false);
+        return $"list[{pyInner}]";
+    }
+
     var pyType = type switch
     {
         "Guid" or "string" => "str",

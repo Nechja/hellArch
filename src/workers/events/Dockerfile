@@ -3,14 +3,13 @@ FROM rust:1.85-alpine AS dev
 WORKDIR /app
 
 RUN apk add --no-cache musl-dev
-RUN cargo install cargo-watch
 
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 
 RUN cargo build
 
-CMD ["cargo", "watch", "-x", "run"]
+CMD ["./target/debug/events-worker"]
 
 FROM rust:1.85-alpine AS build
 
