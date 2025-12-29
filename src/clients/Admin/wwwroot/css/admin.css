@@ -559,6 +559,21 @@ h3 {
     color: var(--text-secondary);
 }
 
+.badge-success {
+    background: rgba(63, 185, 80, 0.15);
+    color: var(--success);
+}
+
+.badge-danger {
+    background: rgba(248, 81, 73, 0.15);
+    color: var(--danger);
+}
+
+.badge-warning {
+    background: rgba(210, 153, 34, 0.15);
+    color: var(--warning);
+}
+
 .provider-badge {
     padding: 0.25rem 0.75rem;
     border-radius: 4px;
@@ -727,4 +742,46 @@ h3 {
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid var(--border);
+}
+
+/* Permissions */
+.permissions-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.permissions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.permission-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+}
+
+.permission-key {
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    font-size: 0.875rem;
+    color: var(--accent);
+}
+
+.add-permission {
+    display: flex;
+    gap: 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.add-permission .input {
+    flex: 1;
 }
