@@ -96,6 +96,29 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+app.UseStatusCodePages(async context =>
+{
+    var response = context.HttpContext.Response;
+    var acceptHeader = context.HttpContext.Request.Headers.Accept.ToString();
+
+    // Only serve HTML error pages for browser requests
+    if (acceptHeader.Contains("text/html", StringComparison.OrdinalIgnoreCase))
+    {
+        var errorPage = response.StatusCode switch
+        {
+            403 => "wwwroot/errors/403.html",
+            404 => "wwwroot/errors/404.html",
+            _ => null
+        };
+
+        if (errorPage is not null && File.Exists(errorPage))
+        {
+            response.ContentType = "text/html";
+            await response.SendFileAsync(errorPage);
+        }
+    }
+});
+
 app.UseCors("AllowClients");
 app.UseRateLimiter();
 

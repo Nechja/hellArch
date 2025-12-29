@@ -178,6 +178,20 @@ internal sealed partial class AuthRedirectMiddleware(
     {
         logger.LogDebug("Writing 403 response for missing permission {Permission}", requiredPermission);
         context.Response.StatusCode = 403;
+
+        // Serve HTML for browser requests, JSON for API requests
+        var acceptHeader = context.Request.Headers.Accept.ToString();
+        if (acceptHeader.Contains("text/html", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Response.ContentType = "text/html";
+            var errorPagePath = Path.Combine("wwwroot", "errors", "403.html");
+            if (File.Exists(errorPagePath))
+            {
+                await context.Response.SendFileAsync(errorPagePath).ConfigureAwait(false);
+                return;
+            }
+        }
+
         context.Response.ContentType = "application/json";
         await context.Response.WriteAsync(
             $$"""{"error": "forbidden", "message": "Permission denied", "required": "{{requiredPermission}}"}"""
