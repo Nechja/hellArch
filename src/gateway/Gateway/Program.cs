@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Threading.RateLimiting;
 using Gateway.Middleware;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
@@ -36,8 +38,16 @@ if (!Uri.TryCreate(otelEndpoint, UriKind.Absolute, out var otelUri))
     throw new InvalidOperationException($"Invalid OTEL_EXPORTER_OTLP_ENDPOINT: {otelEndpoint}");
 }
 
+// Configure W3C TraceContext propagation for distributed tracing
+Sdk.SetDefaultTextMapPropagator(new CompositeTextMapPropagator([
+    new TraceContextPropagator(),
+    new BaggagePropagator()
+]));
+
+var serviceName = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "gateway";
+
 builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource.AddService("gateway"))
+    .ConfigureResource(resource => resource.AddService(serviceName))
     .WithTracing(tracing => tracing
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()

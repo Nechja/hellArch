@@ -12,6 +12,7 @@ services:
       - ASPNETCORE_URLS=http://+:5000
       - ASPNETCORE_ENVIRONMENT=Development
       - LOG_LEVEL=debug
+      - OTEL_SERVICE_NAME=gateway
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
       - ../../src/gateway:/app
@@ -43,6 +44,7 @@ services:
       # Discord vars loaded from env_file
       - HELLARCH_ENV=development
       - LOG_LEVEL=debug
+      - OTEL_SERVICE_NAME=auth
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
       - ../../src/services/auth:/app
@@ -68,6 +70,7 @@ services:
       - USER_DATABASE_URL=Host=user-db;Port=5432;Database=user_db;Username=hellarch;Password=hellarch
       - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
       - LOG_LEVEL=debug
+      - OTEL_SERVICE_NAME=user
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
       - ../../src/services/user:/app
@@ -79,13 +82,15 @@ services:
 
   events-worker:
     build:
-      context: ../../src/workers/events
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/workers/events/Dockerfile
       target: dev
     container_name: hellarch-events-worker
     environment:
       - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
       - RUST_LOG=info
+      - OTEL_SERVICE_NAME=events-worker
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
     networks:
       - hellarch
     restart: unless-stopped
@@ -109,6 +114,7 @@ services:
       - RABBITMQ_MANAGEMENT_URL=http://rabbitmq:15672
       - RABBITMQ_USER=${RABBITMQ_USER:-hellarch}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-hellarch}
+      - OTEL_SERVICE_NAME=admin
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
     volumes:

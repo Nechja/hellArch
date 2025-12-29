@@ -5,6 +5,8 @@ using Microsoft.Extensions.Primitives;
 
 namespace Gateway.Middleware;
 
+internal sealed record SessionInfo(string UserId, string? Permissions);
+
 [SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated by ASP.NET Core middleware pipeline")]
 internal sealed partial class AuthRedirectMiddleware(
     RequestDelegate next,
@@ -40,8 +42,8 @@ internal sealed partial class AuthRedirectMiddleware(
         // Handle root path redirect
         if (path == "/")
         {
-            var rootUserId = await ValidateSession(context).ConfigureAwait(false);
-            var redirectTo = rootUserId is not null ? _defaultRedirect : _loginPath;
+            var rootSession = await ValidateSession(context).ConfigureAwait(false);
+            var redirectTo = rootSession is not null ? _defaultRedirect : _loginPath;
             context.Response.Redirect(redirectTo);
             return;
         }
@@ -55,11 +57,15 @@ internal sealed partial class AuthRedirectMiddleware(
         }
 
         // Try to validate session and add user context
-        var userId = await ValidateSession(context).ConfigureAwait(false);
+        var session = await ValidateSession(context).ConfigureAwait(false);
 
-        if (userId is not null)
+        if (session is not null)
         {
-            context.Request.Headers["X-User-ID"] = userId;
+            context.Request.Headers["X-User-ID"] = session.UserId;
+            if (session.Permissions is not null)
+            {
+                context.Request.Headers["X-Permissions"] = session.Permissions;
+            }
             LogSessionValidated(path);
         }
         else if (IsProtectedPath(path))
@@ -110,7 +116,7 @@ internal sealed partial class AuthRedirectMiddleware(
         return false;
     }
 
-    private async Task<string?> ValidateSession(HttpContext context)
+    private async Task<SessionInfo?> ValidateSession(HttpContext context)
     {
         if (!context.Request.Cookies.TryGetValue(_cookieName, out var sessionToken) || string.IsNullOrEmpty(sessionToken))
         {
@@ -134,13 +140,27 @@ internal sealed partial class AuthRedirectMiddleware(
             var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             using var doc = JsonDocument.Parse(content);
 
-            if (doc.RootElement.TryGetProperty("user_id", out var userIdElement))
+            if (!doc.RootElement.TryGetProperty("user_id", out var userIdElement))
             {
-                return userIdElement.GetString();
+                LogValidationFailed("No user_id in response");
+                return null;
             }
 
-            LogValidationFailed("No user_id in response");
-            return null;
+            var userId = userIdElement.GetString();
+            if (string.IsNullOrEmpty(userId))
+            {
+                LogValidationFailed("Empty user_id in response");
+                return null;
+            }
+
+            // Extract permissions if present
+            string? permissions = null;
+            if (doc.RootElement.TryGetProperty("permissions", out var permissionsElement))
+            {
+                permissions = permissionsElement.GetRawText();
+            }
+
+            return new SessionInfo(userId, permissions);
         }
         catch (HttpRequestException ex)
         {

@@ -1,8 +1,12 @@
 use lapin::{options::*, types::FieldTable, Consumer};
+use opentelemetry::{trace::TracerProvider, KeyValue};
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::{runtime, trace::TracerProvider as SdkTracerProvider, Resource};
 use std::env;
 use tokio::signal;
 use tokio_stream::StreamExt;
-use tracing::{error, info, warn};
+use tracing::{error, info, info_span, warn, Instrument};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod handlers;
 mod rabbitmq;
@@ -10,14 +14,43 @@ mod types;
 
 pub use types::*;
 
+fn init_telemetry() -> SdkTracerProvider {
+    let otel_endpoint =
+        env::var("OTEL_EXPORTER_OTLP_ENDPOINT").unwrap_or_else(|_| "http://localhost:4317".into());
+
+    let service_name = env::var("OTEL_SERVICE_NAME").unwrap_or_else(|_| "events-worker".into());
+
+    let exporter = opentelemetry_otlp::SpanExporter::builder()
+        .with_tonic()
+        .with_endpoint(&otel_endpoint)
+        .build()
+        .expect("Failed to create OTLP exporter");
+
+    let resource = Resource::new(vec![KeyValue::new("service.name", service_name)]);
+
+    let provider = SdkTracerProvider::builder()
+        .with_batch_exporter(exporter, runtime::Tokio)
+        .with_resource(resource)
+        .build();
+
+    opentelemetry::global::set_tracer_provider(provider.clone());
+
+    provider
+}
+
 #[tokio::main]
 async fn main() -> Result<(), WorkerError> {
-    tracing_subscriber::fmt()
-        .json()
-        .with_env_filter(
+    let tracer_provider = init_telemetry();
+    let tracer = tracer_provider.tracer("events-worker");
+    let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+
+    tracing_subscriber::registry()
+        .with(
             tracing_subscriber::EnvFilter::from_default_env()
                 .add_directive(tracing::Level::INFO.into()),
         )
+        .with(tracing_subscriber::fmt::layer().json())
+        .with(otel_layer)
         .init();
 
     let rabbitmq_url = env::var("RABBITMQ_URL")
@@ -47,6 +80,11 @@ async fn main() -> Result<(), WorkerError> {
         }
     }
 
+    info!("Flushing telemetry...");
+    if let Err(e) = tracer_provider.shutdown() {
+        error!(error = %e, "Failed to shutdown tracer provider");
+    }
+
     info!("Worker shutdown complete");
     Ok(())
 }
@@ -55,7 +93,18 @@ async fn consume_events(mut consumer: Consumer) {
     while let Some(delivery) = consumer.next().await {
         match delivery {
             Ok(delivery) => {
-                let result = process_message(&delivery.data, &delivery.properties).await;
+                let event_type = extract_event_type(&delivery.properties);
+                let span = info_span!(
+                    "process_event",
+                    otel.kind = "consumer",
+                    messaging.system = "rabbitmq",
+                    messaging.operation = "receive",
+                    event.type = event_type.as_deref().unwrap_or("unknown"),
+                );
+
+                let result = process_message(&delivery.data, &delivery.properties)
+                    .instrument(span)
+                    .await;
 
                 match result {
                     Ok(()) => {
@@ -84,22 +133,24 @@ async fn consume_events(mut consumer: Consumer) {
     }
 }
 
-async fn process_message(
-    body: &[u8],
-    properties: &lapin::protocol::basic::AMQPProperties,
-) -> Result<(), WorkerError> {
-    let body_str = String::from_utf8_lossy(body);
-
-    let event_type_str = properties
+fn extract_event_type(properties: &lapin::protocol::basic::AMQPProperties) -> Option<String> {
+    properties
         .headers()
         .as_ref()
         .and_then(|h| h.inner().get("ce-type"))
         .and_then(|v| match v {
             lapin::types::AMQPValue::LongString(s) => Some(s.to_string()),
             _ => None,
-        });
+        })
+}
 
-    let Some(type_str) = event_type_str else {
+async fn process_message(
+    body: &[u8],
+    properties: &lapin::protocol::basic::AMQPProperties,
+) -> Result<(), WorkerError> {
+    let body_str = String::from_utf8_lossy(body);
+
+    let Some(type_str) = extract_event_type(properties) else {
         warn!("Event missing type header");
         return Ok(());
     };

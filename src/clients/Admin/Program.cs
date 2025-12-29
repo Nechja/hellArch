@@ -2,11 +2,19 @@ using System.Text.Json;
 using Admin.Components;
 using Admin.Middleware;
 using Admin.Services;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure W3C TraceContext propagation for distributed tracing
+Sdk.SetDefaultTextMapPropagator(new CompositeTextMapPropagator([
+    new TraceContextPropagator(),
+    new BaggagePropagator()
+]));
 
 // Logging
 var logLevel = Environment.GetEnvironmentVariable("LOG_LEVEL")?.ToLowerInvariant() switch
@@ -69,8 +77,10 @@ builder.Services.AddScoped<RabbitMqAdapter>();
 var otelEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT")
     ?? "http://localhost:4318";
 
+var serviceName = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "admin";
+
 builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource.AddService("admin"))
+    .ConfigureResource(resource => resource.AddService(serviceName))
     .WithTracing(tracing =>
     {
         tracing
