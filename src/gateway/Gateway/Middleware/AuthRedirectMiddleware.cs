@@ -20,6 +20,7 @@ internal sealed partial class AuthRedirectMiddleware(
     private readonly string _validateEndpoint = configuration.GetValue("Auth:ValidateEndpoint", "http://hellarch-auth:5001/auth/validate")!;
     private readonly string[] _protectedPaths = configuration.GetSection("Auth:ProtectedPaths").Get<string[]>() ?? ["/admin", "/app"];
     private readonly string[] _bypassPaths = ["/login", "/api/auth", "/health", "/_framework", "/_content", "/css", "/js", "/lib", "/favicon"];
+    private readonly Dictionary<string, string> _permissionRoutes = configuration.GetSection("Auth:PermissionRoutes").Get<Dictionary<string, string>>() ?? [];
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Path {Path} requires authentication, redirecting to login")]
     private partial void LogRedirectingToLogin(string path);
@@ -32,6 +33,9 @@ internal sealed partial class AuthRedirectMiddleware(
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Bypassing auth for path {Path}")]
     private partial void LogBypassingAuth(string path);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Permission denied for user {UserId} on path {Path}, required: {Permission}")]
+    private partial void LogPermissionDenied(string userId, string path, string permission);
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -61,6 +65,15 @@ internal sealed partial class AuthRedirectMiddleware(
 
         if (session is not null)
         {
+            // Check if route requires specific permission
+            var requiredPermission = GetRequiredPermission(path);
+            if (requiredPermission is not null && !HasPermission(session.Permissions, requiredPermission))
+            {
+                LogPermissionDenied(session.UserId, path, requiredPermission);
+                await WritePermissionDenied(context, requiredPermission).ConfigureAwait(false);
+                return;
+            }
+
             context.Request.Headers["X-User-ID"] = session.UserId;
             if (session.Permissions is not null)
             {
@@ -114,6 +127,61 @@ internal sealed partial class AuthRedirectMiddleware(
         }
 
         return false;
+    }
+
+    private string? GetRequiredPermission(string path)
+    {
+        // Find the most specific matching route (longest prefix match)
+        string? bestMatch = null;
+        string? bestPermission = null;
+
+        foreach (var (route, permission) in _permissionRoutes)
+        {
+            if (path.StartsWith(route, StringComparison.OrdinalIgnoreCase))
+            {
+                if (bestMatch is null || route.Length > bestMatch.Length)
+                {
+                    bestMatch = route;
+                    bestPermission = permission;
+                }
+            }
+        }
+
+        return bestPermission;
+    }
+
+    private bool HasPermission(string? permissionsJson, string requiredPermission)
+    {
+        if (string.IsNullOrEmpty(permissionsJson))
+        {
+            logger.LogDebug("No permissions JSON provided");
+            return false;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(permissionsJson);
+            if (doc.RootElement.TryGetProperty(requiredPermission, out var value))
+            {
+                return value.ValueKind == JsonValueKind.True;
+            }
+            return false;
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse permissions JSON");
+            return false;
+        }
+    }
+
+    private async Task WritePermissionDenied(HttpContext context, string requiredPermission)
+    {
+        logger.LogDebug("Writing 403 response for missing permission {Permission}", requiredPermission);
+        context.Response.StatusCode = 403;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync(
+            $$"""{"error": "forbidden", "message": "Permission denied", "required": "{{requiredPermission}}"}"""
+        ).ConfigureAwait(false);
     }
 
     private async Task<SessionInfo?> ValidateSession(HttpContext context)

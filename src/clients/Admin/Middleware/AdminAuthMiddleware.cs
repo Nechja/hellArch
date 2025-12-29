@@ -10,7 +10,6 @@ public sealed class AdminAuthMiddleware(
 {
     private const string SessionCookieName = "hellarch_session";
     private const string AuthServiceName = "AuthService";
-    private const string RequiredPermission = "admin.access";
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -24,6 +23,21 @@ public sealed class AdminAuthMiddleware(
             return;
         }
 
+        // Check if request came through gateway (has X-User-ID header)
+        var gatewayUserId = context.Request.Headers["X-User-ID"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(gatewayUserId))
+        {
+            // Trust gateway - it already validated session and permissions
+            context.Items["UserId"] = gatewayUserId;
+            context.Items["Permissions"] = context.Request.Headers["X-Permissions"].FirstOrDefault();
+            context.Items["IsAuthenticated"] = true;
+
+            logger.LogDebug("Trusted gateway auth for user {UserId}", gatewayUserId);
+            await next(context);
+            return;
+        }
+
+        // Direct access - validate session ourselves
         if (!context.Request.Cookies.TryGetValue(SessionCookieName, out var sessionToken) ||
             string.IsNullOrEmpty(sessionToken))
         {
@@ -55,11 +69,12 @@ public sealed class AdminAuthMiddleware(
                 return;
             }
 
-            // Check for admin.access permission
-            if (!HasPermission(result.Permissions, RequiredPermission))
+            // For direct access, check admin.panel permission
+            if (!HasPermission(result.Permissions, "admin.panel"))
             {
-                logger.LogWarning("User {UserId} lacks {Permission} permission", result.UserId, RequiredPermission);
-                await ShowAccessDenied(context, result.Username ?? result.Email ?? "User");
+                logger.LogWarning("User {UserId} lacks admin.panel permission (direct access)", result.UserId);
+                context.Response.StatusCode = 403;
+                await context.Response.WriteAsync("Forbidden: admin.panel permission required");
                 return;
             }
 
@@ -71,7 +86,7 @@ public sealed class AdminAuthMiddleware(
             context.Items["SessionToken"] = sessionToken;
             context.Items["IsAuthenticated"] = true;
 
-            logger.LogDebug("Authenticated admin user {UserId}", result.UserId);
+            logger.LogDebug("Authenticated admin user {UserId} (direct access)", result.UserId);
         }
         catch (HttpRequestException ex)
         {
@@ -97,7 +112,6 @@ public sealed class AdminAuthMiddleware(
 
     private void RedirectToLogin(HttpContext context)
     {
-        // Build return URL - supports both direct access and proxy access
         var scheme = context.Request.Headers["X-Forwarded-Proto"].FirstOrDefault()
             ?? context.Request.Scheme;
         var host = context.Request.Headers["X-Forwarded-Host"].FirstOrDefault()
@@ -122,85 +136,6 @@ public sealed class AdminAuthMiddleware(
 
         logger.LogDebug("Permission check: {Permission} = {HasPermission}", permission, hasPermission);
         return hasPermission;
-    }
-
-    private async Task ShowAccessDenied(HttpContext context, string username)
-    {
-        logger.LogInformation("Access denied for user {Username} - missing {Permission}", username, RequiredPermission);
-
-        context.Response.StatusCode = 403;
-        context.Response.ContentType = "text/html; charset=utf-8";
-
-        var html = $$"""
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="utf-8" />
-                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                <title>Access Denied - HellArch Admin</title>
-                <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body {
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                        background: #0d1117;
-                        color: #f0f6fc;
-                        min-height: 100vh;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                    }
-                    .container {
-                        text-align: center;
-                        padding: 2rem;
-                    }
-                    h1 {
-                        font-size: 4rem;
-                        color: #f85149;
-                        margin-bottom: 1rem;
-                    }
-                    p {
-                        color: #8b949e;
-                        margin-bottom: 0.5rem;
-                    }
-                    .username {
-                        color: #58a6ff;
-                        font-weight: 500;
-                    }
-                    .permission {
-                        font-family: monospace;
-                        background: #21262d;
-                        padding: 0.25rem 0.5rem;
-                        border-radius: 4px;
-                        color: #f85149;
-                    }
-                    a {
-                        display: inline-block;
-                        margin-top: 1.5rem;
-                        padding: 0.5rem 1rem;
-                        background: #21262d;
-                        color: #58a6ff;
-                        text-decoration: none;
-                        border-radius: 6px;
-                        border: 1px solid #30363d;
-                    }
-                    a:hover {
-                        background: #30363d;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>403</h1>
-                    <p>Access Denied</p>
-                    <p>Hello <span class="username">{{System.Web.HttpUtility.HtmlEncode(username)}}</span>, you don't have permission to access the Admin panel.</p>
-                    <p>Required permission: <span class="permission">{{RequiredPermission}}</span></p>
-                    <a href="/">Return Home</a>
-                </div>
-            </body>
-            </html>
-            """;
-
-        await context.Response.WriteAsync(html);
     }
 
     private sealed record ValidateResponse(
