@@ -29,6 +29,7 @@ public sealed class AdminAuthMiddleware(
         {
             // Trust gateway - it already validated session and permissions
             context.Items["UserId"] = gatewayUserId;
+            context.Items["Username"] = context.Request.Headers["X-Username"].FirstOrDefault();
             context.Items["Permissions"] = context.Request.Headers["X-Permissions"].FirstOrDefault();
             context.Items["IsAuthenticated"] = true;
 

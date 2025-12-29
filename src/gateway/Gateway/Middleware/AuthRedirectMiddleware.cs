@@ -5,7 +5,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace Gateway.Middleware;
 
-internal sealed record SessionInfo(string UserId, string? Permissions);
+internal sealed record SessionInfo(string UserId, string? Username, string? Permissions);
 
 [SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated by ASP.NET Core middleware pipeline")]
 internal sealed partial class AuthRedirectMiddleware(
@@ -75,6 +75,10 @@ internal sealed partial class AuthRedirectMiddleware(
             }
 
             context.Request.Headers["X-User-ID"] = session.UserId;
+            if (session.Username is not null)
+            {
+                context.Request.Headers["X-Username"] = session.Username;
+            }
             if (session.Permissions is not null)
             {
                 context.Request.Headers["X-Permissions"] = session.Permissions;
@@ -235,6 +239,13 @@ internal sealed partial class AuthRedirectMiddleware(
                 return null;
             }
 
+            // Extract username if present
+            string? username = null;
+            if (doc.RootElement.TryGetProperty("username", out var usernameElement))
+            {
+                username = usernameElement.GetString();
+            }
+
             // Extract permissions if present
             string? permissions = null;
             if (doc.RootElement.TryGetProperty("permissions", out var permissionsElement))
@@ -242,7 +253,7 @@ internal sealed partial class AuthRedirectMiddleware(
                 permissions = permissionsElement.GetRawText();
             }
 
-            return new SessionInfo(userId, permissions);
+            return new SessionInfo(userId, username, permissions);
         }
         catch (HttpRequestException ex)
         {

@@ -258,16 +258,16 @@ public sealed class AuthAdminFacade(
 // DTOs for Auth Admin API responses
 public sealed record UsersResponse(
     IReadOnlyList<UserSummary> Users,
-    int TotalCount,
+    [property: JsonPropertyName("total_count")] int TotalCount,
     int Page,
-    int PageSize);
+    [property: JsonPropertyName("page_size")] int PageSize);
 
 public sealed record UserSummary(
     string Id,
     string Email,
     string Username,
     [property: JsonPropertyName("is_active")] bool IsActive,
-    DateTime CreatedAt);
+    [property: JsonPropertyName("created_at")] DateTime CreatedAt);
 
 public sealed record UserDetail(
     string Id,
@@ -275,8 +275,8 @@ public sealed record UserDetail(
     string Username,
     [property: JsonPropertyName("is_active")] bool IsActive,
     Dictionary<string, bool>? Permissions,
-    DateTime CreatedAt,
-    DateTime UpdatedAt,
+    [property: JsonPropertyName("created_at")] DateTime CreatedAt,
+    [property: JsonPropertyName("updated_at")] DateTime UpdatedAt,
     [property: JsonPropertyName("linked_accounts")] IReadOnlyList<LinkedAccountInfo> LinkedAccounts);
 
 public sealed record PermissionsResponse(
@@ -286,22 +286,22 @@ public sealed record PermissionsResponse(
 public sealed record LinkedAccountInfo(
     string Id,
     string Provider,
-    string ProviderUserId,
+    [property: JsonPropertyName("provider_user_id")] string ProviderUserId,
     string? Email,
     string? Username,
-    string? AvatarUrl,
-    DateTime CreatedAt);
+    [property: JsonPropertyName("avatar_url")] string? AvatarUrl,
+    [property: JsonPropertyName("created_at")] DateTime CreatedAt);
 
 public sealed record SessionsResponse(
     IReadOnlyList<SessionInfo> Sessions);
 
 public sealed record SessionInfo(
     string Id,
-    string UserId,
-    string? IpAddress,
-    string? UserAgent,
-    DateTime ExpiresAt,
-    DateTime CreatedAt);
+    [property: JsonPropertyName("user_id")] string UserId,
+    [property: JsonPropertyName("ip_address")] string? IpAddress,
+    [property: JsonPropertyName("user_agent")] string? UserAgent,
+    [property: JsonPropertyName("expires_at")] DateTime ExpiresAt,
+    [property: JsonPropertyName("created_at")] DateTime CreatedAt);
 
 public sealed record AdminStats(
     [property: JsonPropertyName("user_count")] int UserCount,
