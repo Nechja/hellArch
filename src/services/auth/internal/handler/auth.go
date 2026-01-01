@@ -109,14 +109,19 @@ func (h *AuthHandler) validateRedirectURI(redirectURI string) error {
 		return nil // Empty redirect is allowed (will return JSON response)
 	}
 
+	// Allow relative paths (but not protocol-relative URLs)
+	if strings.HasPrefix(redirectURI, "/") && !strings.HasPrefix(redirectURI, "//") {
+		return nil
+	}
+
 	parsed, err := url.Parse(redirectURI)
 	if err != nil {
 		return errors.New("invalid redirect_uri format")
 	}
 
-	// Must be absolute URL
+	// Absolute URLs must be in allowlist
 	if !parsed.IsAbs() {
-		return errors.New("redirect_uri must be absolute")
+		return errors.New("redirect_uri must be absolute or start with /")
 	}
 
 	// Check against allowlist - use case-insensitive exact match
