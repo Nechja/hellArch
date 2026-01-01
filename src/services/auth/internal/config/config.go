@@ -3,7 +3,9 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -18,6 +20,9 @@ type Config struct {
 	OAuth               OAuthConfig
 	AllowedRedirectURIs []string
 	SecureCookies       bool
+	// Session configuration
+	MaxSessionsPerUser int
+	SessionDuration    time.Duration
 }
 
 type OAuthConfig struct {
@@ -44,6 +49,8 @@ func Load() (*Config, error) {
 		JWTPublicKeyPath:    getEnv("JWT_PUBLIC_KEY_PATH", "./infra/keys/dev-public.pem"),
 		AllowedRedirectURIs: parseCommaSeparated(getEnv("ALLOWED_REDIRECT_URIS", "http://localhost:5000,http://localhost:5003")),
 		SecureCookies:       getEnv("SECURE_COOKIES", "false") == "true",
+		MaxSessionsPerUser:  getEnvInt("MAX_SESSIONS_PER_USER", 5),
+		SessionDuration:     time.Duration(getEnvInt("SESSION_DURATION_HOURS", 24)) * time.Hour,
 		OAuth: OAuthConfig{
 			Discord: ProviderConfig{
 				ClientID:     os.Getenv("DISCORD_CLIENT_ID"),
@@ -83,6 +90,15 @@ func (c *Config) validate() error {
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	return defaultValue
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if i, err := strconv.Atoi(value); err == nil {
+			return i
+		}
 	}
 	return defaultValue
 }

@@ -5,9 +5,10 @@ import "time"
 const (
 	AccessTokenDuration  = 15 * time.Minute
 	RefreshTokenDuration = 7 * 24 * time.Hour
-	SessionDuration      = 24 * time.Hour
 	OAuthStateTTL        = 10 * time.Minute
-	MaxSessionsPerUser   = 5
+	// MaxSessionsPerUser and SessionDuration are now configurable via environment variables:
+	// - MAX_SESSIONS_PER_USER (default: 5)
+	// - SESSION_DURATION_HOURS (default: 24)
 )
 
 type AuthResult struct {
