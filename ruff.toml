@@ -16,6 +16,7 @@ select = [
 ignore = [
     "E501",   # line too long (handled by formatter)
     "S101",   # assert used (ok in scripts)
+    "UP047",  # prefer type params over TypeVar (style preference)
 ]
 
 [format]

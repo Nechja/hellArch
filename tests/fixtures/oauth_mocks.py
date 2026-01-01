@@ -1,5 +1,5 @@
+from collections.abc import Generator
 from dataclasses import dataclass
-from typing import Generator
 
 import pytest
 import respx
@@ -14,11 +14,12 @@ class MockOAuthUser:
     avatar_url: str
 
 
-DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token"
+# OAuth provider endpoints (not secrets, just API URLs)
+DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token"  # noqa: S105
 DISCORD_USER_URL = "https://discord.com/api/users/@me"
-GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"  # noqa: S105
 GOOGLE_USER_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
-GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token"
+GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token"  # noqa: S105
 GITHUB_USER_URL = "https://api.github.com/user"
 
 

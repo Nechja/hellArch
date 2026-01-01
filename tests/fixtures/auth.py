@@ -1,7 +1,7 @@
 import secrets
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Callable
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import psycopg
@@ -34,7 +34,7 @@ async def create_test_user(
 ) -> AuthUser:
     user_id = str(uuid4())
     provider_user_id = str(uuid4())
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     await conn.execute(
         """
@@ -64,7 +64,7 @@ async def create_test_session(
 ) -> AuthSession:
     session_id = str(uuid4())
     token = secrets.token_urlsafe(32)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expires_at = now + expires_in
 
     await conn.execute(

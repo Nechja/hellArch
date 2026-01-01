@@ -7,7 +7,13 @@ import httpx
 import pytest
 from jose import jwt
 
-pytest_plugins = ["fixtures.auth", "fixtures.db"]
+pytest_plugins = [
+    "fixtures.auth",
+    "fixtures.db",
+    "fixtures.user",
+    "fixtures.redis",
+    "fixtures.rabbitmq",
+]
 
 PROJECT_ROOT = Path(__file__).parent.parent
 

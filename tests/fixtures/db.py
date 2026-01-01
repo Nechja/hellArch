@@ -1,9 +1,8 @@
 import os
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import psycopg
-import pytest
 import pytest_asyncio
 
 
