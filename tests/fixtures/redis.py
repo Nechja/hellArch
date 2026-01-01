@@ -7,7 +7,7 @@ import redis.asyncio as redis
 
 
 def get_redis_url() -> str:
-    return os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    return os.getenv("REDIS_URL", "redis://localhost:6389/0")
 
 
 @asynccontextmanager

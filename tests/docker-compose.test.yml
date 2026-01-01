@@ -42,6 +42,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: hellarch-test-redis
+    ports:
+      - "6389:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -56,6 +58,9 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: hellarch
       RABBITMQ_DEFAULT_PASS: hellarch
+    ports:
+      - "5682:5672"
+      - "15682:15672"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_running"]
       interval: 10s

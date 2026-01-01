@@ -13,7 +13,7 @@ from aio_pika.abc import AbstractChannel, AbstractConnection, AbstractQueue
 
 
 def get_rabbitmq_url() -> str:
-    return os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
+    return os.getenv("RABBITMQ_URL", "amqp://hellarch:hellarch@localhost:5682/")
 
 
 @asynccontextmanager
