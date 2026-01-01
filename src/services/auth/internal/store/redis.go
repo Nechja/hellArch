@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/redis/go-redis/extra/redisotel/v9"
@@ -233,6 +234,32 @@ func (r *Redis) DeleteUserSessions(ctx context.Context, userID string) error {
 
 	_, err = pipe.Exec(ctx)
 	return err
+}
+
+func (r *Redis) EnforceMaxSessions(ctx context.Context, userID string, maxSessions int) error {
+	sessions, err := r.GetUserSessions(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if len(sessions) <= maxSessions {
+		return nil
+	}
+
+	// Sort by creation time (oldest first)
+	sort.Slice(sessions, func(i, j int) bool {
+		return sessions[i].CreatedAt.Before(sessions[j].CreatedAt)
+	})
+
+	// Delete oldest sessions to get under the limit
+	toDelete := len(sessions) - maxSessions
+	for i := 0; i < toDelete; i++ {
+		if err := r.DeleteSessionByID(ctx, sessions[i].ID); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (r *Redis) CountActiveSessions(ctx context.Context) (int, error) {

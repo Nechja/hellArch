@@ -152,7 +152,7 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 		HttpOnly: true,
 		Secure:   h.config.SecureCookies,
 		SameSite: http.SameSiteLaxMode,
-		MaxAge:   30 * 24 * 60 * 60, // 30 days
+		MaxAge:   24 * 60 * 60, // 24 hours
 	})
 
 	if result.RedirectURI != "" && h.isAllowedRedirectURI(result.RedirectURI) {

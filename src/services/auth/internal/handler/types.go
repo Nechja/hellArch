@@ -5,8 +5,9 @@ import "time"
 const (
 	AccessTokenDuration  = 15 * time.Minute
 	RefreshTokenDuration = 7 * 24 * time.Hour
-	SessionDuration      = 30 * 24 * time.Hour
+	SessionDuration      = 24 * time.Hour
 	OAuthStateTTL        = 10 * time.Minute
+	MaxSessionsPerUser   = 5
 )
 
 type AuthResult struct {
