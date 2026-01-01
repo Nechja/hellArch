@@ -70,9 +70,18 @@ builder.Services.AddHttpClient("RabbitMQ", client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
+// Health aggregator service
+var healthUrl = Environment.GetEnvironmentVariable("HEALTH_SERVICE_URL") ?? "http://health:5004";
+builder.Services.AddHttpClient("HealthService", client =>
+{
+    client.BaseAddress = new Uri(healthUrl + "/");
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+
 builder.Services.AddScoped<AuthAdminFacade>();
 builder.Services.AddScoped<RedisBrowserAdapter>();
 builder.Services.AddScoped<RabbitMqAdapter>();
+builder.Services.AddScoped<HealthAdapter>();
 
 var otelEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT")
     ?? "http://localhost:4318";

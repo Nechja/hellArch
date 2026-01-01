@@ -114,6 +114,7 @@ services:
       - RABBITMQ_MANAGEMENT_URL=http://rabbitmq:15672
       - RABBITMQ_USER=${RABBITMQ_USER:-hellarch}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-hellarch}
+      - HEALTH_SERVICE_URL=http://health:5004
       - OTEL_SERVICE_NAME=admin
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
