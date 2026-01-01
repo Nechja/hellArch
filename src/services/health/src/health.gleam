@@ -21,7 +21,7 @@ pub fn main() {
     router.handler(poller)
     |> mist.new
     |> mist.port(port)
-    |> mist.start_http
+    |> mist.start
 
   io.println("Health aggregator running")
 

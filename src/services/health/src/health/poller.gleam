@@ -36,9 +36,7 @@ pub fn start() -> Result(Poller, Nil) {
   let subject = process.new_subject()
 
   // Start the actor loop in a new process
-  process.start(linked: True, running: fn() {
-    run_loop(subject, State(statuses: dict.new()))
-  })
+  process.spawn(fn() { run_loop(subject, State(statuses: dict.new())) })
 
   // Send initial poll message
   process.send(subject, Poll)
@@ -49,9 +47,9 @@ pub fn start() -> Result(Poller, Nil) {
 fn run_loop(self: Subject(Message), state: State) -> Nil {
   let selector =
     process.new_selector()
-    |> process.selecting(self, fn(msg) { msg })
+    |> process.select(for: self)
 
-  case process.select(selector, 60_000) {
+  case process.selector_receive(from: selector, within: 60_000) {
     Ok(Poll) -> {
       io.println("Polling services...")
       let services = registry.services()
@@ -213,11 +211,8 @@ pub fn get_status(poller: Poller) -> AggregatedStatus {
   let reply_subject = process.new_subject()
   process.send(subject, GetStatus(reply_subject))
 
-  let selector =
-    process.new_selector()
-    |> process.selecting(reply_subject, fn(msg) { msg })
-
-  let assert Ok(result) = process.select(selector, 5000)
+  // Wait for reply
+  let assert Ok(result) = process.receive(from: reply_subject, within: 5000)
   result
 }
 
@@ -226,10 +221,7 @@ pub fn get_service_status(poller: Poller, name: String) -> Option(ServiceStatus)
   let reply_subject = process.new_subject()
   process.send(subject, GetServiceStatus(name, reply_subject))
 
-  let selector =
-    process.new_selector()
-    |> process.selecting(reply_subject, fn(msg) { msg })
-
-  let assert Ok(result) = process.select(selector, 5000)
+  // Wait for reply
+  let assert Ok(result) = process.receive(from: reply_subject, within: 5000)
   result
 }
