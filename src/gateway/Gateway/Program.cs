@@ -99,6 +99,13 @@ var app = builder.Build();
 // Security headers should be first to apply to all responses
 app.UseMiddleware<SecurityHeadersMiddleware>();
 
+// Whitelist of allowed error pages to prevent path traversal
+var allowedErrorPages = new Dictionary<int, string>
+{
+    [403] = Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "errors", "403.html"),
+    [404] = Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "errors", "404.html")
+};
+
 app.UseStatusCodePages(async context =>
 {
     var response = context.HttpContext.Response;
@@ -107,14 +114,7 @@ app.UseStatusCodePages(async context =>
     // Only serve HTML error pages for browser requests
     if (acceptHeader.Contains("text/html", StringComparison.OrdinalIgnoreCase))
     {
-        var errorPage = response.StatusCode switch
-        {
-            403 => "wwwroot/errors/403.html",
-            404 => "wwwroot/errors/404.html",
-            _ => null
-        };
-
-        if (errorPage is not null && File.Exists(errorPage))
+        if (allowedErrorPages.TryGetValue(response.StatusCode, out var errorPage) && File.Exists(errorPage))
         {
             response.ContentType = "text/html";
             await response.SendFileAsync(errorPage);

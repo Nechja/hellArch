@@ -5,13 +5,14 @@ using Microsoft.Extensions.Primitives;
 
 namespace Gateway.Middleware;
 
-internal sealed record SessionInfo(string UserId, string? Username, string? Permissions);
+internal sealed record SessionInfo(string UserId, string? Username, string? Permissions, bool IsActive);
 
 [SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated by ASP.NET Core middleware pipeline")]
 internal sealed partial class AuthRedirectMiddleware(
     RequestDelegate next,
     IConfiguration configuration,
     IHttpClientFactory httpClientFactory,
+    IWebHostEnvironment environment,
     ILogger<AuthRedirectMiddleware> logger)
 {
     private readonly string _cookieName = configuration.GetValue("Auth:CookieName", "hellarch_session")!;
@@ -65,6 +66,14 @@ internal sealed partial class AuthRedirectMiddleware(
 
         if (session is not null)
         {
+            // Check if user is active before any permission checks (defense in depth)
+            if (!session.IsActive)
+            {
+                LogValidationFailed("user is inactive");
+                context.Response.Redirect(_loginPath);
+                return;
+            }
+
             // Check if route requires specific permission
             var requiredPermission = GetRequiredPermission(path);
             if (requiredPermission is not null && !HasPermission(session.Permissions, requiredPermission))
@@ -188,7 +197,7 @@ internal sealed partial class AuthRedirectMiddleware(
         if (acceptHeader.Contains("text/html", StringComparison.OrdinalIgnoreCase))
         {
             context.Response.ContentType = "text/html";
-            var errorPagePath = Path.Combine("wwwroot", "errors", "403.html");
+            var errorPagePath = Path.Combine(environment.ContentRootPath, "wwwroot", "errors", "403.html");
             if (File.Exists(errorPagePath))
             {
                 await context.Response.SendFileAsync(errorPagePath).ConfigureAwait(false);
@@ -253,7 +262,14 @@ internal sealed partial class AuthRedirectMiddleware(
                 permissions = permissionsElement.GetRawText();
             }
 
-            return new SessionInfo(userId, username, permissions);
+            // Extract is_active (default to true for backwards compatibility)
+            var isActive = true;
+            if (doc.RootElement.TryGetProperty("is_active", out var isActiveElement))
+            {
+                isActive = isActiveElement.GetBoolean();
+            }
+
+            return new SessionInfo(userId, username, permissions, isActive);
         }
         catch (HttpRequestException ex)
         {

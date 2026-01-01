@@ -293,7 +293,7 @@ func (h *AuthHandler) generateTokens(user *store.User, info *oauth.UserInfo) (st
 
 func (h *AuthHandler) createSession(ctx context.Context, userID, ipAddress, userAgent string) (string, error) {
 	// Enforce max sessions per user - remove oldest if at limit
-	if err := h.redis.EnforceMaxSessions(ctx, userID, MaxSessionsPerUser-1); err != nil {
+	if err := h.redis.EnforceMaxSessions(ctx, userID, MaxSessionsPerUser); err != nil {
 		slog.Warn("failed to enforce max sessions", "error", err, "user_id", userID)
 	}
 
