@@ -3,10 +3,14 @@ package handler
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -52,29 +56,102 @@ func RegisterAuthServiceServer(s *grpc.Server, h *AuthHandler) {
 	slog.Info("auth handler registered (proto registration pending)")
 }
 
-func (h *AuthHandler) GetOAuthURL(ctx context.Context, provider oauth.Provider, redirectURI string) (string, string, error) {
+// OAuthURLResult contains the OAuth URL and CSRF token for the login flow
+type OAuthURLResult struct {
+	AuthURL   string
+	State     string
+	CSRFToken string
+}
+
+func (h *AuthHandler) GetOAuthURL(ctx context.Context, provider oauth.Provider, redirectURI string) (*OAuthURLResult, error) {
+	// Validate redirect URI against allowlist
+	if err := h.validateRedirectURI(redirectURI); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	state, err := generateRandomState()
 	if err != nil {
-		return "", "", status.Error(codes.Internal, "failed to generate state")
+		return nil, status.Error(codes.Internal, "failed to generate state")
 	}
+
+	// Generate CSRF token for browser binding
+	csrfToken, err := generateRandomState()
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to generate csrf token")
+	}
+
+	// Store hash of CSRF token (not plaintext) with state data
+	csrfHash := sha256.Sum256([]byte(csrfToken))
 
 	stateData, _ := json.Marshal(map[string]string{
 		"redirect_uri": redirectURI,
+		"csrf_hash":    base64.URLEncoding.EncodeToString(csrfHash[:]),
 		"created_at":   time.Now().Format(time.RFC3339),
 	})
 	if err := h.redis.SetOAuthState(ctx, state, string(stateData), OAuthStateTTL); err != nil {
-		return "", "", status.Error(codes.Internal, "failed to store state")
+		return nil, status.Error(codes.Internal, "failed to store state")
 	}
 
 	authURL, err := h.oauthService.GetAuthURL(provider, state)
 	if err != nil {
-		return "", "", status.Error(codes.InvalidArgument, err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	return authURL, state, nil
+	return &OAuthURLResult{
+		AuthURL:   authURL,
+		State:     state,
+		CSRFToken: csrfToken,
+	}, nil
 }
 
-func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Provider, code, state, ipAddress, userAgent string) (*AuthResult, error) {
+func (h *AuthHandler) validateRedirectURI(redirectURI string) error {
+	if redirectURI == "" {
+		return nil // Empty redirect is allowed (will return JSON response)
+	}
+
+	parsed, err := url.Parse(redirectURI)
+	if err != nil {
+		return errors.New("invalid redirect_uri format")
+	}
+
+	// Must be absolute URL
+	if !parsed.IsAbs() {
+		return errors.New("redirect_uri must be absolute")
+	}
+
+	// Check against allowlist
+	baseURL := parsed.Scheme + "://" + parsed.Host
+	for _, allowed := range h.config.AllowedRedirectURIs {
+		if strings.HasPrefix(baseURL, allowed) {
+			return nil
+		}
+	}
+
+	slog.Warn("redirect_uri not in allowlist", "uri", redirectURI, "allowed", h.config.AllowedRedirectURIs)
+	return errors.New("redirect_uri not allowed")
+}
+
+func (h *AuthHandler) validateCSRFToken(csrfToken, storedHash string) error {
+	if csrfToken == "" {
+		return errors.New("missing csrf token")
+	}
+	if storedHash == "" {
+		return errors.New("missing stored csrf hash")
+	}
+
+	// Compute hash of provided token
+	computedHash := sha256.Sum256([]byte(csrfToken))
+	computedHashB64 := base64.URLEncoding.EncodeToString(computedHash[:])
+
+	// Constant-time comparison to prevent timing attacks
+	if subtle.ConstantTimeCompare([]byte(computedHashB64), []byte(storedHash)) != 1 {
+		return errors.New("csrf token mismatch")
+	}
+
+	return nil
+}
+
+func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Provider, code, state, csrfToken, ipAddress, userAgent string) (*AuthResult, error) {
 	stateData, err := h.redis.GetOAuthState(ctx, state)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid or expired state")
@@ -84,6 +161,12 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 	var stateInfo map[string]string
 	if err := json.Unmarshal([]byte(stateData), &stateInfo); err != nil {
 		return nil, status.Error(codes.Internal, "failed to parse state")
+	}
+
+	// Validate CSRF token against stored hash
+	if err := h.validateCSRFToken(csrfToken, stateInfo["csrf_hash"]); err != nil {
+		slog.Warn("CSRF validation failed", "error", err)
+		return nil, status.Error(codes.InvalidArgument, "CSRF validation failed")
 	}
 
 	token, err := h.oauthService.Exchange(ctx, provider, code)
@@ -293,10 +376,6 @@ func (h *AuthHandler) GetUserByID(ctx context.Context, userID string) (*store.Us
 
 func (h *AuthHandler) InvalidateSession(ctx context.Context, sessionToken string) error {
 	return h.redis.DeleteSession(ctx, sessionToken)
-}
-
-func (h *AuthHandler) InvalidateUserSessions(ctx context.Context, userID string) error {
-	return h.redis.DeleteUserSessions(ctx, userID)
 }
 
 func generateRandomState() (string, error) {

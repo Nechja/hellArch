@@ -4,18 +4,48 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 
+	"github.com/nechja/hellarch/auth/internal/config"
 	"github.com/nechja/hellarch/auth/internal/oauth"
 )
 
 // HTTPHandler handles HTTP endpoints for OAuth flows
 type HTTPHandler struct {
-	auth *AuthHandler
+	auth   *AuthHandler
+	config *config.Config
 }
 
-func NewHTTPHandler(auth *AuthHandler) *HTTPHandler {
-	return &HTTPHandler{auth: auth}
+func NewHTTPHandler(auth *AuthHandler, cfg *config.Config) *HTTPHandler {
+	return &HTTPHandler{auth: auth, config: cfg}
+}
+
+func (h *HTTPHandler) isAllowedRedirectURI(redirectURI string) bool {
+	if redirectURI == "" {
+		return true
+	}
+
+	// Allow relative paths
+	if strings.HasPrefix(redirectURI, "/") && !strings.HasPrefix(redirectURI, "//") {
+		return true
+	}
+
+	parsed, err := url.Parse(redirectURI)
+	if err != nil {
+		return false
+	}
+
+	// Check against allowed origins
+	redirectOrigin := parsed.Scheme + "://" + parsed.Host
+	for _, allowed := range h.config.AllowedRedirectURIs {
+		if strings.EqualFold(redirectOrigin, allowed) {
+			return true
+		}
+	}
+
+	slog.Warn("rejected redirect URI", "uri", redirectURI, "allowed", h.config.AllowedRedirectURIs)
+	return false
 }
 
 func (h *HTTPHandler) RegisterRoutes(mux *http.ServeMux) {
@@ -29,6 +59,8 @@ func (h *HTTPHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/health", h.handleHealth)
 }
 
+const csrfCookieName = "hellarch_csrf"
+
 func (h *HTTPHandler) handleOAuthLogin(w http.ResponseWriter, r *http.Request) {
 	providerStr := r.PathValue("provider")
 	provider := oauth.Provider(providerStr)
@@ -38,14 +70,30 @@ func (h *HTTPHandler) handleOAuthLogin(w http.ResponseWriter, r *http.Request) {
 		redirectURI = r.URL.Query().Get("redirect")
 	}
 
-	authURL, _, err := h.auth.GetOAuthURL(r.Context(), provider, redirectURI)
+	if !h.isAllowedRedirectURI(redirectURI) {
+		http.Error(w, "Invalid redirect URI", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.auth.GetOAuthURL(r.Context(), provider, redirectURI)
 	if err != nil {
 		slog.Error("failed to get oauth url", "error", err, "provider", provider)
 		http.Error(w, "Failed to initiate OAuth", http.StatusInternalServerError)
 		return
 	}
 
-	http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
+	// Set CSRF cookie for browser binding - ties the OAuth flow to this browser
+	http.SetCookie(w, &http.Cookie{
+		Name:     csrfCookieName,
+		Value:    result.CSRFToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   h.config.SecureCookies,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   600, // 10 minutes - matches OAuthStateTTL
+	})
+
+	http.Redirect(w, r, result.AuthURL, http.StatusTemporaryRedirect)
 }
 
 func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
@@ -82,12 +130,12 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 		Value:    result.SessionToken,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
+		Secure:   h.config.SecureCookies,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   30 * 24 * 60 * 60, // 30 days
 	})
 
-	if result.RedirectURI != "" {
+	if result.RedirectURI != "" && h.isAllowedRedirectURI(result.RedirectURI) {
 		http.Redirect(w, r, result.RedirectURI, http.StatusTemporaryRedirect)
 		return
 	}
@@ -239,7 +287,7 @@ func (h *HTTPHandler) handleLogout(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
+		Secure:   h.config.SecureCookies,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})

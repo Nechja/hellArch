@@ -22,7 +22,6 @@ type RedisSession struct {
 }
 
 // hashToken creates a SHA-256 hash of a token for secure storage
-// This prevents token exposure if Redis is compromised
 func hashToken(token string) string {
 	h := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(h[:])
@@ -56,6 +55,7 @@ func (r *Redis) Close() error {
 }
 
 // OAuth state management
+
 func (r *Redis) SetOAuthState(ctx context.Context, state string, data string, ttl time.Duration) error {
 	return r.client.Set(ctx, "oauth:state:"+state, data, ttl).Err()
 }
@@ -93,11 +93,9 @@ func (r *Redis) CreateSession(ctx context.Context, sessionToken string, session 
 	)
 	pipe.Expire(ctx, sessionKey, ttl)
 
-	// Add to user's session set with the hashed token as member
 	pipe.SAdd(ctx, userSessionsKey, hashedToken)
 	pipe.Expire(ctx, userSessionsKey, ttl)
 
-	// Reverse lookup: session ID -> hashed token
 	pipe.Set(ctx, sessionIDKey, hashedToken, ttl)
 
 	_, err := pipe.Exec(ctx)
@@ -142,7 +140,6 @@ func (r *Redis) GetUserSessions(ctx context.Context, userID string) ([]*RedisSes
 		sessionKey := "session:" + hashedToken
 		data, err := r.client.HGetAll(ctx, sessionKey).Result()
 		if err != nil || len(data) == 0 {
-			// Session expired, clean up from set
 			r.client.SRem(ctx, userSessionsKey, hashedToken)
 			continue
 		}
@@ -167,7 +164,6 @@ func (r *Redis) DeleteSession(ctx context.Context, sessionToken string) error {
 	hashedToken := hashToken(sessionToken)
 	sessionKey := "session:" + hashedToken
 
-	// Get user ID and session ID to clean up related keys
 	data, err := r.client.HMGet(ctx, sessionKey, "user_id", "id").Result()
 	if err != nil && err != redis.Nil {
 		return err
@@ -227,7 +223,6 @@ func (r *Redis) DeleteUserSessions(ctx context.Context, userID string) error {
 	pipe := r.client.Pipeline()
 	for _, hashedToken := range tokenHashes {
 		sessionKey := "session:" + hashedToken
-		// Get session ID for reverse lookup cleanup
 		sessionID, _ := r.client.HGet(ctx, sessionKey, "id").Result()
 		pipe.Del(ctx, sessionKey)
 		if sessionID != "" {
@@ -259,12 +254,8 @@ func (r *Redis) CountActiveSessions(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// InvalidateSession is an alias for DeleteSession for backwards compatibility
-func (r *Redis) InvalidateSession(ctx context.Context, sessionToken string) error {
-	return r.DeleteSession(ctx, sessionToken)
-}
-
 // Token revocation list
+
 func (r *Redis) RevokeToken(ctx context.Context, tokenHash string, ttl time.Duration) error {
 	return r.client.Set(ctx, "revoked:"+tokenHash, "1", ttl).Err()
 }

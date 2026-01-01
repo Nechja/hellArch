@@ -123,7 +123,6 @@ func (p *Postgres) GetLinkedAccounts(ctx context.Context, userID string) ([]*Lin
 	return accounts, nil
 }
 
-
 // Admin methods
 
 func (p *Postgres) ListUsers(ctx context.Context, limit, offset int) ([]*User, int, error) {
