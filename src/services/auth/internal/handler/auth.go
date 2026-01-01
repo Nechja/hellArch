@@ -209,40 +209,27 @@ func (h *AuthHandler) createSession(ctx context.Context, userID, ipAddress, user
 		return "", err
 	}
 
-	sessionID := uuid.New().String()
-
-	session := &store.Session{
-		ID:        sessionID,
+	session := &store.RedisSession{
+		ID:        uuid.New().String(),
 		UserID:    userID,
-		Token:     sessionToken,
-		IPAddress: ptrOrNil(ipAddress),
-		UserAgent: ptrOrNil(userAgent),
+		IPAddress: ipAddress,
+		UserAgent: userAgent,
+		CreatedAt: time.Now(),
 		ExpiresAt: time.Now().Add(SessionDuration),
 	}
 
-	if err := h.postgres.CreateSession(ctx, session); err != nil {
+	if err := h.redis.CreateSession(ctx, sessionToken, session, SessionDuration); err != nil {
 		return "", err
-	}
-
-	if err := h.redis.CacheSession(ctx, sessionToken, userID, SessionDuration); err != nil {
-		slog.Warn("failed to cache session in redis", "error", err)
 	}
 
 	return sessionToken, nil
 }
 
 func (h *AuthHandler) ValidateSession(ctx context.Context, sessionToken string) (string, error) {
-	userID, err := h.redis.GetCachedSession(ctx, sessionToken)
-	if err == nil {
-		return userID, nil
-	}
-
-	session, err := h.postgres.GetSessionByToken(ctx, sessionToken)
+	session, err := h.redis.GetSession(ctx, sessionToken)
 	if err != nil {
 		return "", status.Error(codes.Unauthenticated, "invalid session")
 	}
-
-	_ = h.redis.CacheSession(ctx, sessionToken, session.UserID, time.Until(session.ExpiresAt))
 
 	return session.UserID, nil
 }
@@ -305,11 +292,11 @@ func (h *AuthHandler) GetUserByID(ctx context.Context, userID string) (*store.Us
 }
 
 func (h *AuthHandler) InvalidateSession(ctx context.Context, sessionToken string) error {
-	if err := h.redis.InvalidateSession(ctx, sessionToken); err != nil {
-		slog.Warn("failed to delete session from redis", "error", err)
-	}
+	return h.redis.DeleteSession(ctx, sessionToken)
+}
 
-	return h.postgres.DeleteSessionByToken(ctx, sessionToken)
+func (h *AuthHandler) InvalidateUserSessions(ctx context.Context, userID string) error {
+	return h.redis.DeleteUserSessions(ctx, userID)
 }
 
 func generateRandomState() (string, error) {
@@ -321,13 +308,6 @@ func generateRandomState() (string, error) {
 }
 
 func ptr(s string) *string {
-	return &s
-}
-
-func ptrOrNil(s string) *string {
-	if s == "" {
-		return nil
-	}
 	return &s
 }
 

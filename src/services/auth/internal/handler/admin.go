@@ -107,7 +107,7 @@ func (h *AdminHandler) handleGetUser(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) handleGetUserSessions(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("id")
 
-	sessions, err := h.postgres.GetUserSessions(r.Context(), userID)
+	sessions, err := h.redis.GetUserSessions(r.Context(), userID)
 	if err != nil {
 		slog.Error("failed to get user sessions", "user_id", userID, "error", err)
 		http.Error(w, "Failed to get sessions", http.StatusInternalServerError)
@@ -139,13 +139,11 @@ func (h *AdminHandler) handleGetUserSessions(w http.ResponseWriter, r *http.Requ
 func (h *AdminHandler) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.PathValue("id")
 
-	if err := h.postgres.DeleteSession(r.Context(), sessionID); err != nil {
+	if err := h.redis.DeleteSessionByID(r.Context(), sessionID); err != nil {
 		slog.Error("failed to delete session", "session_id", sessionID, "error", err)
 		http.Error(w, "Failed to delete session", http.StatusInternalServerError)
 		return
 	}
-
-	_ = h.redis.InvalidateSession(r.Context(), sessionID)
 
 	slog.Info("session revoked", "session_id", sessionID)
 
@@ -159,7 +157,7 @@ func (h *AdminHandler) handleGetStats(w http.ResponseWriter, r *http.Request) {
 		userCount = 0
 	}
 
-	sessionCount, err := h.postgres.CountActiveSessions(r.Context())
+	sessionCount, err := h.redis.CountActiveSessions(r.Context())
 	if err != nil {
 		slog.Error("failed to count sessions", "error", err)
 		sessionCount = 0
@@ -308,13 +306,10 @@ func (h *AdminHandler) handleDeactivateUser(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Invalidate all user sessions when deactivating
-	sessions, err := h.postgres.GetUserSessions(r.Context(), userID)
-	if err == nil {
-		for _, s := range sessions {
-			_ = h.redis.InvalidateSession(r.Context(), s.Token)
-			_ = h.postgres.DeleteSession(r.Context(), s.ID)
-		}
-		slog.Info("invalidated user sessions on deactivation", "user_id", userID, "session_count", len(sessions))
+	if err := h.redis.DeleteUserSessions(r.Context(), userID); err != nil {
+		slog.Warn("failed to delete user sessions on deactivation", "user_id", userID, "error", err)
+	} else {
+		slog.Info("invalidated user sessions on deactivation", "user_id", userID)
 	}
 
 	slog.Info("user deactivated", "user_id", userID)

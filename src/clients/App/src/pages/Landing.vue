@@ -1,12 +1,8 @@
 <script setup lang="ts">
-interface User {
-  id: string
-  email: string
-  username: string
-}
+import type { UserProfile } from '@hellarch/types'
 
 defineProps<{
-  user: User | null
+  user: UserProfile | null
 }>()
 </script>
 
@@ -15,7 +11,7 @@ defineProps<{
     <!-- Welcome Section -->
     <section class="card">
       <h1 class="text-heading mb-2">
-        Welcome{{ user ? `, ${user.username}` : '' }}
+        Welcome{{ user?.display_name ? `, ${user.display_name}` : '' }}
       </h1>
       <p class="text-text-secondary">
         This is your HellArch dashboard. A reusable microservices template for building modern web applications.

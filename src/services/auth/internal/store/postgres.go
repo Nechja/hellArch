@@ -16,7 +16,6 @@ type Postgres struct {
 
 type User = auth.User
 type LinkedAccount = auth.LinkedAccount
-type Session = auth.Session
 
 func NewPostgres(ctx context.Context, databaseURL string) (*Postgres, error) {
 	cfg, err := pgxpool.ParseConfig(databaseURL)
@@ -124,37 +123,6 @@ func (p *Postgres) GetLinkedAccounts(ctx context.Context, userID string) ([]*Lin
 	return accounts, nil
 }
 
-func (p *Postgres) CreateSession(ctx context.Context, session *Session) error {
-	_, err := p.pool.Exec(ctx,
-		`INSERT INTO sessions (id, user_id, token, ip_address, user_agent, expires_at)
-		 VALUES ($1, $2, $3, $4, $5, $6)`,
-		session.ID, session.UserID, session.Token, session.IPAddress, session.UserAgent, session.ExpiresAt,
-	)
-	return err
-}
-
-func (p *Postgres) GetSessionByToken(ctx context.Context, token string) (*Session, error) {
-	var session Session
-	err := p.pool.QueryRow(ctx,
-		`SELECT id, user_id, token, ip_address, user_agent, expires_at, created_at
-		 FROM sessions WHERE token = $1 AND expires_at > NOW()`,
-		token,
-	).Scan(&session.ID, &session.UserID, &session.Token, &session.IPAddress, &session.UserAgent, &session.ExpiresAt, &session.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return &session, nil
-}
-
-func (p *Postgres) DeleteSession(ctx context.Context, id string) error {
-	_, err := p.pool.Exec(ctx, `DELETE FROM sessions WHERE id = $1`, id)
-	return err
-}
-
-func (p *Postgres) DeleteSessionByToken(ctx context.Context, token string) error {
-	_, err := p.pool.Exec(ctx, `DELETE FROM sessions WHERE token = $1`, token)
-	return err
-}
 
 // Admin methods
 
@@ -188,40 +156,9 @@ func (p *Postgres) ListUsers(ctx context.Context, limit, offset int) ([]*User, i
 	return users, total, nil
 }
 
-func (p *Postgres) GetUserSessions(ctx context.Context, userID string) ([]*Session, error) {
-	rows, err := p.pool.Query(ctx,
-		`SELECT id, user_id, token, ip_address, user_agent, expires_at, created_at
-		 FROM sessions WHERE user_id = $1 AND expires_at > NOW() ORDER BY created_at DESC`,
-		userID,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var sessions []*Session
-	for rows.Next() {
-		var session Session
-		if err := rows.Scan(
-			&session.ID, &session.UserID, &session.Token, &session.IPAddress,
-			&session.UserAgent, &session.ExpiresAt, &session.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		sessions = append(sessions, &session)
-	}
-	return sessions, nil
-}
-
 func (p *Postgres) CountUsers(ctx context.Context) (int, error) {
 	var count int
 	err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM users`).Scan(&count)
-	return count, err
-}
-
-func (p *Postgres) CountActiveSessions(ctx context.Context) (int, error) {
-	var count int
-	err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM sessions WHERE expires_at > NOW()`).Scan(&count)
 	return count, err
 }
 

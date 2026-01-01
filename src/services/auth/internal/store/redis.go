@@ -11,6 +11,16 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// Session represents a user session stored in Redis
+type RedisSession struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	IPAddress string    `json:"ip_address"`
+	UserAgent string    `json:"user_agent"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
 // hashToken creates a SHA-256 hash of a token for secure storage
 // This prevents token exposure if Redis is compromised
 func hashToken(token string) string {
@@ -58,20 +68,200 @@ func (r *Redis) DeleteOAuthState(ctx context.Context, state string) error {
 	return r.client.Del(ctx, "oauth:state:"+state).Err()
 }
 
-// Session cache - tokens are hashed before storage for security
-func (r *Redis) CacheSession(ctx context.Context, sessionToken string, userID string, ttl time.Duration) error {
+// Session management - Redis is the single source of truth
+// Keys:
+//   - session:{hashedToken} -> hash with session data
+//   - user:{userID}:sessions -> set of hashed tokens
+//   - session_id:{sessionID} -> hashed token (reverse lookup)
+
+func (r *Redis) CreateSession(ctx context.Context, sessionToken string, session *RedisSession, ttl time.Duration) error {
 	hashedToken := hashToken(sessionToken)
-	return r.client.Set(ctx, "session:"+hashedToken, userID, ttl).Err()
+	sessionKey := "session:" + hashedToken
+	userSessionsKey := "user:" + session.UserID + ":sessions"
+	sessionIDKey := "session_id:" + session.ID
+
+	pipe := r.client.Pipeline()
+
+	pipe.HSet(ctx, sessionKey,
+		"id", session.ID,
+		"user_id", session.UserID,
+		"ip_address", session.IPAddress,
+		"user_agent", session.UserAgent,
+		"created_at", session.CreatedAt.Format(time.RFC3339),
+		"expires_at", session.ExpiresAt.Format(time.RFC3339),
+		"token_hash", hashedToken,
+	)
+	pipe.Expire(ctx, sessionKey, ttl)
+
+	// Add to user's session set with the hashed token as member
+	pipe.SAdd(ctx, userSessionsKey, hashedToken)
+	pipe.Expire(ctx, userSessionsKey, ttl)
+
+	// Reverse lookup: session ID -> hashed token
+	pipe.Set(ctx, sessionIDKey, hashedToken, ttl)
+
+	_, err := pipe.Exec(ctx)
+	return err
 }
 
-func (r *Redis) GetCachedSession(ctx context.Context, sessionToken string) (string, error) {
+func (r *Redis) GetSession(ctx context.Context, sessionToken string) (*RedisSession, error) {
 	hashedToken := hashToken(sessionToken)
-	return r.client.Get(ctx, "session:"+hashedToken).Result()
+	sessionKey := "session:" + hashedToken
+
+	data, err := r.client.HGetAll(ctx, sessionKey).Result()
+	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
+		return nil, redis.Nil
+	}
+
+	createdAt, _ := time.Parse(time.RFC3339, data["created_at"])
+	expiresAt, _ := time.Parse(time.RFC3339, data["expires_at"])
+
+	return &RedisSession{
+		ID:        data["id"],
+		UserID:    data["user_id"],
+		IPAddress: data["ip_address"],
+		UserAgent: data["user_agent"],
+		CreatedAt: createdAt,
+		ExpiresAt: expiresAt,
+	}, nil
 }
 
+func (r *Redis) GetUserSessions(ctx context.Context, userID string) ([]*RedisSession, error) {
+	userSessionsKey := "user:" + userID + ":sessions"
+
+	tokenHashes, err := r.client.SMembers(ctx, userSessionsKey).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	var sessions []*RedisSession
+	for _, hashedToken := range tokenHashes {
+		sessionKey := "session:" + hashedToken
+		data, err := r.client.HGetAll(ctx, sessionKey).Result()
+		if err != nil || len(data) == 0 {
+			// Session expired, clean up from set
+			r.client.SRem(ctx, userSessionsKey, hashedToken)
+			continue
+		}
+
+		createdAt, _ := time.Parse(time.RFC3339, data["created_at"])
+		expiresAt, _ := time.Parse(time.RFC3339, data["expires_at"])
+
+		sessions = append(sessions, &RedisSession{
+			ID:        data["id"],
+			UserID:    data["user_id"],
+			IPAddress: data["ip_address"],
+			UserAgent: data["user_agent"],
+			CreatedAt: createdAt,
+			ExpiresAt: expiresAt,
+		})
+	}
+
+	return sessions, nil
+}
+
+func (r *Redis) DeleteSession(ctx context.Context, sessionToken string) error {
+	hashedToken := hashToken(sessionToken)
+	sessionKey := "session:" + hashedToken
+
+	// Get user ID and session ID to clean up related keys
+	data, err := r.client.HMGet(ctx, sessionKey, "user_id", "id").Result()
+	if err != nil && err != redis.Nil {
+		return err
+	}
+
+	pipe := r.client.Pipeline()
+	pipe.Del(ctx, sessionKey)
+
+	if len(data) >= 2 {
+		if userID, ok := data[0].(string); ok && userID != "" {
+			pipe.SRem(ctx, "user:"+userID+":sessions", hashedToken)
+		}
+		if sessionID, ok := data[1].(string); ok && sessionID != "" {
+			pipe.Del(ctx, "session_id:"+sessionID)
+		}
+	}
+
+	_, err = pipe.Exec(ctx)
+	return err
+}
+
+func (r *Redis) DeleteSessionByID(ctx context.Context, sessionID string) error {
+	sessionIDKey := "session_id:" + sessionID
+
+	hashedToken, err := r.client.Get(ctx, sessionIDKey).Result()
+	if err != nil {
+		return err
+	}
+
+	sessionKey := "session:" + hashedToken
+
+	userID, _ := r.client.HGet(ctx, sessionKey, "user_id").Result()
+
+	pipe := r.client.Pipeline()
+	pipe.Del(ctx, sessionKey)
+	pipe.Del(ctx, sessionIDKey)
+	if userID != "" {
+		pipe.SRem(ctx, "user:"+userID+":sessions", hashedToken)
+	}
+
+	_, err = pipe.Exec(ctx)
+	return err
+}
+
+func (r *Redis) DeleteUserSessions(ctx context.Context, userID string) error {
+	userSessionsKey := "user:" + userID + ":sessions"
+
+	tokenHashes, err := r.client.SMembers(ctx, userSessionsKey).Result()
+	if err != nil {
+		return err
+	}
+
+	if len(tokenHashes) == 0 {
+		return nil
+	}
+
+	pipe := r.client.Pipeline()
+	for _, hashedToken := range tokenHashes {
+		sessionKey := "session:" + hashedToken
+		// Get session ID for reverse lookup cleanup
+		sessionID, _ := r.client.HGet(ctx, sessionKey, "id").Result()
+		pipe.Del(ctx, sessionKey)
+		if sessionID != "" {
+			pipe.Del(ctx, "session_id:"+sessionID)
+		}
+	}
+	pipe.Del(ctx, userSessionsKey)
+
+	_, err = pipe.Exec(ctx)
+	return err
+}
+
+func (r *Redis) CountActiveSessions(ctx context.Context) (int, error) {
+	var count int
+	var cursor uint64
+
+	for {
+		keys, nextCursor, err := r.client.Scan(ctx, cursor, "session:*", 100).Result()
+		if err != nil {
+			return 0, err
+		}
+		count += len(keys)
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
+	}
+
+	return count, nil
+}
+
+// InvalidateSession is an alias for DeleteSession for backwards compatibility
 func (r *Redis) InvalidateSession(ctx context.Context, sessionToken string) error {
-	hashedToken := hashToken(sessionToken)
-	return r.client.Del(ctx, "session:"+hashedToken).Err()
+	return r.DeleteSession(ctx, sessionToken)
 }
 
 // Token revocation list
