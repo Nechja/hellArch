@@ -119,10 +119,10 @@ func (h *AuthHandler) validateRedirectURI(redirectURI string) error {
 		return errors.New("redirect_uri must be absolute")
 	}
 
-	// Check against allowlist
-	baseURL := parsed.Scheme + "://" + parsed.Host
+	// Check against allowlist - use case-insensitive exact match
+	redirectOrigin := parsed.Scheme + "://" + parsed.Host
 	for _, allowed := range h.config.AllowedRedirectURIs {
-		if strings.HasPrefix(baseURL, allowed) {
+		if strings.EqualFold(redirectOrigin, allowed) {
 			return nil
 		}
 	}
