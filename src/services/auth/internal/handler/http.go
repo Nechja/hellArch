@@ -114,11 +114,31 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Read CSRF token from cookie - this proves the callback is from the same browser
+	csrfCookie, err := r.Cookie(csrfCookieName)
+	if err != nil {
+		slog.Warn("missing CSRF cookie in OAuth callback", "provider", provider)
+		http.Error(w, "Session expired. Please try logging in again.", http.StatusBadRequest)
+		return
+	}
+	csrfToken := csrfCookie.Value
+
+	// Clear the CSRF cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     csrfCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   h.config.SecureCookies,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+
 	// Extract client info for session audit trail
 	ipAddress := getClientIP(r)
 	userAgent := r.UserAgent()
 
-	result, err := h.auth.HandleOAuthCallback(r.Context(), provider, code, state, ipAddress, userAgent)
+	result, err := h.auth.HandleOAuthCallback(r.Context(), provider, code, state, csrfToken, ipAddress, userAgent)
 	if err != nil {
 		slog.Error("oauth callback failed", "error", err, "provider", provider)
 		http.Error(w, "Authentication failed", http.StatusUnauthorized)
