@@ -124,6 +124,25 @@ services:
       - hellarch
     restart: unless-stopped
 
+  health:
+    build:
+      context: ../../src/services/health
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hellarch-health
+    ports:
+      - "5004:5004"
+    environment:
+      - PORT=5004
+      - POLL_INTERVAL_MS=10000
+      - OTEL_SERVICE_NAME=health
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    volumes:
+      - ../../src/services/health:/app
+    networks:
+      - hellarch
+    restart: unless-stopped
+
 volumes:
   gateway-nuget:
   auth-go-cache:
