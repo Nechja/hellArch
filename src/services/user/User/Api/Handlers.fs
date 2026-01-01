@@ -162,7 +162,13 @@ module Handlers =
                 | Error err -> do! handleError ctx err
         }
 
-    let health (ctx: HttpContext) = task { do! writeJson ctx 200 {| status = "healthy" |} }
+    let health (dbConfig: Database.DatabaseConfig) (ctx: HttpContext) =
+        task {
+            let! dbOk = Database.checkConnection dbConfig |> Async.StartAsTask
+            let status = if dbOk then "healthy" else "unhealthy"
+            let statusCode = if dbOk then 200 else 503
+            do! writeJson ctx statusCode {| status = status; database = dbOk |}
+        }
 
     let getMe (dbConfig: Database.DatabaseConfig) (ctx: HttpContext) =
         task {

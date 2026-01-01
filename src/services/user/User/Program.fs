@@ -82,7 +82,7 @@ let main args =
     let dbConfig: Database.DatabaseConfig =
         { ConnectionString = getRequiredEnv "USER_DATABASE_URL" }
 
-    app.MapGet("/user/health", Func<HttpContext, _>(Handlers.health)) |> ignore
+    app.MapGet("/user/health", Func<HttpContext, _>(fun ctx -> Handlers.health dbConfig ctx)) |> ignore
 
     app.MapGet("/user/me", Func<HttpContext, _>(fun ctx -> Handlers.getMe dbConfig ctx))
     |> ignore

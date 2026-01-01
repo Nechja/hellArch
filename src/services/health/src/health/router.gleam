@@ -36,12 +36,22 @@ fn health_response() -> Response(ResponseData) {
 }
 
 fn status_response(poller: Poller) -> Response(ResponseData) {
-  let status = poller.get_status(poller)
-  let body = encode_aggregated_status(status)
-
-  response.new(200)
-  |> response.set_header("content-type", "application/json")
-  |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+  case poller.get_status(poller) {
+    Ok(status) -> {
+      let body = encode_aggregated_status(status)
+      response.new(200)
+      |> response.set_header("content-type", "application/json")
+      |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+    }
+    Error(_) -> {
+      let body =
+        json.object([#("error", json.string("Poller unavailable"))])
+        |> json.to_string
+      response.new(503)
+      |> response.set_header("content-type", "application/json")
+      |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+    }
+  }
 }
 
 fn service_status_response(

@@ -17,7 +17,7 @@ pub fn services() -> List(Service) {
     Service(
       name: "user",
       url: "http://user:5002",
-      check_type: HttpGet("/health"),
+      check_type: HttpGet("/user/health"),
       critical: True,
     ),
     Service(

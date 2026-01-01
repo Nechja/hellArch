@@ -118,6 +118,9 @@ app.UseStaticFiles();
 
 app.UseAntiforgery();
 
+// Health check endpoint (before auth middleware so it's not protected)
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
+
 // Auth middleware - validates session before serving admin pages
 app.UseMiddleware<AdminAuthMiddleware>();
 

@@ -33,15 +33,29 @@ type State {
 const check_timeout_ms = 5000
 
 pub fn start() -> Result(Poller, Nil) {
-  let subject = process.new_subject()
+  // Create a subject for the parent to receive the poller's subject
+  let parent_subject: Subject(Subject(Message)) = process.new_subject()
 
   // Start the actor loop in a new process
-  process.spawn(fn() { run_loop(subject, State(statuses: dict.new())) })
+  // The message subject MUST be created in the spawned process (Erlang ownership)
+  process.spawn(fn() {
+    let message_subject = process.new_subject()
 
-  // Send initial poll message
-  process.send(subject, Poll)
+    // Send the subject back to the parent
+    process.send(parent_subject, message_subject)
 
-  Ok(Poller(subject))
+    // Send initial poll to self
+    process.send(message_subject, Poll)
+
+    // Start the loop
+    run_loop(message_subject, State(statuses: dict.new()))
+  })
+
+  // Wait for the spawned process to send us its subject
+  let assert Ok(message_subject) =
+    process.receive(from: parent_subject, within: 5000)
+
+  Ok(Poller(message_subject))
 }
 
 fn run_loop(self: Subject(Message), state: State) -> Nil {
@@ -51,7 +65,6 @@ fn run_loop(self: Subject(Message), state: State) -> Nil {
 
   case process.selector_receive(from: selector, within: 60_000) {
     Ok(Poll) -> {
-      io.println("Polling services...")
       let services = registry.services()
       let new_statuses = poll_all_services(services, state.statuses)
 
@@ -206,14 +219,19 @@ fn aggregate_status(statuses: Dict(String, ServiceStatus)) -> AggregatedStatus {
   AggregatedStatus(overall: overall, checked_at: birl.now(), services: services)
 }
 
-pub fn get_status(poller: Poller) -> AggregatedStatus {
+pub fn get_status(poller: Poller) -> Result(AggregatedStatus, Nil) {
   let Poller(subject) = poller
   let reply_subject = process.new_subject()
   process.send(subject, GetStatus(reply_subject))
 
-  // Wait for reply
-  let assert Ok(result) = process.receive(from: reply_subject, within: 5000)
-  result
+  // Wait for reply with timeout handling
+  case process.receive(from: reply_subject, within: 5000) {
+    Ok(result) -> Ok(result)
+    Error(_) -> {
+      io.println("get_status timed out waiting for poller response")
+      Error(Nil)
+    }
+  }
 }
 
 pub fn get_service_status(poller: Poller, name: String) -> Option(ServiceStatus) {

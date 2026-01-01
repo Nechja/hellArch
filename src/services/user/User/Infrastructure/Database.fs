@@ -9,6 +9,20 @@ module Database =
 
     type DatabaseConfig = { ConnectionString: string }
 
+    let checkConnection (config: DatabaseConfig) =
+        async {
+            try
+                let! _ =
+                    config.ConnectionString
+                    |> Sql.connect
+                    |> Sql.query "SELECT 1"
+                    |> Sql.executeNonQueryAsync
+                    |> Async.AwaitTask
+                return true
+            with _ ->
+                return false
+        }
+
     let private parseTheme (value: string) : Theme =
         match value.ToLowerInvariant() with
         | "dark" -> Theme.Dark

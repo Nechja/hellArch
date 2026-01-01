@@ -16,11 +16,12 @@ pub fn main() {
   // Start the poller
   let assert Ok(poller) = poller.start()
 
-  // Start the HTTP server
+  // Start the HTTP server - bind to 0.0.0.0 for Docker networking
   let assert Ok(_) =
     router.handler(poller)
     |> mist.new
     |> mist.port(port)
+    |> mist.bind("0.0.0.0")
     |> mist.start
 
   io.println("Health aggregator running")
