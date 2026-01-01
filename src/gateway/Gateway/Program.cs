@@ -96,6 +96,9 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+// Security headers should be first to apply to all responses
+app.UseMiddleware<SecurityHeadersMiddleware>();
+
 app.UseStatusCodePages(async context =>
 {
     var response = context.HttpContext.Response;
