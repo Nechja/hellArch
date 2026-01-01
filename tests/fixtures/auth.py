@@ -108,3 +108,22 @@ async def test_session(test_user: AuthUser) -> AuthSession:
         session = await create_test_session(conn, test_user.id)
         await conn.commit()
         return session
+
+
+@pytest_asyncio.fixture
+async def test_session_factory() -> Callable:
+    created_sessions: list[str] = []
+
+    async def _create(user_id: str) -> AuthSession:
+        async with auth_db_connection() as conn:
+            session = await create_test_session(conn, user_id)
+            created_sessions.append(session.id)
+            await conn.commit()
+            return session
+
+    yield _create
+
+    async with auth_db_connection() as conn:
+        for session_id in created_sessions:
+            await conn.execute("DELETE FROM sessions WHERE id = %s", (session_id,))
+        await conn.commit()

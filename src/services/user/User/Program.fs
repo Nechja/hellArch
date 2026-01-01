@@ -8,6 +8,8 @@ open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Npgsql
+open OpenTelemetry
+open OpenTelemetry.Context.Propagation
 open OpenTelemetry.Resources
 open OpenTelemetry.Trace
 open User.Api
@@ -25,6 +27,11 @@ let private getEnvOrDefault name defaultValue =
 
 [<EntryPoint>]
 let main args =
+    // Configure W3C TraceContext propagation for distributed tracing
+    Sdk.SetDefaultTextMapPropagator(
+        CompositeTextMapPropagator([| TraceContextPropagator(); BaggagePropagator() |])
+    )
+
     let builder = WebApplication.CreateBuilder(args)
 
     let logLevel =
@@ -54,9 +61,11 @@ let main args =
         |> Option.ofObj
         |> Option.defaultValue "http://localhost:4318"
 
+    let serviceName = getEnvOrDefault "OTEL_SERVICE_NAME" "user"
+
     builder.Services
         .AddOpenTelemetry()
-        .ConfigureResource(fun resource -> resource.AddService("user") |> ignore)
+        .ConfigureResource(fun resource -> resource.AddService(serviceName) |> ignore)
         .WithTracing(fun tracing ->
             tracing
                 .AddSource("hellarch/user/events")
@@ -73,7 +82,7 @@ let main args =
     let dbConfig: Database.DatabaseConfig =
         { ConnectionString = getRequiredEnv "USER_DATABASE_URL" }
 
-    app.MapGet("/user/health", Func<HttpContext, _>(Handlers.health)) |> ignore
+    app.MapGet("/user/health", Func<HttpContext, _>(fun ctx -> Handlers.health dbConfig ctx)) |> ignore
 
     app.MapGet("/user/me", Func<HttpContext, _>(fun ctx -> Handlers.getMe dbConfig ctx))
     |> ignore

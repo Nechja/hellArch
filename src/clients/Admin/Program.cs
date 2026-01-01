@@ -2,11 +2,19 @@ using System.Text.Json;
 using Admin.Components;
 using Admin.Middleware;
 using Admin.Services;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure W3C TraceContext propagation for distributed tracing
+Sdk.SetDefaultTextMapPropagator(new CompositeTextMapPropagator([
+    new TraceContextPropagator(),
+    new BaggagePropagator()
+]));
 
 // Logging
 var logLevel = Environment.GetEnvironmentVariable("LOG_LEVEL")?.ToLowerInvariant() switch
@@ -62,15 +70,26 @@ builder.Services.AddHttpClient("RabbitMQ", client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
+// Health aggregator service
+var healthUrl = Environment.GetEnvironmentVariable("HEALTH_SERVICE_URL") ?? "http://health:5004";
+builder.Services.AddHttpClient("HealthService", client =>
+{
+    client.BaseAddress = new Uri(healthUrl + "/");
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+
 builder.Services.AddScoped<AuthAdminFacade>();
 builder.Services.AddScoped<RedisBrowserAdapter>();
 builder.Services.AddScoped<RabbitMqAdapter>();
+builder.Services.AddScoped<HealthAdapter>();
 
 var otelEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT")
     ?? "http://localhost:4318";
 
+var serviceName = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "admin";
+
 builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource.AddService("admin"))
+    .ConfigureResource(resource => resource.AddService(serviceName))
     .WithTracing(tracing =>
     {
         tracing
@@ -98,6 +117,9 @@ app.Use((context, next) =>
 app.UseStaticFiles();
 
 app.UseAntiforgery();
+
+// Health check endpoint (before auth middleware so it's not protected)
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 // Auth middleware - validates session before serving admin pages
 app.UseMiddleware<AdminAuthMiddleware>();

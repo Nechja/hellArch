@@ -101,6 +101,135 @@ public sealed class AuthAdminFacade(
         }
     }
 
+    public async Task<Dictionary<string, bool>> GetUserPermissions(string userId, CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _client.GetFromJsonAsync<PermissionsResponse>(
+                $"auth/admin/users/{userId}/permissions", ct);
+            return response?.Permissions ?? [];
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogWarning(ex, "HTTP error getting permissions for user {UserId}", userId);
+            return [];
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout getting permissions for user {UserId}", userId);
+            return [];
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse permissions response for user {UserId}", userId);
+            return [];
+        }
+    }
+
+    public async Task<bool> SetUserPermissions(string userId, Dictionary<string, bool> permissions, CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _client.PutAsJsonAsync(
+                $"auth/admin/users/{userId}/permissions",
+                new { permissions },
+                ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogWarning(ex, "HTTP error setting permissions for user {UserId}", userId);
+            return false;
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout setting permissions for user {UserId}", userId);
+            return false;
+        }
+    }
+
+    public async Task<bool> GrantPermission(string userId, string permission, CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _client.PostAsJsonAsync(
+                $"auth/admin/users/{userId}/permissions/grant",
+                new { permission },
+                ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogWarning(ex, "HTTP error granting permission {Permission} to user {UserId}", permission, userId);
+            return false;
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout granting permission {Permission} to user {UserId}", permission, userId);
+            return false;
+        }
+    }
+
+    public async Task<bool> RevokePermission(string userId, string permission, CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _client.PostAsJsonAsync(
+                $"auth/admin/users/{userId}/permissions/revoke",
+                new { permission },
+                ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogWarning(ex, "HTTP error revoking permission {Permission} from user {UserId}", permission, userId);
+            return false;
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout revoking permission {Permission} from user {UserId}", permission, userId);
+            return false;
+        }
+    }
+
+    public async Task<bool> ActivateUser(string userId, CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _client.PostAsync($"auth/admin/users/{userId}/activate", null, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogWarning(ex, "HTTP error activating user {UserId}", userId);
+            return false;
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout activating user {UserId}", userId);
+            return false;
+        }
+    }
+
+    public async Task<bool> DeactivateUser(string userId, CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _client.PostAsync($"auth/admin/users/{userId}/deactivate", null, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogWarning(ex, "HTTP error deactivating user {UserId}", userId);
+            return false;
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timeout deactivating user {UserId}", userId);
+            return false;
+        }
+    }
+
     public async Task<AdminStats> GetStats(CancellationToken ct = default)
     {
         try
@@ -129,43 +258,50 @@ public sealed class AuthAdminFacade(
 // DTOs for Auth Admin API responses
 public sealed record UsersResponse(
     IReadOnlyList<UserSummary> Users,
-    int TotalCount,
+    [property: JsonPropertyName("total_count")] int TotalCount,
     int Page,
-    int PageSize);
+    [property: JsonPropertyName("page_size")] int PageSize);
 
 public sealed record UserSummary(
     string Id,
     string Email,
     string Username,
-    DateTime CreatedAt);
+    [property: JsonPropertyName("is_active")] bool IsActive,
+    [property: JsonPropertyName("created_at")] DateTime CreatedAt);
 
 public sealed record UserDetail(
     string Id,
     string Email,
     string Username,
-    DateTime CreatedAt,
-    DateTime UpdatedAt,
-    IReadOnlyList<LinkedAccountInfo> LinkedAccounts);
+    [property: JsonPropertyName("is_active")] bool IsActive,
+    Dictionary<string, bool>? Permissions,
+    [property: JsonPropertyName("created_at")] DateTime CreatedAt,
+    [property: JsonPropertyName("updated_at")] DateTime UpdatedAt,
+    [property: JsonPropertyName("linked_accounts")] IReadOnlyList<LinkedAccountInfo> LinkedAccounts);
+
+public sealed record PermissionsResponse(
+    [property: JsonPropertyName("user_id")] string UserId,
+    Dictionary<string, bool> Permissions);
 
 public sealed record LinkedAccountInfo(
     string Id,
     string Provider,
-    string ProviderUserId,
+    [property: JsonPropertyName("provider_user_id")] string ProviderUserId,
     string? Email,
     string? Username,
-    string? AvatarUrl,
-    DateTime CreatedAt);
+    [property: JsonPropertyName("avatar_url")] string? AvatarUrl,
+    [property: JsonPropertyName("created_at")] DateTime CreatedAt);
 
 public sealed record SessionsResponse(
     IReadOnlyList<SessionInfo> Sessions);
 
 public sealed record SessionInfo(
     string Id,
-    string UserId,
-    string? IpAddress,
-    string? UserAgent,
-    DateTime ExpiresAt,
-    DateTime CreatedAt);
+    [property: JsonPropertyName("user_id")] string UserId,
+    [property: JsonPropertyName("ip_address")] string? IpAddress,
+    [property: JsonPropertyName("user_agent")] string? UserAgent,
+    [property: JsonPropertyName("expires_at")] DateTime ExpiresAt,
+    [property: JsonPropertyName("created_at")] DateTime CreatedAt);
 
 public sealed record AdminStats(
     [property: JsonPropertyName("user_count")] int UserCount,

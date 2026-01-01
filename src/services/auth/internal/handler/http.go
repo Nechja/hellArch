@@ -4,18 +4,48 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 
+	"github.com/nechja/hellarch/auth/internal/config"
 	"github.com/nechja/hellarch/auth/internal/oauth"
 )
 
 // HTTPHandler handles HTTP endpoints for OAuth flows
 type HTTPHandler struct {
-	auth *AuthHandler
+	auth   *AuthHandler
+	config *config.Config
 }
 
-func NewHTTPHandler(auth *AuthHandler) *HTTPHandler {
-	return &HTTPHandler{auth: auth}
+func NewHTTPHandler(auth *AuthHandler, cfg *config.Config) *HTTPHandler {
+	return &HTTPHandler{auth: auth, config: cfg}
+}
+
+func (h *HTTPHandler) isAllowedRedirectURI(redirectURI string) bool {
+	if redirectURI == "" {
+		return true
+	}
+
+	// Allow relative paths
+	if strings.HasPrefix(redirectURI, "/") && !strings.HasPrefix(redirectURI, "//") {
+		return true
+	}
+
+	parsed, err := url.Parse(redirectURI)
+	if err != nil {
+		return false
+	}
+
+	// Check against allowed origins
+	redirectOrigin := parsed.Scheme + "://" + parsed.Host
+	for _, allowed := range h.config.AllowedRedirectURIs {
+		if strings.EqualFold(redirectOrigin, allowed) {
+			return true
+		}
+	}
+
+	slog.Warn("rejected redirect URI", "uri", redirectURI, "allowed", h.config.AllowedRedirectURIs)
+	return false
 }
 
 func (h *HTTPHandler) RegisterRoutes(mux *http.ServeMux) {
@@ -29,6 +59,8 @@ func (h *HTTPHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/health", h.handleHealth)
 }
 
+const csrfCookieName = "hellarch_csrf"
+
 func (h *HTTPHandler) handleOAuthLogin(w http.ResponseWriter, r *http.Request) {
 	providerStr := r.PathValue("provider")
 	provider := oauth.Provider(providerStr)
@@ -38,14 +70,30 @@ func (h *HTTPHandler) handleOAuthLogin(w http.ResponseWriter, r *http.Request) {
 		redirectURI = r.URL.Query().Get("redirect")
 	}
 
-	authURL, _, err := h.auth.GetOAuthURL(r.Context(), provider, redirectURI)
+	if !h.isAllowedRedirectURI(redirectURI) {
+		http.Error(w, "Invalid redirect URI", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.auth.GetOAuthURL(r.Context(), provider, redirectURI)
 	if err != nil {
 		slog.Error("failed to get oauth url", "error", err, "provider", provider)
 		http.Error(w, "Failed to initiate OAuth", http.StatusInternalServerError)
 		return
 	}
 
-	http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
+	// Set CSRF cookie for browser binding - ties the OAuth flow to this browser
+	http.SetCookie(w, &http.Cookie{
+		Name:     csrfCookieName,
+		Value:    result.CSRFToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   h.config.SecureCookies,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   600, // 10 minutes - matches OAuthStateTTL
+	})
+
+	http.Redirect(w, r, result.AuthURL, http.StatusTemporaryRedirect)
 }
 
 func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
@@ -66,11 +114,31 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Read CSRF token from cookie - this proves the callback is from the same browser
+	csrfCookie, err := r.Cookie(csrfCookieName)
+	if err != nil {
+		slog.Warn("missing CSRF cookie in OAuth callback", "provider", provider)
+		http.Error(w, "Session expired. Please try logging in again.", http.StatusBadRequest)
+		return
+	}
+	csrfToken := csrfCookie.Value
+
+	// Clear the CSRF cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     csrfCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   h.config.SecureCookies,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+
 	// Extract client info for session audit trail
 	ipAddress := getClientIP(r)
 	userAgent := r.UserAgent()
 
-	result, err := h.auth.HandleOAuthCallback(r.Context(), provider, code, state, ipAddress, userAgent)
+	result, err := h.auth.HandleOAuthCallback(r.Context(), provider, code, state, csrfToken, ipAddress, userAgent)
 	if err != nil {
 		slog.Error("oauth callback failed", "error", err, "provider", provider)
 		http.Error(w, "Authentication failed", http.StatusUnauthorized)
@@ -82,12 +150,12 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 		Value:    result.SessionToken,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
+		Secure:   h.config.SecureCookies,
 		SameSite: http.SameSiteLaxMode,
-		MaxAge:   30 * 24 * 60 * 60, // 30 days
+		MaxAge:   24 * 60 * 60, // 24 hours
 	})
 
-	if result.RedirectURI != "" {
+	if result.RedirectURI != "" && h.isAllowedRedirectURI(result.RedirectURI) {
 		http.Redirect(w, r, result.RedirectURI, http.StatusTemporaryRedirect)
 		return
 	}
@@ -140,10 +208,35 @@ func (h *HTTPHandler) handleValidate(w http.ResponseWriter, r *http.Request) {
 	if sessionToken != "" {
 		userID, err := h.auth.ValidateSession(r.Context(), sessionToken)
 		if err == nil {
+			// Fetch full user to get permissions and is_active
+			user, err := h.auth.GetUserByID(r.Context(), userID)
+			if err != nil {
+				slog.Error("failed to get user", "error", err, "user_id", userID)
+				// Return 401 instead of 500 to avoid info disclosure about internal failures
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			// Check if user is active - use 401 since the session is no longer valid for this user
+			if !user.IsActive {
+				w.WriteHeader(http.StatusUnauthorized)
+				if err := json.NewEncoder(w).Encode(map[string]interface{}{
+					"valid": false,
+					"error": "user_inactive",
+				}); err != nil {
+					slog.Error("failed to encode response", "error", err)
+				}
+				return
+			}
+
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(map[string]interface{}{
-				"valid":   true,
-				"user_id": userID,
+				"valid":       true,
+				"user_id":     user.ID,
+				"email":       user.Email,
+				"username":    user.Username,
+				"is_active":   user.IsActive,
+				"permissions": user.Permissions,
 			}); err != nil {
 				slog.Error("failed to encode response", "error", err)
 			}
@@ -156,13 +249,22 @@ func (h *HTTPHandler) handleValidate(w http.ResponseWriter, r *http.Request) {
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		claims, err := h.auth.ValidateToken(r.Context(), token)
 		if err == nil {
+			// For JWT, permissions are in the custom claims
 			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			response := map[string]interface{}{
 				"valid":    true,
 				"user_id":  claims.UserID,
 				"email":    claims.Email,
 				"username": claims.Username,
-			}); err != nil {
+			}
+			// Parse permissions from custom claims if present
+			if permStr, ok := claims.Custom["permissions"]; ok {
+				var perms map[string]bool
+				if err := json.Unmarshal([]byte(permStr), &perms); err == nil {
+					response["permissions"] = perms
+				}
+			}
+			if err := json.NewEncoder(w).Encode(response); err != nil {
 				slog.Error("failed to encode response", "error", err)
 			}
 			return
@@ -206,7 +308,7 @@ func (h *HTTPHandler) handleLogout(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
+		Secure:   h.config.SecureCookies,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})

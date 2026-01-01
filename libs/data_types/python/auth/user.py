@@ -13,5 +13,7 @@ class User(BaseModel):
     username: str
     created_at: datetime
     updated_at: datetime
+    is_active: bool = True
+    permissions: dict[str, bool] | None = None
     sessions: list[Session] = []
     linked_accounts: list[LinkedAccount] = []

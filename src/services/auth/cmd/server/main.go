@@ -88,7 +88,7 @@ func run() error {
 	oauthService := oauth.NewService(cfg.OAuth)
 
 	authHandler := handler.NewAuthHandler(pgStore, redisStore, jwtService, oauthService, eventPublisher, cfg)
-	httpHandler := handler.NewHTTPHandler(authHandler)
+	httpHandler := handler.NewHTTPHandler(authHandler, cfg)
 	adminHandler := handler.NewAdminHandler(pgStore, redisStore)
 
 	grpcServer := grpc.NewServer(

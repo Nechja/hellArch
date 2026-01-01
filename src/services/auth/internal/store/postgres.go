@@ -2,7 +2,9 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -15,7 +17,6 @@ type Postgres struct {
 
 type User = auth.User
 type LinkedAccount = auth.LinkedAccount
-type Session = auth.Session
 
 func NewPostgres(ctx context.Context, databaseURL string) (*Postgres, error) {
 	cfg, err := pgxpool.ParseConfig(databaseURL)
@@ -43,27 +44,39 @@ func (p *Postgres) Close() {
 
 func (p *Postgres) GetUserByID(ctx context.Context, id string) (*User, error) {
 	var user User
+	var permissionsJSON []byte
 	err := p.pool.QueryRow(ctx,
-		`SELECT id, email, username, created_at, updated_at FROM users WHERE id = $1`,
+		`SELECT id, email, username, is_active, COALESCE(permissions, '{}'::jsonb), created_at, updated_at FROM users WHERE id = $1`,
 		id,
-	).Scan(&user.ID, &user.Email, &user.Username, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&user.ID, &user.Email, &user.Username, &user.IsActive, &permissionsJSON, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
+	}
+	if len(permissionsJSON) > 0 {
+		if err := json.Unmarshal(permissionsJSON, &user.Permissions); err != nil {
+			slog.Error("failed to unmarshal user permissions", "error", err, "user_id", user.ID)
+		}
 	}
 	return &user, nil
 }
 
 func (p *Postgres) GetUserByProviderID(ctx context.Context, provider, providerUserID string) (*User, error) {
 	var user User
+	var permissionsJSON []byte
 	err := p.pool.QueryRow(ctx,
-		`SELECT u.id, u.email, u.username, u.created_at, u.updated_at
+		`SELECT u.id, u.email, u.username, u.is_active, COALESCE(u.permissions, '{}'::jsonb), u.created_at, u.updated_at
 		 FROM users u
 		 JOIN linked_accounts la ON u.id = la.user_id
 		 WHERE la.provider = $1 AND la.provider_user_id = $2`,
 		provider, providerUserID,
-	).Scan(&user.ID, &user.Email, &user.Username, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&user.ID, &user.Email, &user.Username, &user.IsActive, &permissionsJSON, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
+	}
+	if len(permissionsJSON) > 0 {
+		if err := json.Unmarshal(permissionsJSON, &user.Permissions); err != nil {
+			slog.Error("failed to unmarshal user permissions", "error", err, "user_id", user.ID)
+		}
 	}
 	return &user, nil
 }
@@ -115,38 +128,6 @@ func (p *Postgres) GetLinkedAccounts(ctx context.Context, userID string) ([]*Lin
 	return accounts, nil
 }
 
-func (p *Postgres) CreateSession(ctx context.Context, session *Session) error {
-	_, err := p.pool.Exec(ctx,
-		`INSERT INTO sessions (id, user_id, token, ip_address, user_agent, expires_at)
-		 VALUES ($1, $2, $3, $4, $5, $6)`,
-		session.ID, session.UserID, session.Token, session.IPAddress, session.UserAgent, session.ExpiresAt,
-	)
-	return err
-}
-
-func (p *Postgres) GetSessionByToken(ctx context.Context, token string) (*Session, error) {
-	var session Session
-	err := p.pool.QueryRow(ctx,
-		`SELECT id, user_id, token, ip_address, user_agent, expires_at, created_at
-		 FROM sessions WHERE token = $1 AND expires_at > NOW()`,
-		token,
-	).Scan(&session.ID, &session.UserID, &session.Token, &session.IPAddress, &session.UserAgent, &session.ExpiresAt, &session.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return &session, nil
-}
-
-func (p *Postgres) DeleteSession(ctx context.Context, id string) error {
-	_, err := p.pool.Exec(ctx, `DELETE FROM sessions WHERE id = $1`, id)
-	return err
-}
-
-func (p *Postgres) DeleteSessionByToken(ctx context.Context, token string) error {
-	_, err := p.pool.Exec(ctx, `DELETE FROM sessions WHERE token = $1`, token)
-	return err
-}
-
 // Admin methods
 
 func (p *Postgres) ListUsers(ctx context.Context, limit, offset int) ([]*User, int, error) {
@@ -156,7 +137,7 @@ func (p *Postgres) ListUsers(ctx context.Context, limit, offset int) ([]*User, i
 	}
 
 	rows, err := p.pool.Query(ctx,
-		`SELECT id, email, username, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+		`SELECT id, email, username, is_active, COALESCE(permissions, '{}'::jsonb), created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
 		limit, offset,
 	)
 	if err != nil {
@@ -167,37 +148,18 @@ func (p *Postgres) ListUsers(ctx context.Context, limit, offset int) ([]*User, i
 	var users []*User
 	for rows.Next() {
 		var user User
-		if err := rows.Scan(&user.ID, &user.Email, &user.Username, &user.CreatedAt, &user.UpdatedAt); err != nil {
+		var permissionsJSON []byte
+		if err := rows.Scan(&user.ID, &user.Email, &user.Username, &user.IsActive, &permissionsJSON, &user.CreatedAt, &user.UpdatedAt); err != nil {
 			return nil, 0, err
+		}
+		if len(permissionsJSON) > 0 {
+			if err := json.Unmarshal(permissionsJSON, &user.Permissions); err != nil {
+				slog.Error("failed to unmarshal user permissions", "error", err, "user_id", user.ID)
+			}
 		}
 		users = append(users, &user)
 	}
 	return users, total, nil
-}
-
-func (p *Postgres) GetUserSessions(ctx context.Context, userID string) ([]*Session, error) {
-	rows, err := p.pool.Query(ctx,
-		`SELECT id, user_id, token, ip_address, user_agent, expires_at, created_at
-		 FROM sessions WHERE user_id = $1 AND expires_at > NOW() ORDER BY created_at DESC`,
-		userID,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var sessions []*Session
-	for rows.Next() {
-		var session Session
-		if err := rows.Scan(
-			&session.ID, &session.UserID, &session.Token, &session.IPAddress,
-			&session.UserAgent, &session.ExpiresAt, &session.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		sessions = append(sessions, &session)
-	}
-	return sessions, nil
 }
 
 func (p *Postgres) CountUsers(ctx context.Context) (int, error) {
@@ -206,14 +168,68 @@ func (p *Postgres) CountUsers(ctx context.Context) (int, error) {
 	return count, err
 }
 
-func (p *Postgres) CountActiveSessions(ctx context.Context) (int, error) {
-	var count int
-	err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM sessions WHERE expires_at > NOW()`).Scan(&count)
-	return count, err
-}
-
 func (p *Postgres) CountLinkedAccounts(ctx context.Context) (int, error) {
 	var count int
 	err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM linked_accounts`).Scan(&count)
 	return count, err
+}
+
+// Permission management methods
+
+func (p *Postgres) GetUserPermissions(ctx context.Context, userID string) (map[string]bool, error) {
+	var permissionsJSON []byte
+	err := p.pool.QueryRow(ctx,
+		`SELECT COALESCE(permissions, '{}'::jsonb) FROM users WHERE id = $1`,
+		userID,
+	).Scan(&permissionsJSON)
+	if err != nil {
+		return nil, err
+	}
+	var permissions map[string]bool
+	if len(permissionsJSON) > 0 {
+		if err := json.Unmarshal(permissionsJSON, &permissions); err != nil {
+			slog.Error("failed to unmarshal user permissions", "error", err, "user_id", userID)
+		}
+	}
+	if permissions == nil {
+		permissions = make(map[string]bool)
+	}
+	return permissions, nil
+}
+
+func (p *Postgres) SetUserPermissions(ctx context.Context, userID string, permissions map[string]bool) error {
+	permissionsJSON, err := json.Marshal(permissions)
+	if err != nil {
+		return fmt.Errorf("failed to marshal permissions: %w", err)
+	}
+	_, err = p.pool.Exec(ctx,
+		`UPDATE users SET permissions = $1, updated_at = NOW() WHERE id = $2`,
+		permissionsJSON, userID,
+	)
+	return err
+}
+
+func (p *Postgres) GrantPermission(ctx context.Context, userID, permission string) error {
+	// Use explicit ARRAY constructor to ensure proper text[] conversion for jsonb_set path
+	_, err := p.pool.Exec(ctx,
+		`UPDATE users SET permissions = jsonb_set(COALESCE(permissions, '{}'::jsonb), ARRAY[$2]::text[], 'true'::jsonb), updated_at = NOW() WHERE id = $1`,
+		userID, permission,
+	)
+	return err
+}
+
+func (p *Postgres) RevokePermission(ctx context.Context, userID, permission string) error {
+	_, err := p.pool.Exec(ctx,
+		`UPDATE users SET permissions = permissions - $2, updated_at = NOW() WHERE id = $1`,
+		userID, permission,
+	)
+	return err
+}
+
+func (p *Postgres) SetUserActive(ctx context.Context, userID string, isActive bool) error {
+	_, err := p.pool.Exec(ctx,
+		`UPDATE users SET is_active = $1, updated_at = NOW() WHERE id = $2`,
+		isActive, userID,
+	)
+	return err
 }

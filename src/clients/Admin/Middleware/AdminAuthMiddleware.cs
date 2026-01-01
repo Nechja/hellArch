@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Admin.Middleware;
 
@@ -22,6 +23,22 @@ public sealed class AdminAuthMiddleware(
             return;
         }
 
+        // Check if request came through gateway (has X-User-ID header)
+        var gatewayUserId = context.Request.Headers["X-User-ID"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(gatewayUserId))
+        {
+            // Trust gateway - it already validated session and permissions
+            context.Items["UserId"] = gatewayUserId;
+            context.Items["Username"] = context.Request.Headers["X-Username"].FirstOrDefault();
+            context.Items["Permissions"] = context.Request.Headers["X-Permissions"].FirstOrDefault();
+            context.Items["IsAuthenticated"] = true;
+
+            logger.LogDebug("Trusted gateway auth for user {UserId}", gatewayUserId);
+            await next(context);
+            return;
+        }
+
+        // Direct access - validate session ourselves
         if (!context.Request.Cookies.TryGetValue(SessionCookieName, out var sessionToken) ||
             string.IsNullOrEmpty(sessionToken))
         {
@@ -53,14 +70,24 @@ public sealed class AdminAuthMiddleware(
                 return;
             }
 
+            // For direct access, check admin.panel permission
+            if (!HasPermission(result.Permissions, "admin.panel"))
+            {
+                logger.LogWarning("User {UserId} lacks admin.panel permission (direct access)", result.UserId);
+                context.Response.StatusCode = 403;
+                await context.Response.WriteAsync("Forbidden: admin.panel permission required");
+                return;
+            }
+
             // Store user info in HttpContext for downstream use
             context.Items["UserId"] = result.UserId;
             context.Items["Email"] = result.Email;
             context.Items["Username"] = result.Username;
+            context.Items["Permissions"] = result.Permissions;
             context.Items["SessionToken"] = sessionToken;
             context.Items["IsAuthenticated"] = true;
 
-            logger.LogDebug("Authenticated user {UserId}", result.UserId);
+            logger.LogDebug("Authenticated admin user {UserId} (direct access)", result.UserId);
         }
         catch (HttpRequestException ex)
         {
@@ -84,9 +111,8 @@ public sealed class AdminAuthMiddleware(
         await next(context);
     }
 
-    private static void RedirectToLogin(HttpContext context)
+    private void RedirectToLogin(HttpContext context)
     {
-        // Build return URL - supports both direct access and proxy access
         var scheme = context.Request.Headers["X-Forwarded-Proto"].FirstOrDefault()
             ?? context.Request.Scheme;
         var host = context.Request.Headers["X-Forwarded-Host"].FirstOrDefault()
@@ -97,12 +123,26 @@ public sealed class AdminAuthMiddleware(
         var returnHost = host.Contains(":5003") ? "localhost:5003" : $"{host}/admin";
 
         var returnUrl = Uri.EscapeDataString($"{scheme}://{returnHost}{context.Request.Path}");
-        context.Response.Redirect($"{scheme}://{gatewayHost}/api/auth/discord/login?redirect={returnUrl}");
+        var redirectUrl = $"{scheme}://{gatewayHost}/api/auth/discord/login?redirect={returnUrl}";
+
+        logger.LogDebug("Redirecting to login: {Url}", redirectUrl);
+        context.Response.Redirect(redirectUrl);
+    }
+
+    private bool HasPermission(Dictionary<string, bool>? permissions, string permission)
+    {
+        var hasPermission = permissions is not null &&
+                            permissions.TryGetValue(permission, out var granted) &&
+                            granted;
+
+        logger.LogDebug("Permission check: {Permission} = {HasPermission}", permission, hasPermission);
+        return hasPermission;
     }
 
     private sealed record ValidateResponse(
         bool Valid,
-        string? UserId,
+        [property: JsonPropertyName("user_id")] string? UserId,
         string? Email,
-        string? Username);
+        string? Username,
+        Dictionary<string, bool>? Permissions);
 }

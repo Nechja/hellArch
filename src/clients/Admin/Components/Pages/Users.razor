@@ -16,6 +16,7 @@
                     <th>ID</th>
                     <th>Email</th>
                     <th>Username</th>
+                    <th>Status</th>
                     <th>Created</th>
                 </tr>
             </thead>
@@ -26,6 +27,11 @@
                         <td class="monospace">@user.Id[..8]...</td>
                         <td>@user.Email</td>
                         <td>@user.Username</td>
+                        <td>
+                            <span class="badge @(user.IsActive ? "badge-success" : "badge-danger")">
+                                @(user.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </td>
                         <td>@user.CreatedAt.ToString("g")</td>
                     </tr>
                 }
@@ -42,7 +48,7 @@
 else
 {
     <div class="breadcrumb">
-        <a href="/users">Users</a>
+        <a href="users">Users</a>
         <span>/</span>
         <span>@_userDetail?.Username</span>
     </div>
@@ -60,11 +66,62 @@ else
                 <dd>@_userDetail.Email</dd>
                 <dt>Username</dt>
                 <dd>@_userDetail.Username</dd>
+                <dt>Status</dt>
+                <dd>
+                    <span class="badge @(_userDetail.IsActive ? "badge-success" : "badge-danger")">
+                        @(_userDetail.IsActive ? "Active" : "Inactive")
+                    </span>
+                    @if (_userDetail.IsActive)
+                    {
+                        <button @onclick="DeactivateUser" class="btn btn-danger btn-sm" style="margin-left: 0.5rem;">
+                            Deactivate
+                        </button>
+                    }
+                    else
+                    {
+                        <button @onclick="ActivateUser" class="btn btn-primary btn-sm" style="margin-left: 0.5rem;">
+                            Activate
+                        </button>
+                    }
+                </dd>
                 <dt>Created</dt>
                 <dd>@_userDetail.CreatedAt.ToString("F")</dd>
                 <dt>Updated</dt>
                 <dd>@_userDetail.UpdatedAt.ToString("F")</dd>
             </dl>
+        </section>
+
+        <section class="detail-section">
+            <h2>Permissions</h2>
+            <div class="permissions-container">
+                @if (_userDetail.Permissions is not null && _userDetail.Permissions.Count > 0)
+                {
+                    <div class="permissions-list">
+                        @foreach (var perm in _userDetail.Permissions.Where(p => p.Value))
+                        {
+                            <div class="permission-item">
+                                <span class="permission-key">@perm.Key</span>
+                                <button @onclick="() => RemovePermission(perm.Key)" class="btn btn-danger btn-sm">
+                                    Remove
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="empty-state">No permissions assigned</p>
+                }
+
+                <div class="add-permission">
+                    <input type="text" @bind="_newPermission" @bind:event="oninput"
+                           placeholder="e.g. admin.users.write" class="input" />
+                    <button @onclick="AddPermission" disabled="@string.IsNullOrWhiteSpace(_newPermission)"
+                            class="btn btn-primary">
+                        Grant Permission
+                    </button>
+                </div>
+            </div>
         </section>
 
         <section class="detail-section">
@@ -158,6 +215,7 @@ else
     private int _page = 1;
     private int _totalPages = 1;
     private const int PageSize = 20;
+    private string _newPermission = "";
 
     protected override async Task OnParametersSetAsync()
     {
@@ -188,7 +246,7 @@ else
 
     private void ViewUser(string userId)
     {
-        Navigation.NavigateTo($"/users/{userId}");
+        Navigation.NavigateTo($"users/{userId}");
     }
 
     private async Task PrevPage()
@@ -213,6 +271,51 @@ else
     {
         var success = await AuthAdmin.RevokeSession(sessionId);
         if (success && UserId is not null)
+        {
+            await LoadUserDetail();
+        }
+    }
+
+    private async Task AddPermission()
+    {
+        if (string.IsNullOrWhiteSpace(_newPermission) || UserId is null) return;
+
+        var success = await AuthAdmin.GrantPermission(UserId, _newPermission.Trim());
+        if (success)
+        {
+            _newPermission = "";
+            await LoadUserDetail();
+        }
+    }
+
+    private async Task RemovePermission(string permission)
+    {
+        if (UserId is null) return;
+
+        var success = await AuthAdmin.RevokePermission(UserId, permission);
+        if (success)
+        {
+            await LoadUserDetail();
+        }
+    }
+
+    private async Task ActivateUser()
+    {
+        if (UserId is null) return;
+
+        var success = await AuthAdmin.ActivateUser(UserId);
+        if (success)
+        {
+            await LoadUserDetail();
+        }
+    }
+
+    private async Task DeactivateUser()
+    {
+        if (UserId is null) return;
+
+        var success = await AuthAdmin.DeactivateUser(UserId);
+        if (success)
         {
             await LoadUserDetail();
         }

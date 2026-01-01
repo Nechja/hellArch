@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Threading.RateLimiting;
 using Gateway.Middleware;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
@@ -36,8 +38,16 @@ if (!Uri.TryCreate(otelEndpoint, UriKind.Absolute, out var otelUri))
     throw new InvalidOperationException($"Invalid OTEL_EXPORTER_OTLP_ENDPOINT: {otelEndpoint}");
 }
 
+// Configure W3C TraceContext propagation for distributed tracing
+Sdk.SetDefaultTextMapPropagator(new CompositeTextMapPropagator([
+    new TraceContextPropagator(),
+    new BaggagePropagator()
+]));
+
+var serviceName = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "gateway";
+
 builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource.AddService("gateway"))
+    .ConfigureResource(resource => resource.AddService(serviceName))
     .WithTracing(tracing => tracing
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
@@ -85,6 +95,32 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+// Security headers should be first to apply to all responses
+app.UseMiddleware<SecurityHeadersMiddleware>();
+
+// Whitelist of allowed error pages to prevent path traversal
+var allowedErrorPages = new Dictionary<int, string>
+{
+    [403] = Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "errors", "403.html"),
+    [404] = Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "errors", "404.html")
+};
+
+app.UseStatusCodePages(async context =>
+{
+    var response = context.HttpContext.Response;
+    var acceptHeader = context.HttpContext.Request.Headers.Accept.ToString();
+
+    // Only serve HTML error pages for browser requests
+    if (acceptHeader.Contains("text/html", StringComparison.OrdinalIgnoreCase))
+    {
+        if (allowedErrorPages.TryGetValue(response.StatusCode, out var errorPage) && File.Exists(errorPage))
+        {
+            response.ContentType = "text/html";
+            await response.SendFileAsync(errorPage);
+        }
+    }
+});
 
 app.UseCors("AllowClients");
 app.UseRateLimiter();

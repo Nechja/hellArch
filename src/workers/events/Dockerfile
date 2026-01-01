@@ -2,10 +2,11 @@ FROM rust:1.85-alpine AS dev
 
 WORKDIR /app
 
-RUN apk add --no-cache musl-dev
+RUN apk add --no-cache musl-dev protobuf-dev
 
-COPY Cargo.toml Cargo.lock ./
-COPY src ./src
+COPY libs/cloud_events/rust /libs/cloud_events/rust
+COPY src/workers/events/Cargo.toml src/workers/events/Cargo.lock ./
+COPY src/workers/events/src ./src
 
 RUN cargo build
 
@@ -15,10 +16,11 @@ FROM rust:1.85-alpine AS build
 
 WORKDIR /app
 
-RUN apk add --no-cache musl-dev
+RUN apk add --no-cache musl-dev protobuf-dev
 
-COPY Cargo.toml Cargo.lock ./
-COPY src ./src
+COPY libs/cloud_events/rust /libs/cloud_events/rust
+COPY src/workers/events/Cargo.toml src/workers/events/Cargo.lock ./
+COPY src/workers/events/src ./src
 
 RUN cargo build --release
 

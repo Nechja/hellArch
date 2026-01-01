@@ -27,6 +27,16 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/admin/users/{id}/sessions", h.handleGetUserSessions)
 	mux.HandleFunc("DELETE /auth/admin/sessions/{id}", h.handleDeleteSession)
 	mux.HandleFunc("GET /auth/admin/stats", h.handleGetStats)
+
+	// Permission management
+	mux.HandleFunc("GET /auth/admin/users/{id}/permissions", h.handleGetUserPermissions)
+	mux.HandleFunc("PUT /auth/admin/users/{id}/permissions", h.handleSetUserPermissions)
+	mux.HandleFunc("POST /auth/admin/users/{id}/permissions/grant", h.handleGrantPermission)
+	mux.HandleFunc("POST /auth/admin/users/{id}/permissions/revoke", h.handleRevokePermission)
+
+	// User status
+	mux.HandleFunc("POST /auth/admin/users/{id}/activate", h.handleActivateUser)
+	mux.HandleFunc("POST /auth/admin/users/{id}/deactivate", h.handleDeactivateUser)
 }
 
 func (h *AdminHandler) handleListUsers(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +91,8 @@ func (h *AdminHandler) handleGetUser(w http.ResponseWriter, r *http.Request) {
 		"id":              user.ID,
 		"email":           user.Email,
 		"username":        user.Username,
+		"is_active":       user.IsActive,
+		"permissions":     user.Permissions,
 		"created_at":      user.CreatedAt,
 		"updated_at":      user.UpdatedAt,
 		"linked_accounts": linkedAccounts,
@@ -95,7 +107,7 @@ func (h *AdminHandler) handleGetUser(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) handleGetUserSessions(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("id")
 
-	sessions, err := h.postgres.GetUserSessions(r.Context(), userID)
+	sessions, err := h.redis.GetUserSessions(r.Context(), userID)
 	if err != nil {
 		slog.Error("failed to get user sessions", "user_id", userID, "error", err)
 		http.Error(w, "Failed to get sessions", http.StatusInternalServerError)
@@ -127,13 +139,11 @@ func (h *AdminHandler) handleGetUserSessions(w http.ResponseWriter, r *http.Requ
 func (h *AdminHandler) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.PathValue("id")
 
-	if err := h.postgres.DeleteSession(r.Context(), sessionID); err != nil {
+	if err := h.redis.DeleteSessionByID(r.Context(), sessionID); err != nil {
 		slog.Error("failed to delete session", "session_id", sessionID, "error", err)
 		http.Error(w, "Failed to delete session", http.StatusInternalServerError)
 		return
 	}
-
-	_ = h.redis.InvalidateSession(r.Context(), sessionID)
 
 	slog.Info("session revoked", "session_id", sessionID)
 
@@ -147,7 +157,7 @@ func (h *AdminHandler) handleGetStats(w http.ResponseWriter, r *http.Request) {
 		userCount = 0
 	}
 
-	sessionCount, err := h.postgres.CountActiveSessions(r.Context())
+	sessionCount, err := h.redis.CountActiveSessions(r.Context())
 	if err != nil {
 		slog.Error("failed to count sessions", "error", err)
 		sessionCount = 0
@@ -169,4 +179,140 @@ func (h *AdminHandler) handleGetStats(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		slog.Error("failed to encode response", "error", err)
 	}
+}
+
+func (h *AdminHandler) handleGetUserPermissions(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("id")
+
+	permissions, err := h.postgres.GetUserPermissions(r.Context(), userID)
+	if err != nil {
+		slog.Error("failed to get user permissions", "user_id", userID, "error", err)
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]any{
+		"user_id":     userID,
+		"permissions": permissions,
+	}); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
+}
+
+func (h *AdminHandler) handleSetUserPermissions(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("id")
+
+	var req struct {
+		Permissions map[string]bool `json:"permissions"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.postgres.SetUserPermissions(r.Context(), userID, req.Permissions); err != nil {
+		slog.Error("failed to set user permissions", "user_id", userID, "error", err)
+		http.Error(w, "Failed to update permissions", http.StatusInternalServerError)
+		return
+	}
+
+	slog.Info("user permissions updated", "user_id", userID, "permissions", req.Permissions)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]any{
+		"user_id":     userID,
+		"permissions": req.Permissions,
+	}); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
+}
+
+func (h *AdminHandler) handleGrantPermission(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("id")
+
+	var req struct {
+		Permission string `json:"permission"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Permission == "" {
+		http.Error(w, "Permission is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.postgres.GrantPermission(r.Context(), userID, req.Permission); err != nil {
+		slog.Error("failed to grant permission", "user_id", userID, "permission", req.Permission, "error", err)
+		http.Error(w, "Failed to grant permission", http.StatusInternalServerError)
+		return
+	}
+
+	slog.Info("permission granted", "user_id", userID, "permission", req.Permission)
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *AdminHandler) handleRevokePermission(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("id")
+
+	var req struct {
+		Permission string `json:"permission"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Permission == "" {
+		http.Error(w, "Permission is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.postgres.RevokePermission(r.Context(), userID, req.Permission); err != nil {
+		slog.Error("failed to revoke permission", "user_id", userID, "permission", req.Permission, "error", err)
+		http.Error(w, "Failed to revoke permission", http.StatusInternalServerError)
+		return
+	}
+
+	slog.Info("permission revoked", "user_id", userID, "permission", req.Permission)
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *AdminHandler) handleActivateUser(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("id")
+
+	if err := h.postgres.SetUserActive(r.Context(), userID, true); err != nil {
+		slog.Error("failed to activate user", "user_id", userID, "error", err)
+		http.Error(w, "Failed to activate user", http.StatusInternalServerError)
+		return
+	}
+
+	slog.Info("user activated", "user_id", userID)
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *AdminHandler) handleDeactivateUser(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("id")
+
+	if err := h.postgres.SetUserActive(r.Context(), userID, false); err != nil {
+		slog.Error("failed to deactivate user", "user_id", userID, "error", err)
+		http.Error(w, "Failed to deactivate user", http.StatusInternalServerError)
+		return
+	}
+
+	// Invalidate all user sessions when deactivating
+	if err := h.redis.DeleteUserSessions(r.Context(), userID); err != nil {
+		slog.Warn("failed to delete user sessions on deactivation", "user_id", userID, "error", err)
+	} else {
+		slog.Info("invalidated user sessions on deactivation", "user_id", userID)
+	}
+
+	slog.Info("user deactivated", "user_id", userID)
+
+	w.WriteHeader(http.StatusNoContent)
 }
