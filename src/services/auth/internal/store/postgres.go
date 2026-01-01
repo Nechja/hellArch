@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -52,7 +53,9 @@ func (p *Postgres) GetUserByID(ctx context.Context, id string) (*User, error) {
 		return nil, err
 	}
 	if len(permissionsJSON) > 0 {
-		_ = json.Unmarshal(permissionsJSON, &user.Permissions)
+		if err := json.Unmarshal(permissionsJSON, &user.Permissions); err != nil {
+			slog.Error("failed to unmarshal user permissions", "error", err, "user_id", user.ID)
+		}
 	}
 	return &user, nil
 }
@@ -71,7 +74,9 @@ func (p *Postgres) GetUserByProviderID(ctx context.Context, provider, providerUs
 		return nil, err
 	}
 	if len(permissionsJSON) > 0 {
-		_ = json.Unmarshal(permissionsJSON, &user.Permissions)
+		if err := json.Unmarshal(permissionsJSON, &user.Permissions); err != nil {
+			slog.Error("failed to unmarshal user permissions", "error", err, "user_id", user.ID)
+		}
 	}
 	return &user, nil
 }
@@ -148,7 +153,9 @@ func (p *Postgres) ListUsers(ctx context.Context, limit, offset int) ([]*User, i
 			return nil, 0, err
 		}
 		if len(permissionsJSON) > 0 {
-			_ = json.Unmarshal(permissionsJSON, &user.Permissions)
+			if err := json.Unmarshal(permissionsJSON, &user.Permissions); err != nil {
+				slog.Error("failed to unmarshal user permissions", "error", err, "user_id", user.ID)
+			}
 		}
 		users = append(users, &user)
 	}
@@ -180,7 +187,9 @@ func (p *Postgres) GetUserPermissions(ctx context.Context, userID string) (map[s
 	}
 	var permissions map[string]bool
 	if len(permissionsJSON) > 0 {
-		_ = json.Unmarshal(permissionsJSON, &permissions)
+		if err := json.Unmarshal(permissionsJSON, &permissions); err != nil {
+			slog.Error("failed to unmarshal user permissions", "error", err, "user_id", userID)
+		}
 	}
 	if permissions == nil {
 		permissions = make(map[string]bool)
@@ -201,9 +210,10 @@ func (p *Postgres) SetUserPermissions(ctx context.Context, userID string, permis
 }
 
 func (p *Postgres) GrantPermission(ctx context.Context, userID, permission string) error {
+	// Use explicit ARRAY constructor to ensure proper text[] conversion for jsonb_set path
 	_, err := p.pool.Exec(ctx,
-		`UPDATE users SET permissions = jsonb_set(COALESCE(permissions, '{}'::jsonb), $2, 'true'::jsonb), updated_at = NOW() WHERE id = $1`,
-		userID, []string{permission},
+		`UPDATE users SET permissions = jsonb_set(COALESCE(permissions, '{}'::jsonb), ARRAY[$2]::text[], 'true'::jsonb), updated_at = NOW() WHERE id = $1`,
+		userID, permission,
 	)
 	return err
 }

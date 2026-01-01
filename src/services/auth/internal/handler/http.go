@@ -212,13 +212,14 @@ func (h *HTTPHandler) handleValidate(w http.ResponseWriter, r *http.Request) {
 			user, err := h.auth.GetUserByID(r.Context(), userID)
 			if err != nil {
 				slog.Error("failed to get user", "error", err, "user_id", userID)
-				w.WriteHeader(http.StatusInternalServerError)
+				// Return 401 instead of 500 to avoid info disclosure about internal failures
+				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 
-			// Check if user is active
+			// Check if user is active - use 401 since the session is no longer valid for this user
 			if !user.IsActive {
-				w.WriteHeader(http.StatusForbidden)
+				w.WriteHeader(http.StatusUnauthorized)
 				if err := json.NewEncoder(w).Encode(map[string]interface{}{
 					"valid": false,
 					"error": "user_inactive",

@@ -150,13 +150,11 @@ internal sealed partial class AuthRedirectMiddleware(
 
         foreach (var (route, permission) in _permissionRoutes)
         {
-            if (path.StartsWith(route, StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWith(route, StringComparison.OrdinalIgnoreCase) &&
+                (bestMatch is null || route.Length > bestMatch.Length))
             {
-                if (bestMatch is null || route.Length > bestMatch.Length)
-                {
-                    bestMatch = route;
-                    bestPermission = permission;
-                }
+                bestMatch = route;
+                bestPermission = permission;
             }
         }
 
