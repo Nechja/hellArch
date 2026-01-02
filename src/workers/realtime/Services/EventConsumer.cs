@@ -98,27 +98,13 @@ public sealed class EventConsumer(
             cancellationToken: ct);
 
         // Dead Letter Queue exchange - failed messages route here
+        // The DLQ worker owns the queue, we just declare the exchange
         var dlqExchange = "hellarch.events.dlq";
         await _channel.ExchangeDeclareAsync(
             exchange: dlqExchange,
             type: ExchangeType.Fanout,
             durable: true,
             autoDelete: false,
-            cancellationToken: ct);
-
-        // DLQ queue for this worker
-        var dlqQueue = $"{_queueName}.dlq";
-        await _channel.QueueDeclareAsync(
-            queue: dlqQueue,
-            durable: true,
-            exclusive: false,
-            autoDelete: false,
-            cancellationToken: ct);
-
-        await _channel.QueueBindAsync(
-            queue: dlqQueue,
-            exchange: dlqExchange,
-            routingKey: "",
             cancellationToken: ct);
 
         // Main queue with DLQ routing
@@ -142,9 +128,9 @@ public sealed class EventConsumer(
             cancellationToken: ct);
 
         logger.LogInformation(
-            "Connected to RabbitMQ, queue: {Queue}, DLQ: {DlqQueue}, routing key: {RoutingKey}",
+            "Connected to RabbitMQ, queue: {Queue}, DLQ exchange: {DlqExchange}, routing key: {RoutingKey}",
             _queueName,
-            dlqQueue,
+            dlqExchange,
             routingKey);
     }
 

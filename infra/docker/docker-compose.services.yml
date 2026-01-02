@@ -197,8 +197,8 @@ services:
 
   realtime-worker:
     build:
-      context: ../../src/workers/realtime
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/workers/realtime/Dockerfile
       target: dev
     container_name: hellarch-realtime-worker
     user: "${UID:-1000}:${GID:-1000}"
@@ -218,9 +218,10 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
     volumes:
-      - ../../src/workers/realtime:/app
+      - ../..:/repo
       - ../../infra/keys:/keys:ro
       - realtime-nuget:/root/.nuget
+    working_dir: /repo/src/workers/realtime
     networks:
       - hellarch
     restart: unless-stopped
@@ -252,8 +253,8 @@ services:
 
   dlq-worker:
     build:
-      context: ../../src/workers/dlq
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/workers/dlq/Dockerfile
       target: dev
     container_name: hellarch-dlq-worker
     user: "${UID:-1000}:${GID:-1000}"
@@ -267,8 +268,9 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
     volumes:
-      - ../../src/workers/dlq:/app
+      - ../..:/repo
       - dlq-nuget:/root/.nuget
+    working_dir: /repo/src/workers/dlq
     networks:
       - hellarch
     restart: unless-stopped

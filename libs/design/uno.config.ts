@@ -571,10 +571,10 @@ export default defineConfig({
     // Core layout
     'flex', 'flex-col', 'flex-row', 'items-center', 'items-start', 'items-end',
     'justify-center', 'justify-between', 'justify-start', 'justify-end',
-    'gap-1', 'gap-2', 'gap-3', 'gap-4', 'gap-6', 'gap-8',
+    'gap-1', 'gap-2', 'gap-3', 'gap-4', 'gap-6', 'gap-8', 'lg:gap-6',
     'p-1', 'p-2', 'p-3', 'p-4', 'p-6', 'p-8',
     'px-2', 'px-3', 'px-4', 'px-6', 'py-1', 'py-2', 'py-3', 'py-4',
-    'm-0', 'm-1', 'm-2', 'm-4', 'mx-auto', 'my-4', 'mt-1', 'mt-2', 'mt-4', 'mt-6', 'mb-1', 'mb-2', 'mb-4', 'mb-6',
+    'm-0', 'm-1', 'm-2', 'm-4', 'mx-auto', 'my-4', 'mt-1', 'mt-2', 'mt-4', 'mt-6', 'mb-1', 'mb-2', 'mb-4', 'mb-6', 'mb-8', 'mb-12',
     'ml-auto', 'mr-2',
     'w-full', 'w-3', 'w-8', 'w-10', 'w-12', 'max-w-sm', 'max-w-md', 'max-w-lg', 'max-w-xl', 'max-w-5xl', 'max-w-6xl',
     'min-h-screen', 'h-3', 'h-8', 'h-10', 'h-12', 'h-16', 'h-screen', 'h-full',

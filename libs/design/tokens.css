@@ -197,34 +197,62 @@
   --width-content-xl: 1152px;
   --width-content-2xl: 1280px;
 
-  /* Typography */
+  /* ============================================================================
+     TYPOGRAPHY
+     ============================================================================ */
+
+  /* Font families */
   --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Consolas', monospace;
 
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.25rem;
-  --text-2xl: 1.5rem;
-  --text-3xl: 2rem;
-  --text-4xl: 2.5rem;
-  --text-5xl: 3.5rem;
-  --text-6xl: 4.5rem;
+  /* Font sizes - modular scale (1.25 ratio) */
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.25rem;      /* 20px */
+  --text-2xl: 1.5rem;      /* 24px */
+  --text-3xl: 2rem;        /* 32px */
+  --text-4xl: 2.5rem;      /* 40px */
+  --text-5xl: 3.5rem;      /* 56px */
+  --text-6xl: 4.5rem;      /* 72px */
 
+  /* Font weights */
   --font-normal: 400;
   --font-medium: 500;
   --font-semibold: 600;
   --font-bold: 700;
 
+  /* Line heights */
+  --leading-none: 1;
   --leading-tight: 1.25;
+  --leading-snug: 1.375;
   --leading-normal: 1.5;
-  --leading-relaxed: 1.75;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+  --leading-prose: 1.75;     /* Optimal for body text readability */
 
+  /* Letter spacing */
+  --tracking-tighter: -0.05em;
   --tracking-tight: -0.025em;
   --tracking-normal: 0;
-  --tracking-wide: 0.05em;
-  --tracking-wider: 0.1em;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+
+  /* Heading styles (size + line-height + weight combinations) */
+  --heading-1: var(--font-bold) var(--text-5xl)/var(--leading-tight);
+  --heading-2: var(--font-bold) var(--text-4xl)/var(--leading-tight);
+  --heading-3: var(--font-bold) var(--text-3xl)/var(--leading-snug);
+  --heading-4: var(--font-semibold) var(--text-2xl)/var(--leading-snug);
+  --heading-5: var(--font-semibold) var(--text-xl)/var(--leading-normal);
+  --heading-6: var(--font-semibold) var(--text-lg)/var(--leading-normal);
+
+  /* Prose spacing (vertical rhythm for body text) */
+  --prose-p-margin: 1.25em;
+  --prose-heading-margin: 1.5em 0 0.75em;
+  --prose-list-margin: 1.25em 0;
+  --prose-list-indent: 1.5em;
 
   /* Borders (sharper) */
   --radius-none: 0;

@@ -1,26 +1,27 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS dev
 
-WORKDIR /app
-
 ENV DOTNET_USE_POLLING_FILE_WATCHER=1
 
-COPY *.csproj ./
-RUN dotnet restore
-
-COPY . .
-
+# Dev stage runs via docker-compose with volume mounts and working_dir set
 CMD ["dotnet", "watch", "run", "--no-launch-profile"]
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
 
-WORKDIR /app
+WORKDIR /repo
 
-COPY *.csproj ./
-RUN dotnet restore
+# Copy project files for restore
+COPY src/workers/realtime/*.csproj src/workers/realtime/
+COPY libs/csharp/HellArch.RabbitMQ/*.csproj libs/csharp/HellArch.RabbitMQ/
+COPY libs/cloud_events/csharp/*.csproj libs/cloud_events/csharp/
 
-COPY . .
+RUN dotnet restore src/workers/realtime/Realtime.csproj
 
-RUN dotnet publish -c Release -o /out
+# Copy source files
+COPY src/workers/realtime/ src/workers/realtime/
+COPY libs/csharp/HellArch.RabbitMQ/ libs/csharp/HellArch.RabbitMQ/
+COPY libs/cloud_events/csharp/ libs/cloud_events/csharp/
+
+RUN dotnet publish src/workers/realtime/Realtime.csproj -c Release -o /out
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS prod
 

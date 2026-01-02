@@ -106,6 +106,14 @@ namespace Schema.Migrations.Events
                         .HasColumnType("text[]")
                         .HasColumnName("event_types");
 
+                    b.Property<string>("Format")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Raw")
+                        .HasColumnName("format");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")

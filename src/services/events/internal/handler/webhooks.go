@@ -10,10 +10,11 @@ import (
 )
 
 type createWebhookRequest struct {
-	Name       string   `json:"name"`
-	URL        string   `json:"url"`
-	Secret     string   `json:"secret"`
+	Name       string `json:"name"`
+	URL        string `json:"url"`
+	Secret     string `json:"secret"`
 	EventTypes []string `json:"event_types"`
+	Format     string `json:"format"` // raw, discord, slack
 }
 
 type updateWebhookRequest struct {
@@ -21,6 +22,7 @@ type updateWebhookRequest struct {
 	URL        *string  `json:"url,omitempty"`
 	Secret     *string  `json:"secret,omitempty"`
 	EventTypes []string `json:"event_types,omitempty"`
+	Format     *string  `json:"format,omitempty"`
 	IsActive   *bool    `json:"is_active,omitempty"`
 }
 
@@ -53,11 +55,22 @@ func (h *Handler) createWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate format
+	format := store.WebhookFormat(req.Format)
+	if format == "" {
+		format = store.WebhookFormatRaw
+	}
+	if format != store.WebhookFormatRaw && format != store.WebhookFormatDiscord && format != store.WebhookFormatSlack {
+		writeError(w, http.StatusBadRequest, "format must be one of: raw, discord, slack")
+		return
+	}
+
 	webhook, err := h.store.CreateWebhook(r.Context(), store.CreateWebhookParams{
 		Name:       req.Name,
 		URL:        req.URL,
 		Secret:     req.Secret,
 		EventTypes: req.EventTypes,
+		Format:     format,
 	})
 	if err != nil {
 		slog.Error("failed to create webhook", "error", err)
@@ -94,11 +107,23 @@ func (h *Handler) updateWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate format if provided
+	var format *store.WebhookFormat
+	if req.Format != nil {
+		f := store.WebhookFormat(*req.Format)
+		if f != store.WebhookFormatRaw && f != store.WebhookFormatDiscord && f != store.WebhookFormatSlack {
+			writeError(w, http.StatusBadRequest, "format must be one of: raw, discord, slack")
+			return
+		}
+		format = &f
+	}
+
 	webhook, err := h.store.UpdateWebhook(r.Context(), id, store.UpdateWebhookParams{
 		Name:       req.Name,
 		URL:        req.URL,
 		Secret:     req.Secret,
 		EventTypes: req.EventTypes,
+		Format:     format,
 		IsActive:   req.IsActive,
 	})
 	if err != nil {

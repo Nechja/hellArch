@@ -87,10 +87,20 @@ public sealed class RealtimeHubService : IAsyncDisposable
                 OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Connected"));
             }
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "Failed to connect to realtime hub");
+            _logger.LogError(ex, "HTTP error connecting to realtime hub");
             OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Failed"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation while connecting to realtime hub");
+            OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Failed"));
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Connection to realtime hub was cancelled");
+            OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Disconnected"));
         }
         finally
         {

@@ -43,6 +43,7 @@ public sealed class EventsDbContext(DbContextOptions<EventsDbContext> options) :
             entity.Property(e => e.Url).IsRequired().HasMaxLength(2048);
             entity.Property(e => e.Secret).IsRequired().HasMaxLength(255);
             entity.Property(e => e.EventTypes).HasColumnType("text[]");
+            entity.Property(e => e.Format).HasConversion<string>().HasMaxLength(50).HasDefaultValue(WebhookFormat.Raw);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");

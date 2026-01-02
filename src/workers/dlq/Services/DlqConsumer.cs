@@ -57,7 +57,7 @@ public sealed class DlqConsumer(
 
     private async Task ConnectToDlq(CancellationToken ct)
     {
-        QueueName = Configuration["RabbitMQ:QueueName"] ?? "realtime-worker.dlq";
+        QueueName = Configuration["RabbitMQ:QueueName"] ?? "hellarch.events.dlq";
         var dlqExchange = "hellarch.events.dlq";
 
         (Connection, Channel) = await CreateConnection(ct);

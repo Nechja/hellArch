@@ -7,29 +7,31 @@
 
 <PageTitle>Dashboard - HellArch Admin</PageTitle>
 
-<h1 class="text-display text-gradient mb-6">Dashboard</h1>
+<h1 class="text-display text-gradient mb-8">Dashboard</h1>
 
-<section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-    <div class="stat-card">
-        <h3 class="stat-label">Users</h3>
-        <p class="stat-value">@_stats.UserCount</p>
-    </div>
-    <div class="stat-card">
-        <h3 class="stat-label">Active Sessions</h3>
-        <p class="stat-value">@_stats.SessionCount</p>
-    </div>
-    <div class="stat-card">
-        <h3 class="stat-label">Linked Accounts</h3>
-        <p class="stat-value">@_stats.LinkedAccountCount</p>
-    </div>
-    <div class="stat-card">
-        <h3 class="stat-label">Queued Messages</h3>
-        <p class="stat-value">@_queuedMessages</p>
+<section class="mb-12">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="stat-card">
+            <h3 class="stat-label">Users</h3>
+            <p class="stat-value">@_stats.UserCount</p>
+        </div>
+        <div class="stat-card">
+            <h3 class="stat-label">Active Sessions</h3>
+            <p class="stat-value">@_stats.SessionCount</p>
+        </div>
+        <div class="stat-card">
+            <h3 class="stat-label">Linked Accounts</h3>
+            <p class="stat-value">@_stats.LinkedAccountCount</p>
+        </div>
+        <div class="stat-card">
+            <h3 class="stat-label">Queued Messages</h3>
+            <p class="stat-value">@_queuedMessages</p>
+        </div>
     </div>
 </section>
 
-<section class="mb-8">
-    <h2 class="text-heading mb-4 text-glitch">Service Health</h2>
+<section class="mb-12">
+    <h2 class="text-heading mb-6 text-glitch">Service Health</h2>
     @if (_healthStatus != null)
     {
         <div class="flex items-center gap-3 p-4 rounded-sm bg-bg-card border mb-4 @GetOverallBorderClass(_healthStatus.Overall)">
@@ -37,7 +39,7 @@
             <span class="font-semibold">System: @_healthStatus.Overall.ToUpperInvariant()</span>
             <span class="ml-auto text-xs text-text-muted font-mono">Last check: @FormatTime(_healthStatus.CheckedAt)</span>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
             @foreach (var (name, info) in _healthStatus.Services.OrderBy(s => s.Key))
             {
                 <div class="card flex items-center gap-3">
@@ -61,7 +63,7 @@
             <p class="text-neon-orange">Health service unavailable</p>
             <p class="text-xs text-text-muted mt-1">Falling back to direct checks...</p>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
             <div class="card flex items-center gap-3">
                 <span class="@(_authHealthy ? "health-dot-healthy" : "health-dot-danger")"></span>
                 <div class="flex-1">
@@ -94,9 +96,9 @@
     }
 </section>
 
-<section>
-    <h2 class="text-heading mb-4 text-glitch">Quick Links</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<section class="mb-12">
+    <h2 class="text-heading mb-6 text-glitch">Quick Links</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
         <a href="http://localhost:16686" target="_blank" rel="noopener" class="card-glow block">
             <h3 class="font-bold text-neon-pink mb-1">Jaeger Tracing</h3>
             <p class="text-sm text-text-secondary">View distributed traces</p>
