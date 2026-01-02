@@ -78,6 +78,7 @@ dc_resource('audit-worker', labels=['workers'], resource_deps=['rabbitmq'])
 dc_resource('webhooks-worker', labels=['workers'], resource_deps=['rabbitmq'])
 dc_resource('realtime-worker', labels=['workers'], resource_deps=['rabbitmq', 'gateway'], links=['http://localhost:5020/health'])
 dc_resource('infra-worker', labels=['workers'], resource_deps=['rabbitmq', 'health'])
+dc_resource('dlq-worker', labels=['workers'], resource_deps=['rabbitmq', 'realtime-worker'], links=['http://localhost:5025/health'])
 
 # Frontend clients (design system + login + app)
 # Built to src/gateway/Gateway/wwwroot/ - volume mount picks up changes immediately
