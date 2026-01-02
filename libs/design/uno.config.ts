@@ -262,7 +262,9 @@ export default defineConfig({
 
     // Grid
     'grid', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'grid-cols-4',
+    'grid-cols-[120px_1fr]', 'grid-cols-[220px_1fr]', 'grid-cols-[80px_1fr]',
     'md:grid-cols-2', 'md:grid-cols-3', 'md:grid-cols-4', 'lg:grid-cols-3', 'lg:grid-cols-4',
+    'md:grid-cols-[220px_1fr]',
 
     // Shortcuts - layout
     'flex-center', 'flex-between', 'flex-col-center',

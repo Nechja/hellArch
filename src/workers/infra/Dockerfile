@@ -1,46 +1,29 @@
-# Build stage
-FROM golang:1.24-alpine AS builder
-
-WORKDIR /build
-
-# Copy go mod files
-COPY go.mod go.sum* ./
-
-# Copy shared libs for local replace directives
-COPY ../../../libs/cloud_events/go /libs/cloud_events/go
-
-# Download dependencies
-RUN go mod download
-
-# Copy source
-COPY . .
-
-# Build
-RUN CGO_ENABLED=0 GOOS=linux go build -o infra-worker .
-
-# Runtime stage
-FROM alpine:3.21 AS runtime
-
-RUN apk add --no-cache ca-certificates
-
-WORKDIR /app
-
-COPY --from=builder /build/infra-worker .
-
-ENTRYPOINT ["/app/infra-worker"]
-
-# Development stage
 FROM golang:1.24-alpine AS dev
 
 WORKDIR /app
 
-RUN apk add --no-cache git
+RUN go install github.com/air-verse/air@v1.62.0
+RUN mkdir -p /.cache/go-build /go/pkg/mod && chmod -R 777 /.cache /go
 
-# Install air for hot reload
-RUN go install github.com/air-verse/air@latest
-
-COPY go.mod go.sum* ./
-
-ENV GO111MODULE=on
+COPY . .
 
 CMD ["air", "-c", ".air.toml"]
+
+FROM golang:1.24-alpine AS build
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /infra-worker .
+
+FROM gcr.io/distroless/static AS prod
+
+COPY --from=build /infra-worker /infra-worker
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["/infra-worker"]

@@ -1,0 +1,452 @@
+@page "/webhooks"
+@inject Admin.Services.EventsAdminFacade EventsApi
+@inject ILogger<Webhooks> Logger
+
+<PageTitle>Webhooks - HellArch Admin</PageTitle>
+
+<h1 class="text-display text-gradient mb-6">Webhooks</h1>
+
+<p class="text-text-secondary mb-6">
+    Manage webhook endpoints for event notifications.
+</p>
+
+<section class="mb-6">
+    <div class="flex items-center justify-between">
+        <div class="flex gap-2">
+            <button class="btn-secondary text-sm @(_activeTab == Tab.Webhooks ? "btn-primary" : "")" @onclick="() => SwitchTab(Tab.Webhooks)">
+                Webhooks
+            </button>
+            <button class="btn-secondary text-sm @(_activeTab == Tab.Deliveries ? "btn-primary" : "")" @onclick="() => SwitchTab(Tab.Deliveries)">
+                Deliveries
+            </button>
+        </div>
+        @if (_activeTab == Tab.Webhooks)
+        {
+            <button class="btn-primary" @onclick="ShowCreateForm">+ New Webhook</button>
+        }
+    </div>
+</section>
+
+@if (_activeTab == Tab.Webhooks)
+{
+    <section class="mb-8">
+        @if (_loadingWebhooks)
+        {
+            <p class="text-text-secondary text-center py-8">Loading webhooks...</p>
+        }
+        else if (_webhooks.Count == 0)
+        {
+            <div class="text-center py-8">
+                <p class="text-text-muted italic mb-4">No webhooks configured</p>
+                <button class="btn-primary" @onclick="ShowCreateForm">Create your first webhook</button>
+            </div>
+        }
+        else
+        {
+            <div class="grid gap-4">
+                @foreach (var webhook in _webhooks)
+                {
+                    <div class="card">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <h3 class="font-bold text-lg">@webhook.Name</h3>
+                                    <span class="@(webhook.IsActive ? "badge-success" : "badge-warning")">
+                                        @(webhook.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </div>
+                                <p class="font-mono text-sm text-text-secondary mb-2">@webhook.Url</p>
+                                <div class="flex flex-wrap gap-2 mb-2">
+                                    @foreach (var eventType in webhook.EventTypes)
+                                    {
+                                        <span class="badge text-xs">@eventType</span>
+                                    }
+                                </div>
+                                <p class="text-xs text-text-muted">
+                                    Created: @webhook.CreatedAt.ToString("yyyy-MM-dd HH:mm")
+                                </p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="btn-secondary text-sm" @onclick="() => EditWebhook(webhook)">Edit</button>
+                                <button class="btn-secondary text-sm text-red-400 hover:text-red-300" @onclick="() => ConfirmDelete(webhook)">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+}
+else
+{
+    <section class="mb-6">
+        <div class="flex flex-wrap gap-4 items-end">
+            <div class="flex flex-col gap-1">
+                <label class="text-sm text-text-secondary">Webhook</label>
+                <select @bind="_deliveryWebhookFilter" class="input w-48">
+                    <option value="">All</option>
+                    @foreach (var webhook in _webhooks)
+                    {
+                        <option value="@webhook.Id">@webhook.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="flex flex-col gap-1">
+                <label class="text-sm text-text-secondary">Status</label>
+                <select @bind="_deliverySuccessFilter" class="input w-32">
+                    <option value="">All</option>
+                    <option value="true">Success</option>
+                    <option value="false">Failed</option>
+                </select>
+            </div>
+            <button class="btn-primary" @onclick="LoadDeliveries">Filter</button>
+        </div>
+    </section>
+
+    <section class="mb-8">
+        @if (_loadingDeliveries)
+        {
+            <p class="text-text-secondary text-center py-8">Loading deliveries...</p>
+        }
+        else if (_deliveries.Count == 0)
+        {
+            <p class="text-text-muted text-center py-8 italic">No deliveries found</p>
+        }
+        else
+        {
+            <div class="overflow-x-auto">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="data-th">Time</th>
+                            <th class="data-th">Webhook</th>
+                            <th class="data-th">Event Type</th>
+                            <th class="data-th">Status</th>
+                            <th class="data-th">Attempt</th>
+                            <th class="data-th">Response</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var delivery in _deliveries)
+                        {
+                            <tr class="data-row">
+                                <td class="data-td text-xs font-mono">@delivery.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td class="data-td text-sm">@GetWebhookName(delivery.WebhookId)</td>
+                                <td class="data-td">
+                                    <span class="badge-info text-xs">@GetShortEventType(delivery.EventType)</span>
+                                </td>
+                                <td class="data-td">
+                                    @if (delivery.Success)
+                                    {
+                                        <span class="badge-success">@(delivery.StatusCode ?? 0)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-warning">@(delivery.StatusCode ?? 0)</span>
+                                    }
+                                </td>
+                                <td class="data-td">@delivery.Attempt</td>
+                                <td class="data-td">
+                                    @if (!string.IsNullOrEmpty(delivery.ResponseBody))
+                                    {
+                                        <button class="text-neon-pink text-xs hover:underline" @onclick="() => ShowDeliveryDetails(delivery)">
+                                            View
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-text-muted">-</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex items-center justify-between mt-4">
+                <span class="text-sm text-text-secondary">
+                    Showing @_deliveries.Count of @_deliveryTotalCount deliveries
+                </span>
+                <div class="flex gap-2">
+                    <button class="btn-secondary text-sm" disabled="@(_deliveryPage <= 1)" @onclick="PreviousDeliveryPage">
+                        Previous
+                    </button>
+                    <span class="px-3 py-1 text-sm">Page @_deliveryPage</span>
+                    <button class="btn-secondary text-sm" disabled="@(!HasMoreDeliveryPages)" @onclick="NextDeliveryPage">
+                        Next
+                    </button>
+                </div>
+            </div>
+        }
+    </section>
+}
+
+@if (_showForm)
+{
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @onclick="CloseForm">
+        <div class="card max-w-lg w-full" @onclick:stopPropagation="true">
+            <h2 class="text-heading mb-4">@(_editingWebhook == null ? "Create Webhook" : "Edit Webhook")</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-sm text-text-secondary">Name</label>
+                    <input type="text" @bind="_formName" class="input w-full" placeholder="My Webhook" />
+                </div>
+                <div>
+                    <label class="text-sm text-text-secondary">URL</label>
+                    <input type="url" @bind="_formUrl" class="input w-full" placeholder="https://example.com/webhook" />
+                </div>
+                <div>
+                    <label class="text-sm text-text-secondary">Secret</label>
+                    <input type="text" @bind="_formSecret" class="input w-full" placeholder="webhook-secret-key" />
+                </div>
+                <div>
+                    <label class="text-sm text-text-secondary">Event Types (comma-separated)</label>
+                    <input type="text" @bind="_formEventTypes" class="input w-full" placeholder="hellarch.auth.user.created.v1, hellarch.auth.session.*" />
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="isActive" @bind="_formIsActive" class="w-4 h-4" />
+                    <label for="isActive" class="text-sm">Active</label>
+                </div>
+                <div class="flex gap-2 justify-end mt-6">
+                    <button class="btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn-primary" @onclick="SaveWebhook" disabled="@_saving">
+                        @(_saving ? "Saving..." : "Save")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_webhookToDelete != null)
+{
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @onclick="() => _webhookToDelete = null">
+        <div class="card max-w-md w-full" @onclick:stopPropagation="true">
+            <h2 class="text-heading mb-4">Delete Webhook</h2>
+            <p class="text-text-secondary mb-6">
+                Are you sure you want to delete <strong>@_webhookToDelete.Name</strong>? This action cannot be undone.
+            </p>
+            <div class="flex gap-2 justify-end">
+                <button class="btn-secondary" @onclick="() => _webhookToDelete = null">Cancel</button>
+                <button class="btn-primary bg-red-600 hover:bg-red-500" @onclick="DeleteWebhook">Delete</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_selectedDelivery != null)
+{
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @onclick="() => _selectedDelivery = null">
+        <div class="card max-w-2xl w-full max-h-[80vh] overflow-auto" @onclick:stopPropagation="true">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-heading">Delivery Details</h2>
+                <button class="text-text-muted hover:text-white" @onclick="() => _selectedDelivery = null">&#10005;</button>
+            </div>
+            <div class="space-y-3 text-sm">
+                <div><span class="text-text-secondary">Webhook:</span> @GetWebhookName(_selectedDelivery.WebhookId)</div>
+                <div><span class="text-text-secondary">Event ID:</span> <span class="font-mono">@_selectedDelivery.EventId</span></div>
+                <div><span class="text-text-secondary">Event Type:</span> <span class="badge-info">@_selectedDelivery.EventType</span></div>
+                <div><span class="text-text-secondary">Status Code:</span> @(_selectedDelivery.StatusCode ?? 0)</div>
+                <div><span class="text-text-secondary">Attempt:</span> @_selectedDelivery.Attempt</div>
+                <div><span class="text-text-secondary">Success:</span> @(_selectedDelivery.Success ? "Yes" : "No")</div>
+                @if (!string.IsNullOrEmpty(_selectedDelivery.ResponseBody))
+                {
+                    <div>
+                        <span class="text-text-secondary">Response:</span>
+                        <pre class="mt-2 p-3 rounded-sm bg-bg-secondary border border-border font-mono text-xs overflow-x-auto">@_selectedDelivery.ResponseBody</pre>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private enum Tab { Webhooks, Deliveries }
+    private Tab _activeTab = Tab.Webhooks;
+
+    private IReadOnlyList<Admin.Services.Webhook> _webhooks = [];
+    private bool _loadingWebhooks = true;
+
+    private IReadOnlyList<Admin.Services.WebhookDelivery> _deliveries = [];
+    private int _deliveryTotalCount;
+    private int _deliveryPage = 1;
+    private bool _loadingDeliveries;
+    private string? _deliveryWebhookFilter;
+    private string? _deliverySuccessFilter;
+
+    private bool HasMoreDeliveryPages => _deliveryPage * 20 < _deliveryTotalCount;
+
+    private bool _showForm;
+    private Admin.Services.Webhook? _editingWebhook;
+    private string _formName = "";
+    private string _formUrl = "";
+    private string _formSecret = "";
+    private string _formEventTypes = "";
+    private bool _formIsActive = true;
+    private bool _saving;
+
+    private Admin.Services.Webhook? _webhookToDelete;
+    private Admin.Services.WebhookDelivery? _selectedDelivery;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWebhooks();
+    }
+
+    private async Task LoadWebhooks()
+    {
+        _loadingWebhooks = true;
+        StateHasChanged();
+
+        var response = await EventsApi.GetWebhooks(1, 100);
+        _webhooks = response.Data;
+
+        _loadingWebhooks = false;
+        StateHasChanged();
+    }
+
+    private async Task LoadDeliveries()
+    {
+        _loadingDeliveries = true;
+        StateHasChanged();
+
+        bool? success = _deliverySuccessFilter switch
+        {
+            "true" => true,
+            "false" => false,
+            _ => null
+        };
+
+        var response = await EventsApi.GetDeliveries(_deliveryPage, 20, _deliveryWebhookFilter, success);
+        _deliveries = response.Data;
+        _deliveryTotalCount = response.TotalCount;
+
+        _loadingDeliveries = false;
+        StateHasChanged();
+    }
+
+    private async Task SwitchTab(Tab tab)
+    {
+        _activeTab = tab;
+        if (tab == Tab.Deliveries && _deliveries.Count == 0)
+        {
+            await LoadDeliveries();
+        }
+    }
+
+    private void ShowCreateForm()
+    {
+        _editingWebhook = null;
+        _formName = "";
+        _formUrl = "";
+        _formSecret = "";
+        _formEventTypes = "";
+        _formIsActive = true;
+        _showForm = true;
+    }
+
+    private void EditWebhook(Admin.Services.Webhook webhook)
+    {
+        _editingWebhook = webhook;
+        _formName = webhook.Name;
+        _formUrl = webhook.Url;
+        _formSecret = webhook.Secret;
+        _formEventTypes = string.Join(", ", webhook.EventTypes);
+        _formIsActive = webhook.IsActive;
+        _showForm = true;
+    }
+
+    private void CloseForm()
+    {
+        _showForm = false;
+        _editingWebhook = null;
+    }
+
+    private async Task SaveWebhook()
+    {
+        if (string.IsNullOrWhiteSpace(_formName) || string.IsNullOrWhiteSpace(_formUrl))
+        {
+            return;
+        }
+
+        _saving = true;
+        StateHasChanged();
+
+        var eventTypes = _formEventTypes
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+
+        if (_editingWebhook == null)
+        {
+            var request = new Admin.Services.CreateWebhookRequest(
+                _formName,
+                _formUrl,
+                _formSecret,
+                eventTypes,
+                _formIsActive);
+            await EventsApi.CreateWebhook(request);
+        }
+        else
+        {
+            var request = new Admin.Services.UpdateWebhookRequest(
+                _formName,
+                _formUrl,
+                _formSecret,
+                eventTypes,
+                _formIsActive);
+            await EventsApi.UpdateWebhook(_editingWebhook.Id, request);
+        }
+
+        _saving = false;
+        CloseForm();
+        await LoadWebhooks();
+    }
+
+    private void ConfirmDelete(Admin.Services.Webhook webhook)
+    {
+        _webhookToDelete = webhook;
+    }
+
+    private async Task DeleteWebhook()
+    {
+        if (_webhookToDelete != null)
+        {
+            await EventsApi.DeleteWebhook(_webhookToDelete.Id);
+            _webhookToDelete = null;
+            await LoadWebhooks();
+        }
+    }
+
+    private async Task NextDeliveryPage()
+    {
+        _deliveryPage++;
+        await LoadDeliveries();
+    }
+
+    private async Task PreviousDeliveryPage()
+    {
+        if (_deliveryPage > 1)
+        {
+            _deliveryPage--;
+            await LoadDeliveries();
+        }
+    }
+
+    private void ShowDeliveryDetails(Admin.Services.WebhookDelivery delivery)
+    {
+        _selectedDelivery = delivery;
+    }
+
+    private string GetWebhookName(string webhookId)
+    {
+        return _webhooks.FirstOrDefault(w => w.Id == webhookId)?.Name ?? webhookId;
+    }
+
+    private static string GetShortEventType(string eventType)
+    {
+        var parts = eventType.Split('.');
+        return parts.Length >= 4 ? string.Join(".", parts[^3..]) : eventType;
+    }
+}

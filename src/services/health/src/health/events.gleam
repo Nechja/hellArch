@@ -1,10 +1,7 @@
 import birl
-import gleam/dynamic.{type Dynamic}
-import gleam/http/request
 import gleam/io
 import gleam/json
 import gleam/option.{type Option, None, Some}
-import gleam/result
 import gleam/string
 import health/config
 

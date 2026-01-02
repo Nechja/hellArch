@@ -121,6 +121,7 @@ services:
     environment:
       - PORT=5004
       - POLL_INTERVAL_MS=10000
+      - EVENTS_SERVICE_URL=http://events:5005
       - OTEL_SERVICE_NAME=health
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
@@ -220,6 +221,31 @@ services:
       - hellarch
     restart: unless-stopped
 
+  infra-worker:
+    build:
+      context: ../../src/workers/infra
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hellarch-infra-worker
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - ORCHESTRATOR_BACKEND=docker
+      - RESTART_COOLDOWN_SECONDS=60
+      - MAX_RESTARTS=3
+      - RESTART_WINDOW_SECONDS=300
+      - OTEL_SERVICE_NAME=infra-worker
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - LOG_LEVEL=debug
+    volumes:
+      - ../../src/workers/infra:/app
+      - ../../libs:/libs
+      - infra-go-cache:/go/pkg/mod
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - hellarch
+    restart: unless-stopped
+
 volumes:
   gateway-nuget:
   auth-go-cache:
@@ -229,6 +255,7 @@ volumes:
   audit-go-cache:
   webhooks-go-cache:
   realtime-nuget:
+  infra-go-cache:
 
 networks:
   hellarch:

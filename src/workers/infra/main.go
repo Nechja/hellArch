@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -9,15 +10,12 @@ import (
 	"strings"
 	"syscall"
 
+	cloudevents "github.com/nechja/hellarch/cloudevents"
+	"github.com/nechja/hellarch/cloudevents/infra"
+	"github.com/nechja/hellarch/golibs/rabbitmq"
+	"github.com/nechja/hellarch/golibs/telemetry"
 	"github.com/nechja/hellarch/infra-worker/internal/handlers"
 	"github.com/nechja/hellarch/infra-worker/internal/orchestrator"
-	"github.com/nechja/hellarch/infra-worker/internal/rabbitmq"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 func main() {
@@ -31,13 +29,17 @@ func main() {
 	logger := slog.Default()
 	logger.Info("starting infra-worker")
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Setup OpenTelemetry
-	shutdown, err := setupOtel()
+	serviceName := getEnvOrDefault("OTEL_SERVICE_NAME", "infra-worker")
+	shutdown, err := telemetry.Setup(ctx, serviceName)
 	if err != nil {
 		logger.Error("failed to setup otel", "error", err)
 		os.Exit(1)
 	}
-	defer shutdown()
+	defer shutdown(ctx)
 
 	// Create orchestrator
 	backend := getEnvOrDefault("ORCHESTRATOR_BACKEND", "docker")
@@ -60,7 +62,12 @@ func main() {
 
 	// Create RabbitMQ consumer
 	rabbitmqURL := getEnvOrDefault("RABBITMQ_URL", "amqp://hellarch:hellarch@localhost:5672")
-	consumer, err := rabbitmq.NewConsumer(rabbitmqURL, h)
+	consumer, err := rabbitmq.NewConsumer(ctx, rabbitmq.ConsumerConfig{
+		URL:        rabbitmqURL,
+		QueueName:  "infra-events",
+		RoutingKey: "hellarch.infra.#",
+		TracerName: "infra-worker",
+	})
 	if err != nil {
 		logger.Error("failed to create rabbitmq consumer", "error", err)
 		os.Exit(1)
@@ -68,9 +75,6 @@ func main() {
 	defer consumer.Close()
 
 	// Setup graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
@@ -82,49 +86,42 @@ func main() {
 
 	// Start consuming
 	logger.Info("infra-worker ready, consuming events")
-	if err := consumer.Start(ctx); err != nil {
-		logger.Error("consumer error", "error", err)
-		os.Exit(1)
+	if err := consumer.Run(ctx, createMessageHandler(h, logger)); err != nil {
+		if ctx.Err() != nil {
+			logger.Info("consumer stopped due to context cancellation")
+		} else {
+			logger.Error("consumer error", "error", err)
+			os.Exit(1)
+		}
 	}
 
 	logger.Info("infra-worker shutdown complete")
 }
 
-func setupOtel() (func(), error) {
-	ctx := context.Background()
+func createMessageHandler(h *handlers.Handlers, logger *slog.Logger) rabbitmq.MessageHandler {
+	return func(ctx context.Context, event cloudevents.CloudEvent[json.RawMessage]) error {
+		switch event.Type {
+		case "hellarch.infra.service.unhealthy.v1":
+			var data infra.ServiceUnhealthy
+			if err := json.Unmarshal(event.Data, &data); err != nil {
+				logger.Error("failed to unmarshal ServiceUnhealthy", "error", err)
+				return err
+			}
+			return h.HandleServiceUnhealthy(ctx, data)
 
-	endpoint := getEnvOrDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
-	serviceName := getEnvOrDefault("OTEL_SERVICE_NAME", "infra-worker")
+		case "hellarch.infra.service.recovered.v1":
+			var data infra.ServiceRecovered
+			if err := json.Unmarshal(event.Data, &data); err != nil {
+				logger.Error("failed to unmarshal ServiceRecovered", "error", err)
+				return err
+			}
+			return h.HandleServiceRecovered(ctx, data)
 
-	exporter, err := otlptracehttp.New(ctx,
-		otlptracehttp.WithEndpoint(strings.TrimPrefix(strings.TrimPrefix(endpoint, "http://"), "https://")),
-		otlptracehttp.WithInsecure(),
-	)
-	if err != nil {
-		return nil, err
+		default:
+			logger.Debug("ignoring unhandled event type", "type", event.Type)
+			return nil
+		}
 	}
-
-	res, err := resource.New(ctx,
-		resource.WithAttributes(semconv.ServiceName(serviceName)),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(res),
-	)
-
-	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{},
-		propagation.Baggage{},
-	))
-
-	return func() {
-		tp.Shutdown(context.Background())
-	}, nil
 }
 
 func getEnvOrDefault(key, defaultValue string) string {
