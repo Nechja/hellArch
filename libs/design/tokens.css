@@ -17,51 +17,130 @@
 }
 
 :root {
-  /* Colors - Backgrounds (deeper blacks) */
-  --color-bg-primary: #0a0a0a;
-  --color-bg-secondary: #111111;
-  --color-bg-card: #161616;
-  --color-bg-elevated: #1c1c1c;
-  --color-bg-overlay: rgba(0, 0, 0, 0.8);
+  /* ============================================================================
+     PRIMITIVE TOKENS (Layer 1)
+     Raw palette values. Use sparingly for intentional brand moments.
+     ============================================================================ */
 
-  /* Colors - Text (high contrast) */
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #888888;
-  --color-text-muted: #555555;
-  --color-text-inverse: #0a0a0a;
+  /* Palette - Backgrounds */
+  --palette-black: #0a0a0a;
+  --palette-black-light: #111111;
+  --palette-black-lighter: #161616;
+  --palette-black-lightest: #1c1c1c;
 
-  --color-neon-pink: #D162A4;
-  --color-neon-rose: #A30262;
-  --color-neon-dusty: #B55690;
-  --color-neon-peach: #FF9A56;
-  --color-neon-orange: #EF7627;
-  --color-neon-coral: #D52D00;
-  --color-neon-green: #39ff14;
-  --color-neon-red: #ff0033;
-  --color-neon-yellow: #ffff00;
+  /* Palette - Grays */
+  --palette-gray-dark: #2a2a2a;
+  --palette-gray: #3a3a3a;
+  --palette-gray-light: #555555;
+  --palette-gray-lighter: #888888;
 
-  /* Colors - Brand */
-  --color-accent: var(--color-neon-pink);
-  --color-accent-hover: var(--color-neon-dusty);
-  --color-accent-active: var(--color-neon-rose);
+  /* Palette - Neon (brand colors - use for intentional brand moments) */
+  --palette-neon-pink: #D162A4;
+  --palette-neon-rose: #A30262;
+  --palette-neon-dusty: #B55690;
+  --palette-neon-peach: #FF9A56;
+  --palette-neon-orange: #EF7627;
+  --palette-neon-coral: #D52D00;
+  --palette-neon-green: #39ff14;
+  --palette-neon-red: #ff0033;
+  --palette-neon-yellow: #ffff00;
 
-  /* Colors - Semantic */
-  --color-success: var(--color-neon-green);
-  --color-warning: var(--color-neon-yellow);
-  --color-error: var(--color-neon-red);
-  --color-info: var(--color-neon-pink);
+  /* Palette - Providers (external brand colors) */
+  --palette-discord: #5865f2;
+  --palette-github: #f0f0f0;
+  --palette-google: #ea4335;
 
-  /* Colors - Borders */
-  --color-border: #2a2a2a;
-  --color-border-hover: #3a3a3a;
-  --color-border-focus: var(--color-neon-pink);
+  /* ============================================================================
+     SEMANTIC TOKENS (Layer 2)
+     Role-based tokens. Use these for 95% of styling.
+     ============================================================================ */
 
-  /* Colors - Providers */
-  --color-discord: #5865f2;
-  --color-github: #f0f0f0;
-  --color-google: #ea4335;
+  /* Surfaces - where content lives */
+  --color-surface: var(--palette-black);
+  --color-surface-raised: var(--palette-black-light);
+  --color-surface-overlay: var(--palette-black-lighter);
+  --color-surface-elevated: var(--palette-black-lightest);
+  --color-surface-backdrop: rgba(0, 0, 0, 0.8);
 
-  /* Glows - standard */
+  /* Text - content hierarchy */
+  --color-text: #ffffff;
+  --color-text-secondary: var(--palette-gray-lighter);
+  --color-text-muted: var(--palette-gray-light);
+  --color-text-inverse: var(--palette-black);
+
+  /* Brand - primary actions and emphasis */
+  --color-primary: var(--palette-neon-pink);
+  --color-primary-hover: var(--palette-neon-dusty);
+  --color-primary-active: var(--palette-neon-rose);
+
+  /* Secondary - supporting actions */
+  --color-secondary: var(--palette-neon-dusty);
+  --color-secondary-hover: var(--palette-neon-rose);
+
+  /* Accent - highlights and decorative */
+  --color-accent: var(--palette-neon-rose);
+  --color-accent-alt: var(--palette-neon-peach);
+
+  /* Feedback - system states */
+  --color-success: var(--palette-neon-green);
+  --color-warning: var(--palette-neon-yellow);
+  --color-danger: var(--palette-neon-red);
+  --color-info: var(--palette-neon-pink);
+
+  /* Interactive - links and focus */
+  --color-link: var(--palette-neon-pink);
+  --color-link-hover: var(--palette-neon-dusty);
+  --color-focus: var(--palette-neon-pink);
+
+  /* Borders */
+  --color-border: var(--palette-gray-dark);
+  --color-border-hover: var(--palette-gray);
+  --color-border-focus: var(--color-primary);
+  --color-border-success: var(--color-success);
+  --color-border-danger: var(--color-danger);
+
+  /* Providers (keep as-is, external brands) */
+  --color-discord: var(--palette-discord);
+  --color-github: var(--palette-github);
+  --color-google: var(--palette-google);
+
+  /* ============================================================================
+     LEGACY ALIASES (for backwards compatibility during migration)
+     These map old names to new semantic tokens. Remove after full migration.
+     ============================================================================ */
+  --color-bg-primary: var(--color-surface);
+  --color-bg-secondary: var(--color-surface-raised);
+  --color-bg-card: var(--color-surface-overlay);
+  --color-bg-elevated: var(--color-surface-elevated);
+  --color-bg-overlay: var(--color-surface-backdrop);
+  --color-text-primary: var(--color-text);
+  --color-error: var(--color-danger);
+
+  /* Legacy neon aliases (for intentional brand usage) */
+  --color-neon-pink: var(--palette-neon-pink);
+  --color-neon-rose: var(--palette-neon-rose);
+  --color-neon-dusty: var(--palette-neon-dusty);
+  --color-neon-peach: var(--palette-neon-peach);
+  --color-neon-orange: var(--palette-neon-orange);
+  --color-neon-coral: var(--palette-neon-coral);
+  --color-neon-green: var(--palette-neon-green);
+  --color-neon-red: var(--palette-neon-red);
+  --color-neon-yellow: var(--palette-neon-yellow);
+
+  /* ============================================================================
+     GLOWS (mapped to semantic roles)
+     ============================================================================ */
+
+  /* Semantic glows */
+  --glow-primary: 0 0 8px rgba(209, 98, 164, 0.4);
+  --glow-primary-intense: 0 0 20px rgba(209, 98, 164, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --glow-success: 0 0 8px rgba(57, 255, 20, 0.4);
+  --glow-success-intense: 0 0 20px rgba(57, 255, 20, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --glow-danger: 0 0 8px rgba(255, 0, 51, 0.4);
+  --glow-danger-intense: 0 0 20px rgba(255, 0, 51, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --glow-warning: 0 0 8px rgba(255, 255, 0, 0.4);
+
+  /* Primitive glows (for brand moments) */
   --glow-pink: 0 0 8px rgba(209, 98, 164, 0.4);
   --glow-rose: 0 0 8px rgba(163, 2, 98, 0.4);
   --glow-dusty: 0 0 8px rgba(181, 86, 144, 0.4);
@@ -75,7 +154,7 @@
   --glow-md: 0 0 8px;
   --glow-lg: 0 0 16px;
 
-  /* Glows - enhanced (with depth shadow for hover states) */
+  /* Intense glows (for hover states) */
   --glow-pink-intense: 0 0 20px rgba(209, 98, 164, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
   --glow-rose-intense: 0 0 20px rgba(163, 2, 98, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
   --glow-green-intense: 0 0 20px rgba(57, 255, 20, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -174,11 +253,11 @@ body {
   min-height: 100vh;
 }
 
-/* Focus styles - neon glow */
+/* Focus styles */
 :focus-visible {
-  outline: 2px solid var(--color-neon-pink);
+  outline: 2px solid var(--color-focus);
   outline-offset: 2px;
-  box-shadow: var(--glow-pink);
+  box-shadow: var(--glow-primary);
 }
 
 /* Scrollbar - sleek */
@@ -197,14 +276,14 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-neon-pink);
-  box-shadow: var(--glow-pink);
+  background: var(--color-primary);
+  box-shadow: var(--glow-primary);
 }
 
-/* Selection - neon highlight */
+/* Selection */
 ::selection {
-  background: var(--color-neon-pink);
-  color: var(--color-bg-primary);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
 }
 
 /* Smooth scrolling */
@@ -259,7 +338,7 @@ details summary::-webkit-details-marker {
 
 /* Subtle glow animation */
 @keyframes glow-breathe {
-  0%, 100% { box-shadow: var(--glow-pink); }
+  0%, 100% { box-shadow: var(--glow-primary); }
   50% { box-shadow: 0 0 12px rgba(209, 98, 164, 0.5); }
 }
 

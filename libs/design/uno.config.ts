@@ -11,21 +11,75 @@ export default defineConfig({
 
   theme: {
     colors: {
-      // Backgrounds
-      bg: {
-        primary: 'var(--color-bg-primary)',
-        secondary: 'var(--color-bg-secondary)',
-        card: 'var(--color-bg-card)',
-        elevated: 'var(--color-bg-elevated)',
-        overlay: 'var(--color-bg-overlay)',
+      // ========================================
+      // SEMANTIC COLORS (use these by default)
+      // ========================================
+
+      // Surfaces - where content lives
+      surface: {
+        DEFAULT: 'var(--color-surface)',
+        raised: 'var(--color-surface-raised)',
+        overlay: 'var(--color-surface-overlay)',
+        elevated: 'var(--color-surface-elevated)',
+        backdrop: 'var(--color-surface-backdrop)',
       },
-      // Text
+
+      // Text - content hierarchy
       text: {
-        primary: 'var(--color-text-primary)',
+        DEFAULT: 'var(--color-text)',
         secondary: 'var(--color-text-secondary)',
         muted: 'var(--color-text-muted)',
         inverse: 'var(--color-text-inverse)',
+        // Legacy alias
+        primary: 'var(--color-text)',
       },
+
+      // Primary - main actions and brand
+      primary: {
+        DEFAULT: 'var(--color-primary)',
+        hover: 'var(--color-primary-hover)',
+        active: 'var(--color-primary-active)',
+      },
+
+      // Secondary - supporting actions
+      secondary: {
+        DEFAULT: 'var(--color-secondary)',
+        hover: 'var(--color-secondary-hover)',
+      },
+
+      // Accent - highlights
+      accent: {
+        DEFAULT: 'var(--color-accent)',
+        alt: 'var(--color-accent-alt)',
+      },
+
+      // Feedback states
+      success: 'var(--color-success)',
+      warning: 'var(--color-warning)',
+      danger: 'var(--color-danger)',
+      info: 'var(--color-info)',
+
+      // Interactive
+      link: {
+        DEFAULT: 'var(--color-link)',
+        hover: 'var(--color-link-hover)',
+      },
+      focus: 'var(--color-focus)',
+
+      // Borders
+      border: {
+        DEFAULT: 'var(--color-border)',
+        hover: 'var(--color-border-hover)',
+        focus: 'var(--color-border-focus)',
+        success: 'var(--color-border-success)',
+        danger: 'var(--color-border-danger)',
+      },
+
+      // ========================================
+      // PRIMITIVE COLORS (for brand moments)
+      // ========================================
+
+      // Neon palette - use sparingly for intentional design
       neon: {
         pink: 'var(--color-neon-pink)',
         rose: 'var(--color-neon-rose)',
@@ -37,27 +91,23 @@ export default defineConfig({
         red: 'var(--color-neon-red)',
         yellow: 'var(--color-neon-yellow)',
       },
-      // Brand
-      accent: {
-        DEFAULT: 'var(--color-accent)',
-        hover: 'var(--color-accent-hover)',
-        active: 'var(--color-accent-active)',
-      },
-      // Semantic
-      success: 'var(--color-success)',
-      warning: 'var(--color-warning)',
-      error: 'var(--color-error)',
-      info: 'var(--color-info)',
-      // Borders
-      border: {
-        DEFAULT: 'var(--color-border)',
-        hover: 'var(--color-border-hover)',
-        focus: 'var(--color-border-focus)',
-      },
-      // Providers
+
+      // External provider brands
       discord: 'var(--color-discord)',
       github: 'var(--color-github)',
       google: 'var(--color-google)',
+
+      // ========================================
+      // LEGACY ALIASES (remove after migration)
+      // ========================================
+      bg: {
+        primary: 'var(--color-surface)',
+        secondary: 'var(--color-surface-raised)',
+        card: 'var(--color-surface-overlay)',
+        elevated: 'var(--color-surface-elevated)',
+        overlay: 'var(--color-surface-backdrop)',
+      },
+      error: 'var(--color-danger)',
     },
 
     borderRadius: {
@@ -73,6 +123,15 @@ export default defineConfig({
       sm: 'var(--shadow-sm)',
       md: 'var(--shadow-md)',
       lg: 'var(--shadow-lg)',
+      // Semantic glows
+      'glow-primary': 'var(--glow-primary)',
+      'glow-primary-intense': 'var(--glow-primary-intense)',
+      'glow-success': 'var(--glow-success)',
+      'glow-success-intense': 'var(--glow-success-intense)',
+      'glow-danger': 'var(--glow-danger)',
+      'glow-danger-intense': 'var(--glow-danger-intense)',
+      'glow-warning': 'var(--glow-warning)',
+      // Primitive glows (for brand moments)
       'glow-pink': 'var(--glow-pink)',
       'glow-rose': 'var(--glow-rose)',
       'glow-dusty': 'var(--glow-dusty)',
@@ -82,6 +141,10 @@ export default defineConfig({
       'glow-green': 'var(--glow-green)',
       'glow-red': 'var(--glow-red)',
       'glow-yellow': 'var(--glow-yellow)',
+      'glow-pink-intense': 'var(--glow-pink-intense)',
+      'glow-rose-intense': 'var(--glow-rose-intense)',
+      'glow-green-intense': 'var(--glow-green-intense)',
+      'glow-coral-intense': 'var(--glow-coral-intense)',
     },
 
     fontFamily: {
@@ -143,106 +206,106 @@ export default defineConfig({
     'flex-between': 'flex items-center justify-between',
     'flex-col-center': 'flex flex-col items-center justify-center',
 
-    // Cards
-    'card': 'bg-bg-card border border-border rounded-sm p-6 transition-all duration-normal',
-    'card-elevated': 'bg-bg-elevated border border-border rounded-sm p-6 shadow-md transition-all duration-normal',
-    'card-glow': 'bg-bg-card border border-neon-pink/30 rounded-sm p-6 hover:border-neon-pink hover:shadow-glow-pink hover:-translate-y-0.5 transition-all duration-normal',
-    'card-interactive': 'card hover:border-neon-pink/50 hover:bg-bg-elevated hover:-translate-y-0.5 cursor-pointer',
-    'card-brutal': 'bg-bg-card border-2 border-text-primary p-6',
+    // Cards (semantic)
+    'card': 'bg-surface-overlay border border-border rounded-sm p-6 transition-all duration-normal',
+    'card-elevated': 'bg-surface-elevated border border-border rounded-sm p-6 shadow-md transition-all duration-normal',
+    'card-glow': 'bg-surface-overlay border border-primary/30 rounded-sm p-6 hover:border-primary hover:shadow-glow-primary hover:-translate-y-0.5 transition-all duration-normal',
+    'card-interactive': 'card hover:border-primary/50 hover:bg-surface-elevated hover:-translate-y-0.5 cursor-pointer',
+    'card-brutal': 'bg-surface-overlay border-2 border-text p-6',
 
     // Buttons - base with active state
     'btn': 'inline-flex items-center justify-center gap-2 px-4 py-2 rounded-sm font-semibold transition-all duration-fast cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm active:scale-95',
 
-    // Buttons - neon variants
-    'btn-neon': 'btn bg-transparent border border-neon-pink text-neon-pink hover:bg-neon-pink hover:text-bg-primary hover:shadow-glow-pink active:shadow-none',
-    'btn-neon-solid': 'btn bg-neon-pink text-bg-primary font-bold hover:shadow-glow-pink hover:brightness-110 active:brightness-90',
+    // Buttons - brand variants (use neon primitives intentionally)
+    'btn-neon': 'btn bg-transparent border border-neon-pink text-neon-pink hover:bg-neon-pink hover:text-surface hover:shadow-glow-pink active:shadow-none',
+    'btn-neon-solid': 'btn bg-neon-pink text-surface font-bold hover:shadow-glow-pink hover:brightness-110 active:brightness-90',
     'btn-neon-rose': 'btn bg-transparent border border-neon-rose text-neon-rose hover:bg-neon-rose hover:text-white hover:shadow-glow-rose active:shadow-none',
 
     // Buttons - semantic
-    'btn-primary': 'btn bg-accent text-bg-primary font-bold hover:shadow-glow-pink hover:brightness-110 active:brightness-90',
-    'btn-secondary': 'btn bg-bg-secondary text-text-primary border border-border hover:bg-bg-elevated hover:border-neon-pink/50 active:bg-bg-card',
-    'btn-ghost': 'btn bg-transparent text-text-secondary hover:text-neon-pink hover:bg-bg-elevated/50',
-    'btn-danger': 'btn bg-transparent border border-neon-red text-neon-red hover:bg-neon-red hover:text-white hover:shadow-glow-red active:shadow-none',
-    'btn-success': 'btn bg-transparent border border-neon-green text-neon-green hover:bg-neon-green hover:text-bg-primary hover:shadow-glow-green active:shadow-none',
+    'btn-primary': 'btn bg-primary text-text-inverse font-bold hover:shadow-glow-primary hover:brightness-110 active:brightness-90',
+    'btn-secondary': 'btn bg-surface-raised text-text border border-border hover:bg-surface-elevated hover:border-primary/50 active:bg-surface-overlay',
+    'btn-ghost': 'btn bg-transparent text-text-secondary hover:text-primary hover:bg-surface-elevated/50',
+    'btn-danger': 'btn bg-transparent border border-danger text-danger hover:bg-danger hover:text-white hover:shadow-glow-danger active:shadow-none',
+    'btn-success': 'btn bg-transparent border border-success text-success hover:bg-success hover:text-surface hover:shadow-glow-success active:shadow-none',
 
-    // Buttons - providers with subtle lift
+    // Buttons - providers (external brands - use primitives)
     'btn-discord': 'btn bg-discord text-white hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0',
-    'btn-github': 'btn bg-github text-bg-primary hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0',
+    'btn-github': 'btn bg-github text-surface hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0',
     'btn-google': 'btn bg-google text-white hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0',
 
-    // Inputs with states
-    'input': 'w-full px-4 py-2 bg-bg-secondary border border-border rounded-sm text-text-primary placeholder:text-text-muted focus:border-neon-pink focus:shadow-glow-pink focus:outline-none transition-all duration-fast',
-    'input-error': 'input border-neon-red focus:border-neon-red focus:shadow-glow-red',
-    'input-success': 'input border-neon-green focus:border-neon-green focus:shadow-glow-green',
+    // Inputs with states (semantic)
+    'input': 'w-full px-4 py-2 bg-surface-raised border border-border rounded-sm text-text placeholder:text-text-muted focus:border-focus focus:shadow-glow-primary focus:outline-none transition-all duration-fast',
+    'input-error': 'input border-danger focus:border-danger focus:shadow-glow-danger',
+    'input-success': 'input border-success focus:border-success focus:shadow-glow-success',
     'input-sm': 'px-3 py-1.5 text-sm',
 
-    // Typography
+    // Typography (semantic)
     'text-display': 'text-5xl font-bold tracking-tight',
-    'text-heading': 'text-2xl font-bold tracking-tight text-text-primary',
-    'text-subheading': 'text-lg font-semibold text-text-primary',
-    'text-body': 'text-base text-text-primary',
+    'text-heading': 'text-2xl font-bold tracking-tight text-text',
+    'text-subheading': 'text-lg font-semibold text-text',
+    'text-body': 'text-base text-text',
     'text-caption': 'text-sm text-text-secondary',
     'text-muted': 'text-sm text-text-muted',
-    'text-neon': 'text-neon-pink',
+    'text-neon': 'text-primary',
     'text-glitch': 'font-mono uppercase tracking-wider',
     'text-gradient': 'bg-gradient-to-r from-neon-pink to-neon-orange bg-clip-text text-transparent',
 
-    // Links - with underline animation
-    'link': 'text-neon-pink relative cursor-pointer transition-colors duration-fast hover:text-neon-dusty',
-    'link-underline': 'link after:absolute after:bottom-0 after:left-0 after:w-0 after:h-px after:bg-neon-pink after:transition-all after:duration-normal hover:after:w-full',
-    'link-subtle': 'text-text-secondary hover:text-neon-pink transition-colors duration-fast',
+    // Links (semantic)
+    'link': 'text-link relative cursor-pointer transition-colors duration-fast hover:text-link-hover',
+    'link-underline': 'link after:absolute after:bottom-0 after:left-0 after:w-0 after:h-px after:bg-primary after:transition-all after:duration-normal hover:after:w-full',
+    'link-subtle': 'text-text-secondary hover:text-primary transition-colors duration-fast',
 
-    // Admin components - enhanced stat cards
-    'stat-card': 'card p-4 hover:border-neon-pink/30',
-    'stat-value': 'text-3xl font-bold text-neon-pink transition-colors',
+    // Admin components (semantic)
+    'stat-card': 'card p-4 hover:border-primary/30',
+    'stat-value': 'text-3xl font-bold text-primary transition-colors',
     'stat-label': 'text-xs uppercase tracking-wide text-text-muted mt-1',
 
-    // Health indicators with pulse animation option
+    // Health indicators (semantic feedback states)
     'health-dot': 'w-3 h-3 rounded-full transition-all',
-    'health-dot-healthy': 'health-dot bg-neon-green shadow-glow-green',
-    'health-dot-warning': 'health-dot bg-neon-yellow shadow-glow-yellow animate-pulse',
-    'health-dot-danger': 'health-dot bg-neon-red shadow-glow-red animate-pulse',
+    'health-dot-healthy': 'health-dot bg-success shadow-glow-success',
+    'health-dot-warning': 'health-dot bg-warning shadow-glow-warning animate-pulse',
+    'health-dot-danger': 'health-dot bg-danger shadow-glow-danger animate-pulse',
 
-    // Data tables - enhanced
+    // Data tables (semantic)
     'data-table': 'w-full border-collapse text-sm',
-    'data-th': 'text-left text-xs uppercase tracking-wide text-text-muted py-3 px-4 border-b border-border bg-bg-secondary first:rounded-tl-sm last:rounded-tr-sm',
+    'data-th': 'text-left text-xs uppercase tracking-wide text-text-muted py-3 px-4 border-b border-border bg-surface-raised first:rounded-tl-sm last:rounded-tr-sm',
     'data-td': 'py-3 px-4 border-b border-border',
-    'data-row': 'hover:bg-bg-elevated transition-colors duration-fast',
-    'data-row-clickable': 'data-row cursor-pointer hover:bg-bg-elevated',
+    'data-row': 'hover:bg-surface-elevated transition-colors duration-fast',
+    'data-row-clickable': 'data-row cursor-pointer hover:bg-surface-elevated',
 
-    // Badges - with subtle border
-    'badge': 'inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-bg-elevated text-text-secondary border border-border',
-    'badge-success': 'badge bg-neon-green/10 text-neon-green border-neon-green/30',
-    'badge-warning': 'badge bg-neon-yellow/10 text-neon-yellow border-neon-yellow/30',
-    'badge-danger': 'badge bg-neon-red/10 text-neon-red border-neon-red/30',
-    'badge-info': 'badge bg-neon-pink/10 text-neon-pink border-neon-pink/30',
+    // Badges (semantic feedback states)
+    'badge': 'inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-surface-elevated text-text-secondary border border-border',
+    'badge-success': 'badge bg-success/10 text-success border-success/30',
+    'badge-warning': 'badge bg-warning/10 text-warning border-warning/30',
+    'badge-danger': 'badge bg-danger/10 text-danger border-danger/30',
+    'badge-info': 'badge bg-info/10 text-info border-info/30',
     'badge-dot': 'badge gap-1.5',
 
-    // Nav - enhanced with smoother transitions
-    'nav-link': 'flex items-center gap-3 px-3 py-2.5 rounded-sm text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all duration-fast no-underline border-l-2 border-solid border-transparent',
-    'nav-link-active': 'text-neon-pink! bg-bg-card! border-neon-pink!',
+    // Nav (semantic)
+    'nav-link': 'flex items-center gap-3 px-3 py-2.5 rounded-sm text-text-secondary hover:text-text hover:bg-surface-elevated transition-all duration-fast no-underline border-l-2 border-solid border-transparent',
+    'nav-link-active': 'text-primary! bg-surface-overlay! border-primary!',
     'nav-icon': 'w-5 h-5 transition-transform duration-fast group-hover:scale-110',
 
-    // Top nav link with underline animation
-    'topnav-link': 'relative text-text-secondary hover:text-neon-pink transition-colors duration-fast no-underline py-1',
-    'topnav-link-active': 'text-neon-pink',
+    // Top nav (semantic)
+    'topnav-link': 'relative text-text-secondary hover:text-primary transition-colors duration-fast no-underline py-1',
+    'topnav-link-active': 'text-primary',
 
-    // Hamburger button with animation
-    'hamburger': 'flex flex-col justify-center items-center w-10 h-10 gap-1.5 cursor-pointer bg-transparent border-none rounded-sm hover:bg-bg-elevated transition-colors',
-    'hamburger-line': 'w-6 h-0.5 bg-text-primary transition-all duration-normal origin-center',
+    // Hamburger (semantic)
+    'hamburger': 'flex flex-col justify-center items-center w-10 h-10 gap-1.5 cursor-pointer bg-transparent border-none rounded-sm hover:bg-surface-elevated transition-colors',
+    'hamburger-line': 'w-6 h-0.5 bg-text transition-all duration-normal origin-center',
 
-    // Mobile nav overlay with fade
-    'mobile-nav-overlay': 'fixed inset-0 bg-bg-overlay z-modal backdrop-blur-sm',
-    'mobile-nav-panel': 'fixed top-0 left-0 h-full w-72 bg-bg-secondary border-r border-border z-modal transform transition-transform duration-normal shadow-lg',
+    // Mobile nav (semantic)
+    'mobile-nav-overlay': 'fixed inset-0 bg-surface-backdrop z-modal backdrop-blur-sm',
+    'mobile-nav-panel': 'fixed top-0 left-0 h-full w-72 bg-surface-raised border-r border-border z-modal transform transition-transform duration-normal shadow-lg',
 
-    // Skeleton loading
-    'skeleton': 'bg-bg-elevated animate-pulse rounded-sm',
+    // Skeleton loading (semantic)
+    'skeleton': 'bg-surface-elevated animate-pulse rounded-sm',
     'skeleton-text': 'skeleton h-4 w-full',
     'skeleton-avatar': 'skeleton w-10 h-10 rounded-full',
 
-    // Effects
-    'glow-pulse': 'animate-pulse shadow-glow-pink',
-    'border-glow': 'border border-neon-pink shadow-glow-pink',
+    // Effects (semantic)
+    'glow-pulse': 'animate-pulse shadow-glow-primary',
+    'border-glow': 'border border-primary shadow-glow-primary',
     'hover-lift': 'transition-transform duration-fast hover:-translate-y-0.5',
     'hover-glow': 'transition-shadow duration-fast hover:shadow-glow-pink',
 
@@ -354,31 +417,64 @@ export default defineConfig({
     // Shortcuts - modal
     'modal-overlay', 'modal-panel',
 
-    // Colors - backgrounds
+    // Colors - semantic surfaces
+    'bg-surface', 'bg-surface-raised', 'bg-surface-overlay', 'bg-surface-elevated', 'bg-surface-backdrop',
+
+    // Colors - semantic brand
+    'bg-primary', 'bg-primary-hover', 'bg-primary-active',
+    'bg-secondary', 'bg-secondary-hover',
+    'bg-success', 'bg-warning', 'bg-danger', 'bg-info',
+    'bg-success/10', 'bg-warning/10', 'bg-danger/10', 'bg-info/10',
+
+    // Colors - legacy backgrounds (for migration)
     'bg-bg-primary', 'bg-bg-secondary', 'bg-bg-card', 'bg-bg-elevated',
+
+    // Colors - primitive neon (for brand moments)
     'bg-neon-pink', 'bg-neon-rose', 'bg-neon-dusty', 'bg-neon-peach', 'bg-neon-orange', 'bg-neon-coral',
     'bg-neon-green', 'bg-neon-red', 'bg-neon-yellow',
     'bg-neon-pink/10', 'bg-neon-pink/15', 'bg-neon-rose/15', 'bg-neon-peach/15', 'bg-neon-orange/15', 'bg-neon-coral/15',
     'bg-neon-green/10', 'bg-neon-red/10', 'bg-neon-yellow/10',
+
+    // Colors - providers
     'bg-discord', 'bg-github', 'bg-google',
 
-    // Colors - text
-    'text-text-primary', 'text-text-secondary', 'text-text-muted', 'text-text-inverse',
+    // Colors - semantic text
+    'text-text', 'text-text-secondary', 'text-text-muted', 'text-text-inverse',
+    'text-primary', 'text-primary-hover', 'text-secondary',
+    'text-success', 'text-warning', 'text-danger', 'text-info',
+    'text-link', 'text-link-hover',
+
+    // Colors - legacy text (for migration)
+    'text-text-primary',
+
+    // Colors - primitive neon text (for brand moments)
     'text-neon-pink', 'text-neon-rose', 'text-neon-dusty', 'text-neon-peach', 'text-neon-orange', 'text-neon-coral',
     'text-neon-green', 'text-neon-red', 'text-neon-yellow',
     'text-white', 'text-black',
 
-    // Colors - borders
-    'border-border', 'border-border-hover',
+    // Colors - semantic borders
+    'border-border', 'border-border-hover', 'border-border-focus',
+    'border-primary', 'border-primary/30', 'border-primary/50',
+    'border-success', 'border-success/30', 'border-danger', 'border-danger/30',
+    'border-warning', 'border-warning/30',
+
+    // Colors - primitive borders (for brand moments)
     'border-neon-pink', 'border-neon-pink/30', 'border-neon-pink/50',
     'border-neon-rose', 'border-neon-dusty', 'border-neon-peach', 'border-neon-orange', 'border-neon-coral',
     'border-neon-green', 'border-neon-green/30', 'border-neon-red', 'border-neon-red/30', 'border-neon-yellow', 'border-neon-yellow/30',
-    'border-text-primary', 'border-l-2',
+    'border-text', 'border-l-2',
 
-    // Shadows
+    // Shadows - semantic
     'shadow-sm', 'shadow-md', 'shadow-lg',
+    'shadow-glow-primary', 'shadow-glow-primary-intense',
+    'shadow-glow-success', 'shadow-glow-success-intense',
+    'shadow-glow-danger', 'shadow-glow-danger-intense',
+    'shadow-glow-warning',
+
+    // Shadows - primitive (for brand moments)
     'shadow-glow-pink', 'shadow-glow-rose', 'shadow-glow-dusty', 'shadow-glow-peach', 'shadow-glow-orange', 'shadow-glow-coral',
     'shadow-glow-green', 'shadow-glow-red', 'shadow-glow-yellow',
+    'shadow-glow-pink-intense', 'shadow-glow-rose-intense', 'shadow-glow-green-intense', 'shadow-glow-coral-intense',
 
     // Utilities
     'rounded-none', 'rounded-sm', 'rounded-md', 'rounded-lg', 'rounded-xl', 'rounded-full',
@@ -413,11 +509,22 @@ export default defineConfig({
     'md:flex', 'md:hidden', 'md:block', 'lg:flex', 'lg:hidden',
     'md:flex-row', 'md:grid-cols-2', 'md:grid-cols-3',
 
-    // Hover states
+    // Hover states - semantic
+    'hover:bg-surface-elevated', 'hover:bg-surface-elevated/50',
+    'hover:bg-primary', 'hover:bg-primary-hover', 'hover:bg-secondary',
+    'hover:bg-success', 'hover:bg-danger', 'hover:bg-warning',
+    'hover:text-text', 'hover:text-primary', 'hover:text-link-hover', 'hover:text-danger',
+    'hover:border-primary', 'hover:border-primary/30', 'hover:border-primary/50',
+    'hover:shadow-glow-primary', 'hover:shadow-glow-success', 'hover:shadow-glow-danger',
+
+    // Hover states - legacy (for migration)
     'hover:bg-bg-elevated', 'hover:bg-bg-elevated/50',
+    'hover:text-text-primary',
+
+    // Hover states - primitive (for brand moments)
     'hover:bg-neon-pink', 'hover:bg-neon-rose', 'hover:bg-neon-dusty', 'hover:bg-neon-peach', 'hover:bg-neon-orange', 'hover:bg-neon-coral',
     'hover:bg-neon-coral/10',
-    'hover:text-text-primary', 'hover:text-neon-pink', 'hover:text-neon-dusty', 'hover:text-neon-coral',
+    'hover:text-neon-pink', 'hover:text-neon-dusty', 'hover:text-neon-coral',
     'hover:border-neon-pink', 'hover:border-neon-pink/30', 'hover:border-neon-pink/50',
     'hover:border-neon-rose/50', 'hover:border-neon-peach/50', 'hover:border-neon-orange/50',
     'hover:shadow-glow-pink', 'hover:shadow-glow-rose', 'hover:shadow-glow-peach', 'hover:shadow-glow-coral',

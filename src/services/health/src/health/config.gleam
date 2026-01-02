@@ -22,3 +22,8 @@ pub fn get_events_url() -> String {
   envoy.get("EVENTS_SERVICE_URL")
   |> result.unwrap("http://events:5005")
 }
+
+pub fn get_rabbitmq_management_url() -> String {
+  envoy.get("RABBITMQ_MANAGEMENT_URL")
+  |> result.unwrap("http://hellarch:hellarch@rabbitmq:15672")
+}
