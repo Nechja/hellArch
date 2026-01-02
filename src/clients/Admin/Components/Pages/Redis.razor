@@ -3,42 +3,43 @@
 
 <PageTitle>Redis Browser - HellArch Admin</PageTitle>
 
-<h1>Redis Browser</h1>
+<h1 class="text-display text-gradient mb-6">Redis Browser</h1>
 
-<section class="connection-info">
-    <div class="connection-status @(_connectionInfo.IsConnected ? "connected" : "disconnected")">
-        <span class="status-indicator"></span>
-        <span>@(_connectionInfo.IsConnected ? "Connected" : "Disconnected")</span>
+<section class="mb-6">
+    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-sm @(_connectionInfo.IsConnected ? "bg-neon-lime/15 text-neon-lime" : "bg-neon-red/15 text-neon-red")">
+        <span class="@(_connectionInfo.IsConnected ? "health-dot-healthy" : "health-dot-danger")"></span>
+        <span class="text-sm font-medium">@(_connectionInfo.IsConnected ? "Connected" : "Disconnected")</span>
     </div>
 </section>
 
-<section class="search-section">
-    <div class="search-bar">
-        <input type="text" @bind="_pattern" @bind:event="oninput" placeholder="Pattern (e.g., session:*, oauth:*)" class="input" />
-        <button @onclick="Search" class="btn btn-primary">Search</button>
+<section class="mb-6">
+    <div class="flex gap-2 mb-3">
+        <input type="text" @bind="_pattern" @bind:event="oninput" placeholder="Pattern (e.g., session:*, oauth:*)" class="input flex-1" />
+        <button @onclick="Search" class="btn-neon-solid">Search</button>
     </div>
-    <div class="quick-filters">
-        <button @onclick='() => SearchPattern("session:*")' class="btn btn-sm">Sessions</button>
-        <button @onclick='() => SearchPattern("oauth:state:*")' class="btn btn-sm">OAuth States</button>
-        <button @onclick='() => SearchPattern("revoked:*")' class="btn btn-sm">Revoked Tokens</button>
-        <button @onclick='() => SearchPattern("*")' class="btn btn-sm">All Keys</button>
+    <div class="flex gap-2 flex-wrap">
+        <button @onclick='() => SearchPattern("session:*")' class="btn-ghost text-xs">Sessions</button>
+        <button @onclick='() => SearchPattern("oauth:state:*")' class="btn-ghost text-xs">OAuth States</button>
+        <button @onclick='() => SearchPattern("revoked:*")' class="btn-ghost text-xs">Revoked Tokens</button>
+        <button @onclick='() => SearchPattern("*")' class="btn-ghost text-xs">All Keys</button>
     </div>
 </section>
 
-<div class="redis-layout">
-    <section class="keys-list">
-        <h2>Keys (@_keys.Count)</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <section class="card">
+        <h2 class="text-heading mb-4 text-glitch">Keys (@_keys.Count)</h2>
         @if (_keys.Count > 0)
         {
-            <ul class="key-list">
+            <ul class="flex flex-col gap-1 max-h-96 overflow-y-auto">
                 @foreach (var key in _keys)
                 {
-                    <li class="key-item @(_selectedKey == key.Key ? "selected" : "")" @onclick="() => SelectKey(key.Key)">
-                        <span class="key-name monospace">@key.Key</span>
-                        <span class="key-type badge">@key.Type</span>
+                    <li class="flex items-center gap-2 p-2 rounded-sm cursor-pointer transition-colors @(_selectedKey == key.Key ? "bg-bg-secondary border border-neon-cyan" : "hover:bg-bg-elevated")"
+                        @onclick="() => SelectKey(key.Key)">
+                        <span class="font-mono text-sm truncate flex-1">@key.Key</span>
+                        <span class="badge">@key.Type</span>
                         @if (key.Ttl.HasValue)
                         {
-                            <span class="key-ttl">TTL: @FormatTtl(key.Ttl.Value)</span>
+                            <span class="text-xs text-text-muted">@FormatTtl(key.Ttl.Value)</span>
                         }
                     </li>
                 }
@@ -46,37 +47,37 @@
         }
         else if (_searched)
         {
-            <p class="empty-state">No keys found matching "@_pattern"</p>
+            <p class="text-text-muted text-center py-4 italic">No keys found matching "@_pattern"</p>
         }
         else
         {
-            <p class="empty-state">Enter a pattern and click Search</p>
+            <p class="text-text-muted text-center py-4 italic">Enter a pattern and click Search</p>
         }
     </section>
 
-    <section class="key-detail">
-        <h2>Key Detail</h2>
+    <section class="card">
+        <h2 class="text-heading mb-4 text-glitch">Key Detail</h2>
         @if (_keyDetail is not null)
         {
-            <dl class="detail-list">
-                <dt>Key</dt>
-                <dd class="monospace">@_keyDetail.Key</dd>
-                <dt>Type</dt>
-                <dd><span class="badge">@_keyDetail.Type</span></dd>
-                <dt>TTL</dt>
+            <dl class="grid grid-cols-[80px_1fr] gap-2 mb-4">
+                <dt class="text-xs uppercase text-text-muted">Key</dt>
+                <dd class="font-mono text-sm break-all">@_keyDetail.Key</dd>
+                <dt class="text-xs uppercase text-text-muted">Type</dt>
+                <dd><span class="badge-info">@_keyDetail.Type</span></dd>
+                <dt class="text-xs uppercase text-text-muted">TTL</dt>
                 <dd>@(_keyDetail.Ttl.HasValue ? FormatTtl(_keyDetail.Ttl.Value) : "No expiry")</dd>
             </dl>
-            <div class="value-section">
-                <h3>Value</h3>
-                <pre class="value-display">@_keyDetail.Value</pre>
+            <div class="mb-4">
+                <h3 class="text-sm font-semibold text-text-secondary mb-2">Value</h3>
+                <pre class="p-4 rounded-sm bg-bg-secondary border border-border overflow-x-auto font-mono text-sm max-h-64 overflow-y-auto">@_keyDetail.Value</pre>
             </div>
-            <div class="actions">
-                <button @onclick="DeleteSelectedKey" class="btn btn-danger">Delete Key</button>
+            <div class="pt-4 border-t border-border">
+                <button @onclick="DeleteSelectedKey" class="btn-danger">Delete Key</button>
             </div>
         }
         else
         {
-            <p class="empty-state">Select a key to view details</p>
+            <p class="text-text-muted text-center py-4 italic">Select a key to view details</p>
         }
     </section>
 </div>

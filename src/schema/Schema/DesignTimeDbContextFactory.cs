@@ -31,3 +31,17 @@ public sealed class UserDbContextFactory : IDesignTimeDbContextFactory<UserDbCon
         return new UserDbContext(optionsBuilder.Options);
     }
 }
+
+public sealed class EventsDbContextFactory : IDesignTimeDbContextFactory<EventsDbContext>
+{
+    public EventsDbContext CreateDbContext(string[] args)
+    {
+        var connectionString = Environment.GetEnvironmentVariable("EVENTS_DATABASE_URL")
+            ?? "Host=localhost;Port=5435;Database=events_db;Username=hellarch;Password=hellarch";
+
+        var optionsBuilder = new DbContextOptionsBuilder<EventsDbContext>();
+        optionsBuilder.UseNpgsql(connectionString);
+
+        return new EventsDbContext(optionsBuilder.Options);
+    }
+}

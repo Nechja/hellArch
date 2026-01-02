@@ -10,6 +10,6 @@
     "unocss": "^0.65.3"
   },
   "scripts": {
-    "build": "unocss \"../clients/**/src/**/*.{vue,ts,razor,html}\" -o dist/utilities.css --config uno.config.ts"
+    "build": "unocss \"../../src/clients/**/src/**/*.{vue,ts,razor,html}\" \"../../src/clients/**/*.razor\" -o dist/utilities.css --config uno.config.ts"
   }
 }

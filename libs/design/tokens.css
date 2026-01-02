@@ -1,40 +1,72 @@
 /* HellArch Design Tokens */
-/* Dark mode first, mobile first */
+/* Neon Cyberpunk - Dark mode first, mobile first */
+
+/* Fonts */
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/shared/fonts/SpaceGrotesk-Variable.woff2') format('woff2');
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/shared/fonts/JetBrainsMono-Variable.woff2') format('woff2');
+  font-weight: 400 700;
+  font-display: swap;
+}
 
 :root {
-  /* Colors - Backgrounds */
-  --color-bg-primary: #0f0f0f;
-  --color-bg-secondary: #1a1a1a;
-  --color-bg-card: #1e1e1e;
-  --color-bg-elevated: #252525;
-  --color-bg-overlay: rgba(0, 0, 0, 0.6);
+  /* Colors - Backgrounds (deeper blacks) */
+  --color-bg-primary: #0a0a0a;
+  --color-bg-secondary: #111111;
+  --color-bg-card: #161616;
+  --color-bg-elevated: #1c1c1c;
+  --color-bg-overlay: rgba(0, 0, 0, 0.8);
 
-  /* Colors - Text */
-  --color-text-primary: #f5f5f5;
-  --color-text-secondary: #a0a0a0;
-  --color-text-muted: #666666;
-  --color-text-inverse: #0f0f0f;
+  /* Colors - Text (high contrast) */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #888888;
+  --color-text-muted: #555555;
+  --color-text-inverse: #0a0a0a;
 
-  /* Colors - Brand */
-  --color-accent: #5865f2;
-  --color-accent-hover: #4752c4;
-  --color-accent-active: #3c45a5;
+  /* Colors - Neon Accents */
+  --color-neon-cyan: #00fff2;
+  --color-neon-magenta: #ff00ff;
+  --color-neon-lime: #39ff14;
+  --color-neon-orange: #ff6b00;
+  --color-neon-red: #ff0040;
+
+  /* Colors - Brand (keep cyan as primary) */
+  --color-accent: var(--color-neon-cyan);
+  --color-accent-hover: #00ccc4;
+  --color-accent-active: #009994;
 
   /* Colors - Semantic */
-  --color-success: #22c55e;
-  --color-warning: #eab308;
-  --color-error: #ef4444;
-  --color-info: #3b82f6;
+  --color-success: var(--color-neon-lime);
+  --color-warning: var(--color-neon-orange);
+  --color-error: var(--color-neon-red);
+  --color-info: var(--color-neon-cyan);
 
   /* Colors - Borders */
   --color-border: #2a2a2a;
   --color-border-hover: #3a3a3a;
-  --color-border-focus: var(--color-accent);
+  --color-border-focus: var(--color-neon-cyan);
 
   /* Colors - Providers */
   --color-discord: #5865f2;
-  --color-github: #333333;
+  --color-github: #f0f0f0;
   --color-google: #ea4335;
+
+  /* Glow Effects - subtle and clean */
+  --glow-cyan: 0 0 8px rgba(0, 255, 242, 0.3);
+  --glow-magenta: 0 0 8px rgba(255, 0, 255, 0.3);
+  --glow-lime: 0 0 8px rgba(57, 255, 20, 0.3);
+  --glow-orange: 0 0 8px rgba(255, 107, 0, 0.3);
+  --glow-red: 0 0 8px rgba(255, 0, 64, 0.3);
+  --glow-sm: 0 0 4px;
+  --glow-md: 0 0 8px;
+  --glow-lg: 0 0 16px;
 
   /* Spacing */
   --space-1: 0.25rem;
@@ -49,8 +81,8 @@
   --space-16: 4rem;
 
   /* Typography */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Consolas', monospace;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -60,6 +92,8 @@
   --text-2xl: 1.5rem;
   --text-3xl: 2rem;
   --text-4xl: 2.5rem;
+  --text-5xl: 3.5rem;
+  --text-6xl: 4.5rem;
 
   --font-normal: 400;
   --font-medium: 500;
@@ -70,17 +104,23 @@
   --leading-normal: 1.5;
   --leading-relaxed: 1.75;
 
-  /* Borders */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.05em;
+  --tracking-wider: 0.1em;
+
+  /* Borders (sharper) */
+  --radius-none: 0;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
   --radius-full: 9999px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.7);
 
   /* Transitions */
   --duration-fast: 100ms;
@@ -116,20 +156,21 @@ body {
   min-height: 100vh;
 }
 
-/* Focus styles */
+/* Focus styles - neon glow */
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-neon-cyan);
   outline-offset: 2px;
+  box-shadow: var(--glow-cyan);
 }
 
-/* Scrollbar */
+/* Scrollbar - sleek */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-primary);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -138,5 +179,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-border-hover);
+  background: var(--color-neon-cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+/* Selection - neon highlight */
+::selection {
+  background: var(--color-neon-cyan);
+  color: var(--color-bg-primary);
 }

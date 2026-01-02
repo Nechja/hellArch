@@ -7,47 +7,49 @@
 
 <PageTitle>Dashboard - HellArch Admin</PageTitle>
 
-<h1>Dashboard</h1>
+<h1 class="text-display text-gradient mb-6">Dashboard</h1>
 
-<section class="stats-grid">
+<section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
     <div class="stat-card">
-        <h3>Users</h3>
+        <h3 class="stat-label">Users</h3>
         <p class="stat-value">@_stats.UserCount</p>
     </div>
     <div class="stat-card">
-        <h3>Active Sessions</h3>
+        <h3 class="stat-label">Active Sessions</h3>
         <p class="stat-value">@_stats.SessionCount</p>
     </div>
     <div class="stat-card">
-        <h3>Linked Accounts</h3>
+        <h3 class="stat-label">Linked Accounts</h3>
         <p class="stat-value">@_stats.LinkedAccountCount</p>
     </div>
     <div class="stat-card">
-        <h3>Queued Messages</h3>
+        <h3 class="stat-label">Queued Messages</h3>
         <p class="stat-value">@_queuedMessages</p>
     </div>
 </section>
 
-<section class="health-section">
-    <h2>Service Health</h2>
+<section class="mb-8">
+    <h2 class="text-heading mb-4 text-glitch">Service Health</h2>
     @if (_healthStatus != null)
     {
-        <div class="health-overall @_healthStatus.Overall">
-            <span class="health-indicator"></span>
-            <span>System: @_healthStatus.Overall.ToUpperInvariant()</span>
-            <span class="health-time">Last check: @FormatTime(_healthStatus.CheckedAt)</span>
+        <div class="flex items-center gap-3 p-4 rounded-sm bg-bg-card border mb-4 @GetOverallBorderClass(_healthStatus.Overall)">
+            <span class="@GetHealthDotClass(_healthStatus.Overall)"></span>
+            <span class="font-semibold">System: @_healthStatus.Overall.ToUpperInvariant()</span>
+            <span class="ml-auto text-xs text-text-muted font-mono">Last check: @FormatTime(_healthStatus.CheckedAt)</span>
         </div>
-        <div class="health-grid">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             @foreach (var (name, info) in _healthStatus.Services.OrderBy(s => s.Key))
             {
-                <div class="health-card @info.Status">
-                    <span class="health-indicator"></span>
-                    <span class="health-name">@FormatServiceName(name)</span>
-                    <span class="health-status">@info.Status</span>
-                    <span class="health-latency">@info.LatencyMs ms</span>
+                <div class="card flex items-center gap-3">
+                    <span class="@GetHealthDotClass(info.Status)"></span>
+                    <div class="flex-1">
+                        <span class="font-medium block">@FormatServiceName(name)</span>
+                        <span class="text-xs text-text-muted">@info.Status</span>
+                    </div>
+                    <span class="text-xs font-mono text-text-muted">@info.LatencyMs ms</span>
                     @if (!string.IsNullOrEmpty(info.Error))
                     {
-                        <span class="health-error" title="@info.Error">Error</span>
+                        <span class="badge-danger" title="@info.Error">Error</span>
                     }
                 </div>
             }
@@ -55,49 +57,57 @@
     }
     else
     {
-        <div class="health-unavailable">
-            <p>Health service unavailable</p>
-            <p class="health-fallback">Falling back to direct checks...</p>
+        <div class="p-4 rounded-sm bg-bg-card border border-neon-orange/50 text-center mb-4">
+            <p class="text-neon-orange">Health service unavailable</p>
+            <p class="text-xs text-text-muted mt-1">Falling back to direct checks...</p>
         </div>
-        <div class="health-grid">
-            <div class="health-card @(_authHealthy ? "healthy" : "unhealthy")">
-                <span class="health-indicator"></span>
-                <span class="health-name">Auth Service</span>
-                <span class="health-status">@(_authHealthy ? "Healthy" : "Unhealthy")</span>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="card flex items-center gap-3">
+                <span class="@(_authHealthy ? "health-dot-healthy" : "health-dot-danger")"></span>
+                <div class="flex-1">
+                    <span class="font-medium block">Auth Service</span>
+                    <span class="text-xs text-text-muted">@(_authHealthy ? "Healthy" : "Unhealthy")</span>
+                </div>
             </div>
-            <div class="health-card @(_userHealthy ? "healthy" : "unhealthy")">
-                <span class="health-indicator"></span>
-                <span class="health-name">User Service</span>
-                <span class="health-status">@(_userHealthy ? "Healthy" : "Unhealthy")</span>
+            <div class="card flex items-center gap-3">
+                <span class="@(_userHealthy ? "health-dot-healthy" : "health-dot-danger")"></span>
+                <div class="flex-1">
+                    <span class="font-medium block">User Service</span>
+                    <span class="text-xs text-text-muted">@(_userHealthy ? "Healthy" : "Unhealthy")</span>
+                </div>
             </div>
-            <div class="health-card @(_redisHealthy ? "healthy" : "unhealthy")">
-                <span class="health-indicator"></span>
-                <span class="health-name">Redis</span>
-                <span class="health-status">@(_redisHealthy ? "Connected" : "Disconnected")</span>
+            <div class="card flex items-center gap-3">
+                <span class="@(_redisHealthy ? "health-dot-healthy" : "health-dot-danger")"></span>
+                <div class="flex-1">
+                    <span class="font-medium block">Redis</span>
+                    <span class="text-xs text-text-muted">@(_redisHealthy ? "Connected" : "Disconnected")</span>
+                </div>
             </div>
-            <div class="health-card @(_rabbitmqHealthy ? "healthy" : "unhealthy")">
-                <span class="health-indicator"></span>
-                <span class="health-name">RabbitMQ</span>
-                <span class="health-status">@(_rabbitmqHealthy ? "Connected" : "Disconnected")</span>
+            <div class="card flex items-center gap-3">
+                <span class="@(_rabbitmqHealthy ? "health-dot-healthy" : "health-dot-danger")"></span>
+                <div class="flex-1">
+                    <span class="font-medium block">RabbitMQ</span>
+                    <span class="text-xs text-text-muted">@(_rabbitmqHealthy ? "Connected" : "Disconnected")</span>
+                </div>
             </div>
         </div>
     }
 </section>
 
-<section class="links-section">
-    <h2>Quick Links</h2>
-    <div class="links-grid">
-        <a href="http://localhost:16686" target="_blank" rel="noopener" class="link-card">
-            <h3>Jaeger Tracing</h3>
-            <p>View distributed traces</p>
+<section>
+    <h2 class="text-heading mb-4 text-glitch">Quick Links</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <a href="http://localhost:16686" target="_blank" rel="noopener" class="card-glow block">
+            <h3 class="font-bold text-neon-cyan mb-1">Jaeger Tracing</h3>
+            <p class="text-sm text-text-secondary">View distributed traces</p>
         </a>
-        <a href="http://localhost:15672" target="_blank" rel="noopener" class="link-card">
-            <h3>RabbitMQ Management</h3>
-            <p>Message queue dashboard</p>
+        <a href="http://localhost:15672" target="_blank" rel="noopener" class="card-glow block">
+            <h3 class="font-bold text-neon-magenta mb-1">RabbitMQ Management</h3>
+            <p class="text-sm text-text-secondary">Message queue dashboard</p>
         </a>
-        <a href="http://localhost:5004/status" target="_blank" rel="noopener" class="link-card">
-            <h3>Health API</h3>
-            <p>Raw health status JSON</p>
+        <a href="http://localhost:5004/status" target="_blank" rel="noopener" class="card-glow block">
+            <h3 class="font-bold text-neon-lime mb-1">Health API</h3>
+            <p class="text-sm text-text-secondary">Raw health status JSON</p>
         </a>
     </div>
 </section>
@@ -107,7 +117,6 @@
     private int _queuedMessages;
     private AggregatedStatus? _healthStatus;
 
-    // Fallback values when health service is unavailable
     private bool _authHealthy;
     private bool _userHealthy;
     private bool _redisHealthy;
@@ -131,10 +140,8 @@
 
     private async Task LoadHealth()
     {
-        // Try centralized health service first
         _healthStatus = await Health.GetStatus();
 
-        // If health service is unavailable, fall back to direct checks
         if (_healthStatus == null)
         {
             Logger.LogWarning("Health service unavailable, using fallback checks");
@@ -150,10 +157,23 @@
         var rabbitmqOverview = await RabbitMq.GetOverview();
         _rabbitmqHealthy = rabbitmqOverview != null;
 
-        // Auth and User would need direct HTTP checks here if needed
-        _authHealthy = true; // Assume healthy if we can't check
+        _authHealthy = true;
         _userHealthy = true;
     }
+
+    private static string GetHealthDotClass(string status) => status.ToLower() switch
+    {
+        "healthy" => "health-dot-healthy",
+        "degraded" => "health-dot-warning",
+        _ => "health-dot-danger"
+    };
+
+    private static string GetOverallBorderClass(string status) => status.ToLower() switch
+    {
+        "healthy" => "border-neon-lime",
+        "degraded" => "border-neon-orange",
+        _ => "border-neon-red"
+    };
 
     private static string FormatServiceName(string name) => name switch
     {

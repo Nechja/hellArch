@@ -1,38 +1,38 @@
-<nav class="nav-menu">
-    <NavLink href="" Match="NavLinkMatch.All" class="nav-link">
-        <span class="nav-icon">&#9632;</span>
+<nav class="flex flex-col gap-1 px-2">
+    <NavLink href="" Match="NavLinkMatch.All" class="nav-link" ActiveClass="nav-link-active">
+        <span class="text-neon-cyan">&#9632;</span>
         <span>Dashboard</span>
     </NavLink>
 
-    <NavLink href="users" class="nav-link">
-        <span class="nav-icon">&#9679;</span>
+    <NavLink href="users" class="nav-link" ActiveClass="nav-link-active">
+        <span class="text-neon-magenta">&#9679;</span>
         <span>Users</span>
     </NavLink>
 
-    <NavLink href="sessions" class="nav-link">
-        <span class="nav-icon">&#9670;</span>
+    <NavLink href="sessions" class="nav-link" ActiveClass="nav-link-active">
+        <span class="text-neon-lime">&#9670;</span>
         <span>Sessions</span>
     </NavLink>
 
-    <NavLink href="redis" class="nav-link">
-        <span class="nav-icon">&#9830;</span>
+    <NavLink href="redis" class="nav-link" ActiveClass="nav-link-active">
+        <span class="text-neon-orange">&#9830;</span>
         <span>Redis</span>
     </NavLink>
 
-    <NavLink href="events" class="nav-link">
-        <span class="nav-icon">&#9733;</span>
+    <NavLink href="events" class="nav-link" ActiveClass="nav-link-active">
+        <span class="text-neon-red">&#9733;</span>
         <span>Events</span>
     </NavLink>
 
-    <div class="nav-divider"></div>
+    <div class="h-px bg-border my-3"></div>
 
-    <a href="http://localhost:16686" target="_blank" rel="noopener" class="nav-link external">
-        <span class="nav-icon">&#8599;</span>
+    <a href="http://localhost:16686" target="_blank" rel="noopener" class="nav-link">
+        <span class="text-text-muted">&#8599;</span>
         <span>Jaeger</span>
     </a>
 
-    <a href="http://localhost:15672" target="_blank" rel="noopener" class="nav-link external">
-        <span class="nav-icon">&#8599;</span>
+    <a href="http://localhost:15672" target="_blank" rel="noopener" class="nav-link">
+        <span class="text-text-muted">&#8599;</span>
         <span>RabbitMQ</span>
     </a>
 </nav>

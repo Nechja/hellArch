@@ -1,24 +1,24 @@
 @inherits LayoutComponentBase
 
-<div class="admin-layout">
-    <aside class="sidebar">
-        <div class="brand">
-            <h2>HellArch</h2>
-            <span class="subtitle">Admin Console</span>
+<div class="grid md:grid-cols-[220px_1fr] min-h-screen">
+    <aside class="bg-bg-secondary border-r border-border sticky top-0 h-screen overflow-y-auto hidden md:block">
+        <div class="p-4 border-b border-border mb-4">
+            <h2 class="text-xl font-bold text-gradient">HellArch</h2>
+            <span class="text-xs text-text-muted uppercase tracking-wider">Admin Console</span>
         </div>
         <NavMenu />
     </aside>
 
-    <main class="content">
-        <header class="content-header">
-            <div class="user-info">
+    <main class="flex flex-col min-h-screen">
+        <header class="flex justify-end items-center px-6 py-3 bg-bg-secondary border-b border-border">
+            <div class="text-text-secondary text-sm">
                 @if (Username is not null)
                 {
-                    <span>@Username</span>
+                    <span class="text-neon-cyan">@Username</span>
                 }
             </div>
         </header>
-        <div class="content-body">
+        <div class="flex-1 p-6 max-w-6xl">
             @Body
         </div>
     </main>

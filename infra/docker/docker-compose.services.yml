@@ -129,11 +129,53 @@ services:
       - hellarch
     restart: unless-stopped
 
+  audit-worker:
+    build:
+      context: ../../src/workers/audit
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hellarch-audit-worker
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      - DATABASE_URL=postgres://hellarch:hellarch@events-db:5432/events_db
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - OTEL_SERVICE_NAME=audit-worker
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4318
+    volumes:
+      - ../../src/workers/audit:/app
+      - ../../libs:/libs
+      - audit-go-cache:/go/pkg/mod
+    networks:
+      - hellarch
+    restart: unless-stopped
+
+  webhooks-worker:
+    build:
+      context: ../../src/workers/webhooks
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hellarch-webhooks-worker
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      - DATABASE_URL=postgres://hellarch:hellarch@events-db:5432/events_db
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - OTEL_SERVICE_NAME=webhooks-worker
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4318
+    volumes:
+      - ../../src/workers/webhooks:/app
+      - ../../libs:/libs
+      - webhooks-go-cache:/go/pkg/mod
+    networks:
+      - hellarch
+    restart: unless-stopped
+
 volumes:
   gateway-nuget:
   auth-go-cache:
   user-nuget:
   admin-nuget:
+  audit-go-cache:
+  webhooks-go-cache:
 
 networks:
   hellarch:
