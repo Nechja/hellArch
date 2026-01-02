@@ -97,6 +97,51 @@
 </section>
 
 <section class="mb-12">
+    <h2 class="text-heading mb-6 text-glitch">Worker Status</h2>
+    @if (_workersStatus != null)
+    {
+        <div class="flex items-center gap-3 p-4 rounded-sm bg-bg-card border mb-4 @GetOverallBorderClass(_workersStatus.Overall)">
+            <span class="@GetHealthDotClass(_workersStatus.Overall)"></span>
+            <span class="font-semibold">Workers: @_workersStatus.Overall.ToUpperInvariant()</span>
+        </div>
+        @if (_workersStatus.Workers.Count > 0)
+        {
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                @foreach (var worker in _workersStatus.Workers.OrderBy(w => w.Name))
+                {
+                    <div class="card">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="@GetHealthDotClass(worker.Status)"></span>
+                            <span class="font-medium">@FormatWorkerName(worker.Name)</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                                <span class="text-text-muted">Consumers:</span>
+                                <span class="font-mono ml-1">@worker.Consumers</span>
+                            </div>
+                            <div>
+                                <span class="text-text-muted">Messages:</span>
+                                <span class="font-mono ml-1 @(worker.Messages > 100 ? "text-neon-orange" : "")">@worker.Messages</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="text-text-muted text-center p-4">No queues found</p>
+        }
+    }
+    else
+    {
+        <div class="p-4 rounded-sm bg-bg-card border border-neon-orange/50 text-center">
+            <p class="text-neon-orange">Worker status unavailable</p>
+        </div>
+    }
+</section>
+
+<section class="mb-12">
     <h2 class="text-heading mb-6 text-glitch">Quick Links</h2>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
         <a href="http://localhost:16686" target="_blank" rel="noopener" class="card-glow block">
@@ -118,6 +163,7 @@
     private AdminStats _stats = new(0, 0, 0);
     private int _queuedMessages;
     private AggregatedStatus? _healthStatus;
+    private WorkersStatus? _workersStatus;
 
     private bool _authHealthy;
     private bool _userHealthy;
@@ -142,7 +188,13 @@
 
     private async Task LoadHealth()
     {
-        _healthStatus = await Health.GetStatus();
+        var healthTask = Health.GetStatus();
+        var workersTask = Health.GetWorkers();
+
+        await Task.WhenAll(healthTask, workersTask);
+
+        _healthStatus = await healthTask;
+        _workersStatus = await workersTask;
 
         if (_healthStatus == null)
         {
@@ -184,6 +236,13 @@
         "rabbitmq" => "RabbitMQ",
         _ => char.ToUpper(name[0]) + name[1..]
     };
+
+    private static string FormatWorkerName(string queueName)
+    {
+        // Convert queue names like "audit.events" to "Audit Events"
+        var parts = queueName.Split('.', '_', '-');
+        return string.Join(" ", parts.Select(p => char.ToUpper(p[0]) + p[1..]));
+    }
 
     private static string FormatTime(string isoTime)
     {

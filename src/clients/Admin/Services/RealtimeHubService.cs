@@ -1,4 +1,4 @@
-using System.Text.Json;
+using HellArch.CloudEvents;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace Admin.Services;
@@ -266,31 +266,4 @@ public sealed class CloudEventReceivedEventArgs(CloudEventDto cloudEvent) : Even
 public sealed class ConnectionStateChangedEventArgs(string state) : EventArgs
 {
     public string State { get; } = state;
-}
-
-/// <summary>
-/// CloudEvent DTO matching the realtime worker's format.
-/// </summary>
-public sealed record CloudEventDto
-{
-    public required string Id { get; init; }
-    public required string Source { get; init; }
-    public required string Type { get; init; }
-    public required DateTimeOffset Time { get; init; }
-    public JsonElement? Data { get; init; }
-
-    public string? GetUserId()
-    {
-        if (Data is not { } data)
-        {
-            return null;
-        }
-
-        if (data.TryGetProperty("user_id", out var userId))
-        {
-            return userId.GetString();
-        }
-
-        return null;
-    }
 }

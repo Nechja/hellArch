@@ -279,12 +279,27 @@ public sealed record WebhooksResponse(
     int Page,
     [property: JsonPropertyName("page_size")] int PageSize);
 
+/// <summary>
+/// Webhook payload format for delivery transformation.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<WebhookFormat>))]
+public enum WebhookFormat
+{
+    [JsonStringEnumMemberName("raw")]
+    Raw,
+    [JsonStringEnumMemberName("discord")]
+    Discord,
+    [JsonStringEnumMemberName("slack")]
+    Slack
+}
+
 public sealed record Webhook(
     string Id,
     string Name,
     string Url,
     string Secret,
     [property: JsonPropertyName("event_types")] IReadOnlyList<string> EventTypes,
+    [property: JsonPropertyName("format")] WebhookFormat Format,
     [property: JsonPropertyName("is_active")] bool IsActive,
     [property: JsonPropertyName("created_at")] DateTime CreatedAt,
     [property: JsonPropertyName("updated_at")] DateTime UpdatedAt);
@@ -294,6 +309,7 @@ public sealed record CreateWebhookRequest(
     string Url,
     string Secret,
     [property: JsonPropertyName("event_types")] IReadOnlyList<string> EventTypes,
+    [property: JsonPropertyName("format")] WebhookFormat Format = WebhookFormat.Raw,
     [property: JsonPropertyName("is_active")] bool IsActive = true);
 
 public sealed record UpdateWebhookRequest(
@@ -301,6 +317,7 @@ public sealed record UpdateWebhookRequest(
     string? Url = null,
     string? Secret = null,
     [property: JsonPropertyName("event_types")] IReadOnlyList<string>? EventTypes = null,
+    [property: JsonPropertyName("format")] WebhookFormat? Format = null,
     [property: JsonPropertyName("is_active")] bool? IsActive = null);
 
 public sealed record DeliveriesResponse(

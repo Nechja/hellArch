@@ -82,8 +82,8 @@ services:
 
   admin:
     build:
-      context: ../../src/clients/Admin
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/clients/Admin/Dockerfile
       target: dev
     container_name: hellarch-admin
     user: "${UID:-1000}:${GID:-1000}"
@@ -104,8 +104,9 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
     volumes:
-      - ../../src/clients/Admin:/app
+      - ../..:/repo
       - admin-nuget:/root/.nuget
+    working_dir: /repo/src/clients/Admin
     networks:
       - hellarch
     restart: unless-stopped

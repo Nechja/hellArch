@@ -173,16 +173,22 @@ export default defineConfig({
     },
 
     lineHeight: {
+      none: 'var(--leading-none)',
       tight: 'var(--leading-tight)',
+      snug: 'var(--leading-snug)',
       normal: 'var(--leading-normal)',
       relaxed: 'var(--leading-relaxed)',
+      loose: 'var(--leading-loose)',
+      prose: 'var(--leading-prose)',
     },
 
     letterSpacing: {
+      tighter: 'var(--tracking-tighter)',
       tight: 'var(--tracking-tight)',
       normal: 'var(--tracking-normal)',
       wide: 'var(--tracking-wide)',
       wider: 'var(--tracking-wider)',
+      widest: 'var(--tracking-widest)',
     },
 
     duration: {
@@ -239,16 +245,49 @@ export default defineConfig({
     'input-success': 'input border-success focus:border-success focus:shadow-glow-success',
     'input-sm': 'px-3 py-1.5 text-sm',
 
-    // Typography (semantic)
+    // ========================================
+    // TYPOGRAPHY SYSTEM
+    // ========================================
+
+    // Headings - semantic hierarchy
+    'h1': 'text-5xl font-bold leading-tight tracking-tight text-text',
+    'h2': 'text-4xl font-bold leading-tight tracking-tight text-text',
+    'h3': 'text-3xl font-bold leading-snug tracking-tight text-text',
+    'h4': 'text-2xl font-semibold leading-snug text-text',
+    'h5': 'text-xl font-semibold leading-normal text-text',
+    'h6': 'text-lg font-semibold leading-normal text-text',
+
+    // Display text - hero sections
     'text-display': 'text-5xl font-bold tracking-tight',
+    'text-display-lg': 'text-6xl font-bold tracking-tighter',
+    'text-display-sm': 'text-4xl font-bold tracking-tight',
+
+    // Heading shortcuts
     'text-heading': 'text-2xl font-bold tracking-tight text-text',
+    'text-heading-lg': 'text-3xl font-bold tracking-tight text-text',
+    'text-heading-sm': 'text-xl font-semibold text-text',
     'text-subheading': 'text-lg font-semibold text-text',
-    'text-body': 'text-base text-text',
+
+    // Body text
+    'text-body': 'text-base text-text leading-normal',
+    'text-body-lg': 'text-lg text-text leading-relaxed',
+    'text-body-sm': 'text-sm text-text leading-normal',
+
+    // Caption and helper text
     'text-caption': 'text-sm text-text-secondary',
     'text-muted': 'text-sm text-text-muted',
+    'text-helper': 'text-xs text-text-muted',
+    'text-overline': 'text-xs uppercase tracking-widest text-text-muted font-semibold',
+
+    // Brand typography
     'text-neon': 'text-primary',
     'text-glitch': 'font-mono uppercase tracking-wider',
     'text-gradient': 'bg-gradient-to-r from-neon-pink to-neon-orange bg-clip-text text-transparent',
+    'text-gradient-alt': 'bg-gradient-to-r from-neon-rose to-neon-peach bg-clip-text text-transparent',
+
+    // Lead paragraph
+    'text-lead': 'text-lg text-text-secondary leading-relaxed',
+    'text-intro': 'text-xl text-text leading-relaxed max-w-prose',
 
     // Links (semantic)
     'link': 'text-link relative cursor-pointer transition-colors duration-fast hover:text-link-hover',
@@ -308,6 +347,59 @@ export default defineConfig({
     'border-glow': 'border border-primary shadow-glow-primary',
     'hover-lift': 'transition-transform duration-fast hover:-translate-y-0.5',
     'hover-glow': 'transition-shadow duration-fast hover:shadow-glow-pink',
+
+    // ========================================
+    // ANIMATION SYSTEM
+    // ========================================
+
+    // Transition presets
+    'transition-base': 'transition-all duration-normal ease-out',
+    'transition-fast': 'transition-all duration-fast ease-out',
+    'transition-slow': 'transition-all duration-slow ease-out',
+    'transition-colors-fast': 'transition-colors duration-fast',
+    'transition-transform': 'transition-transform duration-normal ease-out',
+    'transition-opacity': 'transition-opacity duration-normal ease-out',
+
+    // Loading states
+    'loading': 'opacity-50 pointer-events-none',
+    'loading-overlay': 'relative after:absolute after:inset-0 after:bg-surface-backdrop after:flex-center',
+    'spinner': 'w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin',
+    'spinner-sm': 'w-4 h-4 border-2 border-border border-t-primary rounded-full animate-spin',
+    'spinner-lg': 'w-8 h-8 border-3 border-border border-t-primary rounded-full animate-spin',
+    'skeleton-shimmer': 'bg-surface-raised animate-shimmer rounded-sm',
+    'skeleton-line': 'h-4 bg-surface-raised animate-shimmer rounded-sm',
+    'skeleton-circle': 'rounded-full bg-surface-raised animate-shimmer',
+
+    // Micro-interactions
+    'btn-press': 'active:scale-95 active:brightness-90',
+    'card-lift': 'hover:-translate-y-1 hover:shadow-lg transition-all duration-normal',
+    'icon-spin': 'hover:rotate-180 transition-transform duration-slow',
+    'link-glow': 'hover:text-shadow-glow-primary transition-all duration-fast',
+    'pulse-dot': 'relative before:absolute before:inset-0 before:rounded-full before:animate-ping before:bg-current before:opacity-75',
+
+    // Enter animations (apply to new elements)
+    'enter-fade': 'animate-fade-in',
+    'enter-up': 'animate-fade-in-up',
+    'enter-down': 'animate-fade-in-down',
+    'enter-left': 'animate-fade-in-left',
+    'enter-right': 'animate-fade-in-right',
+    'enter-scale': 'animate-scale-in',
+    'enter-slide-right': 'animate-slide-in-right',
+    'enter-slide-left': 'animate-slide-in-left',
+
+    // Exit animations
+    'exit-fade': 'animate-fade-out',
+    'exit-scale': 'animate-scale-out',
+    'exit-slide-right': 'animate-slide-out-right',
+
+    // State animations
+    'state-error': 'animate-shake border-danger',
+    'state-success': 'animate-pop border-success',
+
+    // Attention animations
+    'attention-pulse': 'animate-pulse',
+    'attention-bounce': 'animate-bounce',
+    'attention-glow': 'glow-breathe',
 
     // Labels & text patterns
     'label': 'text-xs uppercase text-text-muted tracking-wide',
@@ -599,9 +691,18 @@ export default defineConfig({
     // Shortcuts - inputs
     'input', 'input-sm', 'input-error', 'input-success',
 
-    // Shortcuts - typography
-    'text-display', 'text-heading', 'text-subheading', 'text-body', 'text-caption', 'text-muted',
-    'text-neon', 'text-glitch', 'text-gradient',
+    // Shortcuts - typography (expanded)
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'text-display', 'text-display-lg', 'text-display-sm',
+    'text-heading', 'text-heading-lg', 'text-heading-sm', 'text-subheading',
+    'text-body', 'text-body-lg', 'text-body-sm',
+    'text-caption', 'text-muted', 'text-helper', 'text-overline',
+    'text-neon', 'text-glitch', 'text-gradient', 'text-gradient-alt',
+    'text-lead', 'text-intro',
+
+    // Line heights and letter spacing
+    'leading-none', 'leading-tight', 'leading-snug', 'leading-normal', 'leading-relaxed', 'leading-loose', 'leading-prose',
+    'tracking-tighter', 'tracking-tight', 'tracking-normal', 'tracking-wide', 'tracking-wider', 'tracking-widest',
 
     // Shortcuts - links
     'link', 'link-underline', 'link-subtle',
@@ -616,6 +717,17 @@ export default defineConfig({
     'mobile-nav-overlay', 'mobile-nav-panel',
     'skeleton', 'skeleton-text', 'skeleton-avatar',
     'glow-pulse', 'border-glow', 'hover-lift', 'hover-glow',
+
+    // Shortcuts - animation system
+    'transition-base', 'transition-fast', 'transition-slow', 'transition-colors-fast', 'transition-transform', 'transition-opacity',
+    'loading', 'loading-overlay',
+    'spinner', 'spinner-sm', 'spinner-lg',
+    'skeleton-shimmer', 'skeleton-line', 'skeleton-circle',
+    'btn-press', 'card-lift', 'icon-spin', 'link-glow', 'pulse-dot',
+    'enter-fade', 'enter-up', 'enter-down', 'enter-left', 'enter-right', 'enter-scale', 'enter-slide-right', 'enter-slide-left',
+    'exit-fade', 'exit-scale', 'exit-slide-right',
+    'state-error', 'state-success',
+    'attention-pulse', 'attention-bounce', 'attention-glow',
 
     // Shortcuts - labels & text
     'label', 'label-caps',
@@ -744,8 +856,25 @@ export default defineConfig({
     'uppercase', 'lowercase', 'capitalize',
     'opacity-50', 'opacity-75', 'opacity-90',
     'cursor-pointer', 'cursor-not-allowed',
-    'transition-all', 'transition-colors', 'duration-fast', 'duration-normal', 'duration-slow',
+    'transition-all', 'transition-colors', 'transition-transform', 'transition-opacity', 'transition-shadow',
+    'duration-fast', 'duration-normal', 'duration-slow',
+    'ease-out', 'ease-in', 'ease-in-out',
+
+    // Animation classes
     'animate-pulse', 'animate-pulse-once', 'animate-fade-in',
+    'animate-fade-in-up', 'animate-fade-in-down', 'animate-fade-in-left', 'animate-fade-in-right', 'animate-fade-out',
+    'animate-scale-in', 'animate-scale-out', 'animate-pop',
+    'animate-slide-in-right', 'animate-slide-out-right', 'animate-slide-in-left', 'animate-slide-in-up', 'animate-slide-in-down',
+    'animate-spin', 'animate-bounce', 'animate-shake', 'animate-ping', 'animate-shimmer',
+    'stagger-1', 'stagger-2', 'stagger-3', 'stagger-4', 'stagger-5', 'stagger-6', 'stagger-7', 'stagger-8',
+    'animate-fast', 'animate-normal', 'animate-slow',
+    'glow-breathe',
+
+    // Text truncation
+    'truncate', 'line-clamp-1', 'line-clamp-2', 'line-clamp-3', 'line-clamp-4',
+
+    // Prose classes
+    'prose', 'prose-sm', 'prose-lg', 'prose-invert', 'max-w-prose',
     'italic',
     'hidden', 'block', 'inline-block', 'inline-flex', 'inline',
     'relative', 'absolute', 'fixed', 'sticky',

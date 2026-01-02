@@ -53,6 +53,7 @@ func (d *Dispatcher) Deliver(ctx context.Context, req DeliveryRequest) error {
 		trace.WithAttributes(
 			attribute.String("webhook.id", req.Webhook.ID),
 			attribute.String("webhook.url", req.Webhook.URL),
+			attribute.String("webhook.format", string(req.Webhook.Format)),
 			attribute.String("event.id", req.EventID),
 			attribute.String("event.type", req.EventType),
 			attribute.Int("attempt", req.Attempt),
@@ -60,17 +61,28 @@ func (d *Dispatcher) Deliver(ctx context.Context, req DeliveryRequest) error {
 	)
 	defer span.End()
 
-	signature := computeSignature(req.Payload, req.Webhook.Secret)
+	// Transform payload based on webhook format
+	payload, contentType, err := TransformPayload(req.Payload, req.Webhook.Format)
+	if err != nil {
+		slog.Error("failed to transform payload", "error", err, "format", req.Webhook.Format)
+		payload = req.Payload
+		contentType = "application/cloudevents+json"
+	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, req.Webhook.URL, bytes.NewReader(req.Payload))
+	signature := computeSignature(payload, req.Webhook.Secret)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, req.Webhook.URL, bytes.NewReader(payload))
 	if err != nil {
 		return d.recordDelivery(ctx, req, 0, "", false)
 	}
 
-	httpReq.Header.Set("Content-Type", "application/cloudevents+json")
-	httpReq.Header.Set("X-Webhook-Signature", signature)
-	httpReq.Header.Set("X-Event-ID", req.EventID)
-	httpReq.Header.Set("X-Event-Type", req.EventType)
+	httpReq.Header.Set("Content-Type", contentType)
+	// Only set custom headers for raw format (Discord/Slack don't need them)
+	if req.Webhook.Format == client.WebhookFormatRaw {
+		httpReq.Header.Set("X-Webhook-Signature", signature)
+		httpReq.Header.Set("X-Event-ID", req.EventID)
+		httpReq.Header.Set("X-Event-Type", req.EventType)
+	}
 
 	resp, err := d.httpClient.Do(httpReq)
 	if err != nil {

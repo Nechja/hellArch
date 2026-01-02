@@ -6,16 +6,8 @@ import (
 	"github.com/nechja/hellarch/golibs/rabbitmq"
 )
 
-// Known workers and their queue names
-var knownWorkers = map[string]string{
-	"audit-worker":    "audit-worker",
-	"webhooks-worker": "webhooks-worker",
-	"infra-worker":    "infra-events",
-	"dlq-worker":      "dlq-events",
-}
-
 func (h *Handler) workersStatus(w http.ResponseWriter, r *http.Request) {
-	statuses := h.mgmt.GetWorkersStatus(r.Context(), knownWorkers)
+	statuses := h.mgmt.GetWorkersStatus(r.Context())
 
 	// Calculate overall status
 	overall := "healthy"

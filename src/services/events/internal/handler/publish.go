@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	cloudevents "github.com/nechja/hellarch/cloudevents"
+	"github.com/google/uuid"
 )
 
 func (h *Handler) publishEvent(w http.ResponseWriter, r *http.Request) {
@@ -18,6 +19,11 @@ func (h *Handler) publishEvent(w http.ResponseWriter, r *http.Request) {
 	if event.Type == "" {
 		writeError(w, http.StatusBadRequest, "Event type is required")
 		return
+	}
+
+	// Auto-generate ID if not provided
+	if event.ID == "" {
+		event.ID = uuid.New().String()
 	}
 
 	if h.publisher == nil {

@@ -54,6 +54,7 @@
                                     <span class="@(webhook.IsActive ? "badge-success" : "badge-warning")">
                                         @(webhook.IsActive ? "Active" : "Inactive")
                                     </span>
+                                    <span class="badge-info text-xs">@GetFormatLabel(webhook.Format)</span>
                                 </div>
                                 <p class="font-mono text-sm text-text-secondary mb-2">@webhook.Url</p>
                                 <div class="flex flex-wrap gap-2 mb-2">
@@ -204,6 +205,14 @@ else
                     <label class="text-sm text-text-secondary">Event Types (comma-separated)</label>
                     <input type="text" @bind="_formEventTypes" class="input w-full" placeholder="hellarch.auth.user.created.v1, hellarch.auth.session.*" />
                 </div>
+                <div>
+                    <label class="text-sm text-text-secondary">Format</label>
+                    <select @bind="_formFormat" class="input w-full">
+                        <option value="@Admin.Services.WebhookFormat.Raw">Raw (CloudEvents JSON)</option>
+                        <option value="@Admin.Services.WebhookFormat.Discord">Discord (Webhook with Embeds)</option>
+                        <option value="@Admin.Services.WebhookFormat.Slack">Slack (Blocks)</option>
+                    </select>
+                </div>
                 <div class="flex items-center gap-2">
                     <input type="checkbox" id="isActive" @bind="_formIsActive" class="w-4 h-4" />
                     <label for="isActive" class="text-sm">Active</label>
@@ -284,6 +293,7 @@ else
     private string _formUrl = "";
     private string _formSecret = "";
     private string _formEventTypes = "";
+    private Admin.Services.WebhookFormat _formFormat = Admin.Services.WebhookFormat.Raw;
     private bool _formIsActive = true;
     private bool _saving;
 
@@ -343,6 +353,7 @@ else
         _formUrl = "";
         _formSecret = "";
         _formEventTypes = "";
+        _formFormat = Admin.Services.WebhookFormat.Raw;
         _formIsActive = true;
         _showForm = true;
     }
@@ -354,6 +365,7 @@ else
         _formUrl = webhook.Url;
         _formSecret = webhook.Secret;
         _formEventTypes = string.Join(", ", webhook.EventTypes);
+        _formFormat = webhook.Format;
         _formIsActive = webhook.IsActive;
         _showForm = true;
     }
@@ -385,6 +397,7 @@ else
                 _formUrl,
                 _formSecret,
                 eventTypes,
+                _formFormat,
                 _formIsActive);
             await EventsApi.CreateWebhook(request);
         }
@@ -395,6 +408,7 @@ else
                 _formUrl,
                 _formSecret,
                 eventTypes,
+                _formFormat,
                 _formIsActive);
             await EventsApi.UpdateWebhook(_editingWebhook.Id, request);
         }
@@ -449,4 +463,11 @@ else
         var parts = eventType.Split('.');
         return parts.Length >= 4 ? string.Join(".", parts[^3..]) : eventType;
     }
+
+    private static string GetFormatLabel(Admin.Services.WebhookFormat format) => format switch
+    {
+        Admin.Services.WebhookFormat.Discord => "Discord",
+        Admin.Services.WebhookFormat.Slack => "Slack",
+        _ => "Raw"
+    };
 }

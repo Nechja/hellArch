@@ -75,28 +75,54 @@ func (m *ManagementClient) GetQueueInfo(ctx context.Context, queueName string) (
 	return &info, nil
 }
 
-// GetWorkersStatus checks the status of all known workers
-func (m *ManagementClient) GetWorkersStatus(ctx context.Context, workers map[string]string) []WorkerStatus {
+// ListQueues retrieves all queues from RabbitMQ
+func (m *ManagementClient) ListQueues(ctx context.Context) ([]QueueInfo, error) {
+	endpoint := fmt.Sprintf("%s/api/queues", m.baseURL)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := m.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	var queues []QueueInfo
+	if err := json.NewDecoder(resp.Body).Decode(&queues); err != nil {
+		return nil, err
+	}
+
+	return queues, nil
+}
+
+// GetWorkersStatus discovers all queues with consumers (workers)
+func (m *ManagementClient) GetWorkersStatus(ctx context.Context) []WorkerStatus {
 	var statuses []WorkerStatus
 
-	for workerName, queueName := range workers {
+	queues, err := m.ListQueues(ctx)
+	if err != nil {
+		return statuses
+	}
+
+	for _, q := range queues {
 		status := WorkerStatus{
-			Name:  workerName,
-			Queue: queueName,
+			Name:      q.Name,
+			Queue:     q.Name,
+			Consumers: q.Consumers,
+			Messages:  q.Messages,
 		}
 
-		info, err := m.GetQueueInfo(ctx, queueName)
-		if err != nil {
-			status.Status = "unknown"
-			status.Consumers = 0
+		if q.Consumers > 0 {
+			status.Status = "healthy"
 		} else {
-			status.Consumers = info.Consumers
-			status.Messages = info.Messages
-			if info.Consumers > 0 {
-				status.Status = "healthy"
-			} else {
-				status.Status = "unhealthy"
-			}
+			status.Status = "unhealthy"
 		}
 
 		statuses = append(statuses, status)
