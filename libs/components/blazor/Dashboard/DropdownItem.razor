@@ -1,0 +1,38 @@
+@namespace HellArch.Components.Dashboard
+
+@if (IsDivider)
+{
+    <div class="border-t border-border my-1"></div>
+}
+else
+{
+    <button type="button" class="@GetItemClass()" disabled="@Disabled" @onclick="HandleClick">
+        @ChildContent
+    </button>
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool IsDivider { get; set; }
+    [Parameter] public bool Danger { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private async Task HandleClick()
+    {
+        if (OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync();
+        }
+    }
+
+    private string GetItemClass()
+    {
+        var baseClass = "w-full text-left px-4 py-2 text-sm transition-colors";
+        var colorClass = Danger
+            ? "text-neon-red hover:bg-neon-red/10"
+            : "text-text-primary hover:bg-bg-elevated";
+        var disabledClass = Disabled ? " opacity-50 cursor-not-allowed" : " cursor-pointer";
+        return $"{baseClass} {colorClass}{disabledClass}";
+    }
+}

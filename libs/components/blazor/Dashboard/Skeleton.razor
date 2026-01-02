@@ -1,0 +1,38 @@
+@namespace HellArch.Components.Dashboard
+
+<div class="@GetSkeletonClass()" style="@GetStyle()"></div>
+
+@code {
+    [Parameter] public SkeletonVariant Variant { get; set; } = SkeletonVariant.Text;
+    [Parameter] public string? Width { get; set; }
+    [Parameter] public string? Height { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public bool Animated { get; set; } = true;
+
+    private string GetSkeletonClass()
+    {
+        var baseClass = "skeleton";
+        var animClass = Animated ? " animate-pulse" : "";
+        var variantClass = Variant switch
+        {
+            SkeletonVariant.Circle => " skeleton-circle",
+            SkeletonVariant.Rectangle => " skeleton-rect",
+            SkeletonVariant.Card => " skeleton-card",
+            _ => " skeleton-text"
+        };
+        var custom = !string.IsNullOrEmpty(Class) ? $" {Class}" : "";
+        return $"{baseClass}{variantClass}{animClass}{custom}";
+    }
+
+    private string GetStyle()
+    {
+        var styles = new List<string>();
+        if (!string.IsNullOrEmpty(Width))
+            styles.Add($"width: {Width}");
+        if (!string.IsNullOrEmpty(Height))
+            styles.Add($"height: {Height}");
+        return string.Join("; ", styles);
+    }
+
+    public enum SkeletonVariant { Text, Circle, Rectangle, Card }
+}

@@ -11,6 +11,7 @@
 @code {
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public BadgeVariant Variant { get; set; } = BadgeVariant.Default;
+    [Parameter] public BadgeSize Size { get; set; } = BadgeSize.Default;
     [Parameter] public bool Dot { get; set; }
     [Parameter] public string? Class { get; set; }
 
@@ -25,10 +26,14 @@
             _ => "badge"
         };
 
+        var sizeClass = Size switch
+        {
+            BadgeSize.Small => " text-xs",
+            _ => ""
+        };
+
         var dotClass = Dot ? " badge-dot" : "";
         var custom = !string.IsNullOrEmpty(Class) ? $" {Class}" : "";
-        return $"{variantClass}{dotClass}{custom}";
+        return $"{variantClass}{sizeClass}{dotClass}{custom}";
     }
-
-    public enum BadgeVariant { Default, Success, Warning, Danger, Info }
 }

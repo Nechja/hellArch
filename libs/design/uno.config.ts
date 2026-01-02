@@ -341,6 +341,16 @@ export default defineConfig({
     'skeleton': 'bg-surface-elevated animate-pulse rounded-sm',
     'skeleton-text': 'skeleton h-4 w-full',
     'skeleton-avatar': 'skeleton w-10 h-10 rounded-full',
+    'skeleton-rect': 'skeleton h-20 w-full',
+    'skeleton-card': 'skeleton h-32 w-full',
+
+    // Toast notifications
+    'toast': 'p-4 rounded-sm shadow-lg border',
+    'toast-info': 'toast bg-surface-overlay border-info/30',
+    'toast-success': 'toast bg-surface-overlay border-success/30',
+    'toast-warning': 'toast bg-surface-overlay border-warning/30',
+    'toast-error': 'toast bg-surface-overlay border-danger/30',
+    'toast-icon': 'flex-shrink-0',
 
     // Effects (semantic)
     'glow-pulse': 'animate-pulse shadow-glow-primary',

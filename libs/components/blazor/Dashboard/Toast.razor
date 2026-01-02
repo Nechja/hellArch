@@ -1,0 +1,54 @@
+@namespace HellArch.Components.Dashboard
+
+<div class="@GetToastClass()" role="alert">
+    <div class="flex items-start gap-3">
+        <span class="toast-icon text-lg">@GetIcon()</span>
+        <div class="flex-1 min-w-0">
+            @if (Title is not null)
+            {
+                <div class="font-semibold mb-1">@Title</div>
+            }
+            <div class="text-sm text-text-secondary">@Message</div>
+        </div>
+        @if (Dismissible)
+        {
+            <button type="button" class="text-text-muted hover:text-white transition-colors shrink-0" @onclick="HandleDismiss">
+                ✕
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public ToastVariant Variant { get; set; } = ToastVariant.Info;
+    [Parameter] public bool Dismissible { get; set; } = true;
+    [Parameter] public EventCallback OnDismiss { get; set; }
+
+    private async Task HandleDismiss()
+    {
+        if (OnDismiss.HasDelegate)
+        {
+            await OnDismiss.InvokeAsync();
+        }
+    }
+
+    private string GetToastClass() => Variant switch
+    {
+        ToastVariant.Success => "toast toast-success",
+        ToastVariant.Warning => "toast toast-warning",
+        ToastVariant.Error => "toast toast-error",
+        _ => "toast toast-info"
+    };
+
+    private string GetIcon() => Variant switch
+    {
+        ToastVariant.Success => "✓",
+        ToastVariant.Warning => "⚠",
+        ToastVariant.Error => "✕",
+        _ => "ℹ"
+    };
+
+    public enum ToastVariant { Info, Success, Warning, Error }
+}

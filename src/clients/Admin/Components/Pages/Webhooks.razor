@@ -53,16 +53,16 @@
                             <div class="flex-1">
                                 <div class="flex items-center gap-3 mb-2">
                                     <h3 class="text-subheading">@webhook.Name</h3>
-                                    <span class="@(webhook.IsActive ? "badge-success" : "badge-warning")">
+                                    <Badge Variant="@(webhook.IsActive ? BadgeVariant.Success : BadgeVariant.Warning)">
                                         @(webhook.IsActive ? "Active" : "Inactive")
-                                    </span>
-                                    <span class="badge-info text-xs">@GetFormatLabel(webhook.Format)</span>
+                                    </Badge>
+                                    <Badge Variant="BadgeVariant.Info" Size="BadgeSize.Small">@GetFormatLabel(webhook.Format)</Badge>
                                 </div>
                                 <p class="font-mono text-sm text-text-secondary mb-2">@webhook.Url</p>
                                 <div class="flex flex-wrap gap-2 mb-2">
                                     @foreach (var eventType in webhook.EventTypes)
                                     {
-                                        <span class="badge text-xs">@eventType</span>
+                                        <Badge Size="BadgeSize.Small">@eventType</Badge>
                                     }
                                 </div>
                                 <p class="text-xs text-text-muted">
@@ -70,8 +70,8 @@
                                 </p>
                             </div>
                             <div class="flex gap-2">
-                                <button class="btn-secondary text-sm" @onclick="() => EditWebhook(webhook)">Edit</button>
-                                <button class="btn-secondary text-sm text-red-400 hover:text-red-300" @onclick="() => ConfirmDelete(webhook)">Delete</button>
+                                <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" OnClick="() => EditWebhook(webhook)">Edit</Button>
+                                <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Class="text-red-400 hover:text-red-300" OnClick="() => ConfirmDelete(webhook)">Delete</Button>
                             </div>
                         </div>
                     </div>
@@ -85,7 +85,7 @@ else
     <section class="mb-6">
         <div class="flex flex-wrap gap-4 items-end">
             <div class="flex flex-col gap-1">
-                <label class="text-sm text-text-secondary">Webhook</label>
+                <Label>Webhook</Label>
                 <select @bind="_deliveryWebhookFilter" class="input w-48">
                     <option value="">All</option>
                     @foreach (var webhook in _webhooks)
@@ -95,14 +95,14 @@ else
                 </select>
             </div>
             <div class="flex flex-col gap-1">
-                <label class="text-sm text-text-secondary">Status</label>
+                <Label>Status</Label>
                 <select @bind="_deliverySuccessFilter" class="input w-32">
                     <option value="">All</option>
                     <option value="true">Success</option>
                     <option value="false">Failed</option>
                 </select>
             </div>
-            <button class="btn-primary" @onclick="LoadDeliveries">Filter</button>
+            <Button Variant="ButtonVariant.Primary" OnClick="LoadDeliveries">Filter</Button>
         </div>
     </section>
 
@@ -138,16 +138,16 @@ else
                                 <td class="data-td text-xs font-mono">@delivery.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
                                 <td class="data-td text-sm">@GetWebhookName(delivery.WebhookId)</td>
                                 <td class="data-td">
-                                    <span class="badge-info text-xs">@GetShortEventType(delivery.EventType)</span>
+                                    <Badge Variant="BadgeVariant.Info" Size="BadgeSize.Small">@GetShortEventType(delivery.EventType)</Badge>
                                 </td>
                                 <td class="data-td">
                                     @if (delivery.Success)
                                     {
-                                        <span class="badge-success">@(delivery.StatusCode ?? 0)</span>
+                                        <Badge Variant="BadgeVariant.Success">@(delivery.StatusCode ?? 0)</Badge>
                                     }
                                     else
                                     {
-                                        <span class="badge-warning">@(delivery.StatusCode ?? 0)</span>
+                                        <Badge Variant="BadgeVariant.Warning">@(delivery.StatusCode ?? 0)</Badge>
                                     }
                                 </td>
                                 <td class="data-td">@delivery.Attempt</td>
@@ -174,13 +174,13 @@ else
                     Showing @_deliveries.Count of @_deliveryTotalCount deliveries
                 </span>
                 <div class="flex gap-2">
-                    <button class="btn-secondary text-sm" disabled="@(_deliveryPage <= 1)" @onclick="PreviousDeliveryPage">
+                    <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Disabled="@(_deliveryPage <= 1)" OnClick="PreviousDeliveryPage">
                         Previous
-                    </button>
+                    </Button>
                     <span class="px-3 py-1 text-sm">Page @_deliveryPage</span>
-                    <button class="btn-secondary text-sm" disabled="@(!HasMoreDeliveryPages)" @onclick="NextDeliveryPage">
+                    <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Disabled="@(!HasMoreDeliveryPages)" OnClick="NextDeliveryPage">
                         Next
-                    </button>
+                    </Button>
                 </div>
             </div>
         }
@@ -194,23 +194,23 @@ else
             <h2 class="text-heading mb-4">@(_editingWebhook == null ? "Create Webhook" : "Edit Webhook")</h2>
             <div class="space-y-4">
                 <div>
-                    <label class="text-sm text-text-secondary">Name</label>
-                    <input type="text" @bind="_formName" class="input w-full" placeholder="My Webhook" />
+                    <Label>Name</Label>
+                    <Input @bind-Value="_formName" Placeholder="My Webhook" Class="w-full" />
                 </div>
                 <div>
-                    <label class="text-sm text-text-secondary">URL</label>
-                    <input type="url" @bind="_formUrl" class="input w-full" placeholder="https://example.com/webhook" />
+                    <Label>URL</Label>
+                    <Input Type="url" @bind-Value="_formUrl" Placeholder="https://example.com/webhook" Class="w-full" />
                 </div>
                 <div>
-                    <label class="text-sm text-text-secondary">Secret</label>
-                    <input type="text" @bind="_formSecret" class="input w-full" placeholder="webhook-secret-key" />
+                    <Label>Secret</Label>
+                    <Input @bind-Value="_formSecret" Placeholder="webhook-secret-key" Class="w-full" />
                 </div>
                 <div>
-                    <label class="text-sm text-text-secondary">Event Types (comma-separated)</label>
-                    <input type="text" @bind="_formEventTypes" class="input w-full" placeholder="hellarch.auth.user.created.v1, hellarch.auth.session.*" />
+                    <Label>Event Types (comma-separated)</Label>
+                    <Input @bind-Value="_formEventTypes" Placeholder="hellarch.auth.user.created.v1, hellarch.auth.session.*" Class="w-full" />
                 </div>
                 <div>
-                    <label class="text-sm text-text-secondary">Format</label>
+                    <Label>Format</Label>
                     <select @bind="_formFormat" class="input w-full">
                         <option value="@Admin.Services.WebhookFormat.Raw">Raw (CloudEvents JSON)</option>
                         <option value="@Admin.Services.WebhookFormat.Discord">Discord (Webhook with Embeds)</option>
@@ -219,13 +219,13 @@ else
                 </div>
                 <div class="flex items-center gap-2">
                     <input type="checkbox" id="isActive" @bind="_formIsActive" class="w-4 h-4" />
-                    <label for="isActive" class="text-sm">Active</label>
+                    <Label For="isActive">Active</Label>
                 </div>
                 <div class="flex gap-2 justify-end mt-6">
-                    <button class="btn-secondary" @onclick="CloseForm">Cancel</button>
-                    <button class="btn-primary" @onclick="SaveWebhook" disabled="@_saving">
+                    <Button Variant="ButtonVariant.Secondary" OnClick="CloseForm">Cancel</Button>
+                    <Button Variant="ButtonVariant.Primary" OnClick="SaveWebhook" Disabled="@_saving">
                         @(_saving ? "Saving..." : "Save")
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -241,8 +241,8 @@ else
                 Are you sure you want to delete <strong>@_webhookToDelete.Name</strong>? This action cannot be undone.
             </p>
             <div class="flex gap-2 justify-end">
-                <button class="btn-secondary" @onclick="() => _webhookToDelete = null">Cancel</button>
-                <button class="btn-primary bg-red-600 hover:bg-red-500" @onclick="DeleteWebhook">Delete</button>
+                <Button Variant="ButtonVariant.Secondary" OnClick="() => _webhookToDelete = null">Cancel</Button>
+                <Button Variant="ButtonVariant.Danger" OnClick="DeleteWebhook">Delete</Button>
             </div>
         </div>
     </div>
@@ -259,7 +259,7 @@ else
             <div class="space-y-3 text-sm">
                 <div><span class="text-text-secondary">Webhook:</span> @GetWebhookName(_selectedDelivery.WebhookId)</div>
                 <div><span class="text-text-secondary">Event ID:</span> <span class="font-mono">@_selectedDelivery.EventId</span></div>
-                <div><span class="text-text-secondary">Event Type:</span> <span class="badge-info">@_selectedDelivery.EventType</span></div>
+                <div><span class="text-text-secondary">Event Type:</span> <Badge Variant="BadgeVariant.Info">@_selectedDelivery.EventType</Badge></div>
                 <div><span class="text-text-secondary">Status Code:</span> @(_selectedDelivery.StatusCode ?? 0)</div>
                 <div><span class="text-text-secondary">Attempt:</span> @_selectedDelivery.Attempt</div>
                 <div><span class="text-text-secondary">Success:</span> @(_selectedDelivery.Success ? "Yes" : "No")</div>
