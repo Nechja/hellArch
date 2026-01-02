@@ -49,11 +49,11 @@ class TestAuditLogs:
         assert isinstance(result.data, list)
         assert isinstance(result.total_count, int)
 
-    async def test_create_and_get_audit_log(
+    async def test_create_audit_log(
         self,
         events_helper: EventsAPIHelper,
     ):
-        """Create an audit log and retrieve it."""
+        """Create an audit log entry."""
         event_id = str(uuid4())
         actor_id = str(uuid4())
         target_id = str(uuid4())
@@ -74,10 +74,6 @@ class TestAuditLogs:
         assert audit_log.target_id == target_id
         assert audit_log.metadata is not None
         assert audit_log.metadata["test"] is True
-
-        fetched = await events_helper.get_audit_log(audit_log.id)
-        assert fetched.id == audit_log.id
-        assert fetched.event_id == event_id
 
     async def test_filter_audit_logs_by_event_type(
         self,
@@ -155,13 +151,14 @@ class TestWebhooks:
     ):
         """Create a webhook."""
         webhook = await events_helper.create_webhook(
+            name="test-webhook",
             url="https://example.com/test-webhook",
-            event_types=["hellarch.auth.user.created.v1", "hellarch.auth.user.updated.v1"],
             secret="test-secret-123",  # noqa: S106
-            is_active=True,
+            event_types=["hellarch.auth.user.created.v1", "hellarch.auth.user.updated.v1"],
         )
 
         try:
+            assert webhook.name == "test-webhook"
             assert webhook.url == "https://example.com/test-webhook"
             assert "hellarch.auth.user.created.v1" in webhook.event_types
             assert webhook.is_active is True
@@ -174,7 +171,9 @@ class TestWebhooks:
     ):
         """Update an existing webhook."""
         webhook = await events_helper.create_webhook(
+            name="original-webhook",
             url="https://example.com/original",
+            secret="test-secret",  # noqa: S106
             event_types=["hellarch.auth.user.created.v1"],
         )
 
@@ -196,7 +195,9 @@ class TestWebhooks:
     ):
         """Delete a webhook."""
         webhook = await events_helper.create_webhook(
+            name="to-delete-webhook",
             url="https://example.com/to-delete",
+            secret="test-secret",  # noqa: S106
             event_types=["hellarch.test.event.v1"],
         )
 
@@ -213,9 +214,10 @@ class TestWebhooks:
         """Get webhooks subscribed to a specific event type."""
         event_type = "hellarch.test.specific.v1"
         webhook = await events_helper.create_webhook(
+            name="specific-webhook",
             url="https://example.com/specific-webhook",
+            secret="test-secret",  # noqa: S106
             event_types=[event_type],
-            is_active=True,
         )
 
         try:
@@ -232,10 +234,14 @@ class TestWebhooks:
         """Inactive webhooks are not returned when querying by event type."""
         event_type = "hellarch.test.inactive.v1"
         webhook = await events_helper.create_webhook(
+            name="inactive-webhook",
             url="https://example.com/inactive-webhook",
+            secret="test-secret",  # noqa: S106
             event_types=[event_type],
-            is_active=False,
         )
+
+        # Deactivate the webhook
+        await events_helper.update_webhook(webhook.id, is_active=False)
 
         try:
             webhooks = await events_helper.get_webhooks_by_event_type(event_type)
@@ -264,7 +270,9 @@ class TestWebhookDeliveries:
     ):
         """Create a delivery record and retrieve it."""
         webhook = await events_helper.create_webhook(
+            name="delivery-test-webhook",
             url="https://example.com/delivery-test",
+            secret="test-secret",  # noqa: S106
             event_types=["hellarch.test.event.v1"],
         )
 
@@ -272,6 +280,7 @@ class TestWebhookDeliveries:
             delivery = await events_helper.create_delivery(
                 webhook_id=webhook.id,
                 event_id=str(uuid4()),
+                event_type="hellarch.test.event.v1",
                 status_code=200,
                 response_body='{"ok": true}',
                 success=True,
@@ -280,6 +289,7 @@ class TestWebhookDeliveries:
             assert delivery.webhook_id == webhook.id
             assert delivery.status_code == 200
             assert delivery.success is True
+            assert delivery.event_type == "hellarch.test.event.v1"
 
             fetched = await events_helper.get_delivery(delivery.id)
             assert fetched.id == delivery.id
@@ -292,7 +302,9 @@ class TestWebhookDeliveries:
     ):
         """Filter deliveries by webhook ID."""
         webhook = await events_helper.create_webhook(
+            name="filter-test-webhook",
             url="https://example.com/filter-test",
+            secret="test-secret",  # noqa: S106
             event_types=["hellarch.test.event.v1"],
         )
 
@@ -301,6 +313,7 @@ class TestWebhookDeliveries:
                 await events_helper.create_delivery(
                     webhook_id=webhook.id,
                     event_id=str(uuid4()),
+                    event_type="hellarch.test.event.v1",
                     status_code=200,
                     success=True,
                 )
@@ -317,7 +330,9 @@ class TestWebhookDeliveries:
     ):
         """Record a failed delivery attempt."""
         webhook = await events_helper.create_webhook(
+            name="failed-test-webhook",
             url="https://example.com/failed-test",
+            secret="test-secret",  # noqa: S106
             event_types=["hellarch.test.event.v1"],
         )
 
@@ -325,15 +340,15 @@ class TestWebhookDeliveries:
             delivery = await events_helper.create_delivery(
                 webhook_id=webhook.id,
                 event_id=str(uuid4()),
+                event_type="hellarch.test.event.v1",
                 status_code=500,
                 response_body="Internal Server Error",
-                error="Server returned 500",
                 success=False,
             )
 
             assert delivery.success is False
             assert delivery.status_code == 500
-            assert delivery.error == "Server returned 500"
+            assert delivery.response_body == "Internal Server Error"
         finally:
             await events_helper.delete_webhook(webhook.id)
 

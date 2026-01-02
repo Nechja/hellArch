@@ -245,6 +245,40 @@ export default defineConfig({
     'border-glow': 'border border-neon-pink shadow-glow-pink',
     'hover-lift': 'transition-transform duration-fast hover:-translate-y-0.5',
     'hover-glow': 'transition-shadow duration-fast hover:shadow-glow-pink',
+
+    // Labels & text patterns
+    'label': 'text-xs uppercase text-text-muted tracking-wide',
+    'label-caps': 'text-xs uppercase tracking-wider',
+
+    // Empty states
+    'empty-state': 'text-text-muted text-center py-4 italic',
+    'empty-state-lg': 'text-text-secondary text-center py-8',
+
+    // Section headers
+    'section-header': 'text-heading mb-4 text-glitch',
+    'section-header-lg': 'text-display text-gradient mb-6',
+
+    // Featured cards
+    'card-featured': 'card border-l-2 border-neon-pink',
+    'card-featured-green': 'card border-l-2 border-neon-green',
+    'card-featured-coral': 'card border-l-2 border-neon-coral',
+
+    // Icon boxes
+    'icon-box': 'w-12 h-12 rounded-sm flex-center',
+    'icon-box-pink': 'icon-box bg-neon-pink/10 text-neon-pink',
+    'icon-box-rose': 'icon-box bg-neon-rose/10 text-neon-rose',
+    'icon-box-peach': 'icon-box bg-neon-peach/10 text-neon-peach',
+    'icon-box-orange': 'icon-box bg-neon-orange/10 text-neon-orange',
+    'icon-box-coral': 'icon-box bg-neon-coral/10 text-neon-coral',
+    'icon-box-green': 'icon-box bg-neon-green/10 text-neon-green',
+
+    // Code/data display
+    'code-block': 'p-3 rounded-sm bg-bg-secondary border border-border font-mono text-xs overflow-x-auto',
+    'code-inline': 'px-1.5 py-0.5 rounded-sm bg-bg-secondary font-mono text-sm',
+
+    // Modal overlay
+    'modal-overlay': 'fixed inset-0 bg-black/50 flex-center z-modal backdrop-blur-sm',
+    'modal-panel': 'card max-w-2xl w-full max-h-[80vh] overflow-auto',
   },
 
   // Safelist classes that should always be generated (for Blazor)
@@ -298,6 +332,28 @@ export default defineConfig({
     'skeleton', 'skeleton-text', 'skeleton-avatar',
     'glow-pulse', 'border-glow', 'hover-lift', 'hover-glow',
 
+    // Shortcuts - labels & text
+    'label', 'label-caps',
+
+    // Shortcuts - empty states
+    'empty-state', 'empty-state-lg',
+
+    // Shortcuts - section headers
+    'section-header', 'section-header-lg',
+
+    // Shortcuts - featured cards
+    'card-featured', 'card-featured-green', 'card-featured-coral',
+
+    // Shortcuts - icon boxes
+    'icon-box', 'icon-box-pink', 'icon-box-rose', 'icon-box-peach',
+    'icon-box-orange', 'icon-box-coral', 'icon-box-green',
+
+    // Shortcuts - code display
+    'code-block', 'code-inline',
+
+    // Shortcuts - modal
+    'modal-overlay', 'modal-panel',
+
     // Colors - backgrounds
     'bg-bg-primary', 'bg-bg-secondary', 'bg-bg-card', 'bg-bg-elevated',
     'bg-neon-pink', 'bg-neon-rose', 'bg-neon-dusty', 'bg-neon-peach', 'bg-neon-orange', 'bg-neon-coral',
@@ -335,7 +391,8 @@ export default defineConfig({
     'opacity-50', 'opacity-75', 'opacity-90',
     'cursor-pointer', 'cursor-not-allowed',
     'transition-all', 'transition-colors', 'duration-fast', 'duration-normal', 'duration-slow',
-    'animate-pulse',
+    'animate-pulse', 'animate-pulse-once', 'animate-fade-in',
+    'italic',
     'hidden', 'block', 'inline-block', 'inline-flex', 'inline',
     'relative', 'absolute', 'fixed', 'sticky',
     'top-0', 'left-0', 'right-0', 'bottom-0', 'inset-0',

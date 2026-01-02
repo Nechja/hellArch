@@ -48,9 +48,16 @@ builder.Services.AddOpenTelemetry()
         .AddOtlpExporter(options => options.Endpoint = new Uri(otelEndpoint)));
 
 // JWT Authentication for SignalR
-var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
-    ?? builder.Configuration["Jwt:Secret"]
-    ?? throw new InvalidOperationException("JWT_SECRET environment variable is required");
+var jwtSecret = builder.Configuration["Jwt:Secret"];
+if (string.IsNullOrEmpty(jwtSecret))
+{
+    jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
+}
+
+if (string.IsNullOrEmpty(jwtSecret))
+{
+    throw new InvalidOperationException("Jwt:Secret configuration or JWT_SECRET environment variable is required");
+}
 
 var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
     ?? builder.Configuration["Jwt:Issuer"]

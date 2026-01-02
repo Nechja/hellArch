@@ -59,6 +59,7 @@ class Webhook:
     """Represents a webhook configuration."""
 
     id: str
+    name: str
     url: str
     event_types: list[str]
     secret: str | None
@@ -70,6 +71,7 @@ class Webhook:
     def from_dict(cls, data: dict[str, Any]) -> "Webhook":
         return cls(
             id=data["id"],
+            name=data["name"],
             url=data["url"],
             event_types=data["event_types"],
             secret=data.get("secret"),
@@ -86,11 +88,12 @@ class WebhookDelivery:
     id: str
     webhook_id: str
     event_id: str
-    status_code: int | None
+    event_type: str
+    status_code: int
     response_body: str | None
-    error: str | None
-    attempted_at: str
     success: bool
+    attempt: int
+    created_at: str
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "WebhookDelivery":
@@ -98,11 +101,12 @@ class WebhookDelivery:
             id=data["id"],
             webhook_id=data["webhook_id"],
             event_id=data["event_id"],
-            status_code=data.get("status_code"),
+            event_type=data["event_type"],
+            status_code=data["status_code"],
             response_body=data.get("response_body"),
-            error=data.get("error"),
-            attempted_at=data["attempted_at"],
             success=data["success"],
+            attempt=data["attempt"],
+            created_at=data["created_at"],
         )
 
 
@@ -153,11 +157,12 @@ class EventsAPIHelper:
         response.raise_for_status()
         data = response.json()
 
+        logs = data.get("data") or []
         return PaginatedResponse(
-            data=[AuditLog.from_dict(log) for log in data["data"]],
-            total_count=data["total_count"],
-            page=data["page"],
-            page_size=data["page_size"],
+            data=[AuditLog.from_dict(log) for log in logs],
+            total_count=data.get("total", 0),
+            page=page,
+            page_size=page_size,
         )
 
     async def get_audit_log(self, log_id: str) -> AuditLog:
@@ -199,11 +204,12 @@ class EventsAPIHelper:
         response.raise_for_status()
         data = response.json()
 
+        webhooks = data.get("data") or []
         return PaginatedResponse(
-            data=[Webhook.from_dict(w) for w in data["data"]],
-            total_count=data["total_count"],
-            page=data["page"],
-            page_size=data["page_size"],
+            data=[Webhook.from_dict(w) for w in webhooks],
+            total_count=data.get("total", 0),
+            page=page,
+            page_size=page_size,
         )
 
     async def get_webhook(self, webhook_id: str) -> Webhook:
@@ -214,19 +220,18 @@ class EventsAPIHelper:
 
     async def create_webhook(
         self,
+        name: str,
         url: str,
+        secret: str,
         event_types: list[str],
-        secret: str | None = None,
-        is_active: bool = True,
     ) -> Webhook:
-        """Create a new webhook."""
+        """Create a new webhook. Name, URL, and secret are required."""
         payload: dict[str, Any] = {
+            "name": name,
             "url": url,
+            "secret": secret,
             "event_types": event_types,
-            "is_active": is_active,
         }
-        if secret:
-            payload["secret"] = secret
 
         response = await self._client.post(f"{self._base_url}/api/webhooks", json=payload)
         response.raise_for_status()
@@ -235,6 +240,7 @@ class EventsAPIHelper:
     async def update_webhook(
         self,
         webhook_id: str,
+        name: str | None = None,
         url: str | None = None,
         event_types: list[str] | None = None,
         secret: str | None = None,
@@ -242,6 +248,8 @@ class EventsAPIHelper:
     ) -> Webhook:
         """Update an existing webhook."""
         payload: dict[str, Any] = {}
+        if name is not None:
+            payload["name"] = name
         if url is not None:
             payload["url"] = url
         if event_types is not None:
@@ -264,7 +272,9 @@ class EventsAPIHelper:
         """Get all active webhooks subscribed to a specific event type."""
         response = await self._client.get(f"{self._base_url}/api/webhooks/by-event/{event_type}")
         response.raise_for_status()
-        return [Webhook.from_dict(w) for w in response.json()]
+        data = response.json()
+        webhooks = data.get("data") or []
+        return [Webhook.from_dict(w) for w in webhooks]
 
     async def get_deliveries(
         self,
@@ -281,11 +291,12 @@ class EventsAPIHelper:
         response.raise_for_status()
         data = response.json()
 
+        deliveries = data.get("data") or []
         return PaginatedResponse(
-            data=[WebhookDelivery.from_dict(d) for d in data["data"]],
-            total_count=data["total_count"],
-            page=data["page"],
-            page_size=data["page_size"],
+            data=[WebhookDelivery.from_dict(d) for d in deliveries],
+            total_count=data.get("total", 0),
+            page=page,
+            page_size=page_size,
         )
 
     async def get_delivery(self, delivery_id: str) -> WebhookDelivery:
@@ -298,23 +309,23 @@ class EventsAPIHelper:
         self,
         webhook_id: str,
         event_id: str,
-        status_code: int | None = None,
+        event_type: str,
+        status_code: int = 0,
         response_body: str | None = None,
-        error: str | None = None,
         success: bool = False,
+        attempt: int = 1,
     ) -> WebhookDelivery:
         """Record a webhook delivery attempt (used by webhooks worker)."""
         payload: dict[str, Any] = {
             "webhook_id": webhook_id,
             "event_id": event_id,
+            "event_type": event_type,
+            "status_code": status_code,
             "success": success,
+            "attempt": attempt,
         }
-        if status_code is not None:
-            payload["status_code"] = status_code
         if response_body is not None:
             payload["response_body"] = response_body
-        if error is not None:
-            payload["error"] = error
 
         response = await self._client.post(f"{self._base_url}/api/webhook-deliveries", json=payload)
         response.raise_for_status()
@@ -324,7 +335,8 @@ class EventsAPIHelper:
         """Publish an event through the Events API (for services without RabbitMQ access)."""
         response = await self._client.post(f"{self._base_url}/api/events/publish", json=event.to_dict())
         response.raise_for_status()
-        return response.json()
+        # API returns 202 Accepted with no body
+        return {"status": "accepted"}
 
     async def health_check(self) -> dict[str, Any]:
         """Check the Events API health."""
@@ -380,19 +392,19 @@ async def webhook_factory(
     created_webhooks: list[Webhook] = []
 
     async def _create(
+        name: str = "test-webhook",
         url: str = "https://example.com/webhook",
+        secret: str = "test-secret",  # noqa: S107
         event_types: list[str] | None = None,
-        secret: str | None = None,
-        is_active: bool = True,
     ) -> Webhook:
         if event_types is None:
             event_types = ["hellarch.test.event.v1"]
 
         webhook = await events_helper.create_webhook(
+            name=name,
             url=url,
-            event_types=event_types,
             secret=secret,
-            is_active=is_active,
+            event_types=event_types,
         )
         created_webhooks.append(webhook)
         return webhook

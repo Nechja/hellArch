@@ -227,7 +227,7 @@ services:
       dockerfile: Dockerfile
       target: dev
     container_name: hellarch-infra-worker
-    user: "${UID:-1000}:${GID:-1000}"
+    # No user: directive - needs root for Docker socket access
     environment:
       - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
       - ORCHESTRATOR_BACKEND=docker

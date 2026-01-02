@@ -57,7 +57,7 @@
     }
     else if (_auditLogs.Count == 0)
     {
-        <p class="text-text-muted text-center py-8 italic">No audit logs found</p>
+        <p class="empty-state">No audit logs found</p>
     }
     else
     {
@@ -124,8 +124,8 @@
 
 @if (_selectedLog != null)
 {
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @onclick="CloseDetails">
-        <div class="card max-w-2xl w-full max-h-[80vh] overflow-auto" @onclick:stopPropagation="true">
+    <div class="modal-overlay" @onclick="CloseDetails">
+        <div class="modal-panel" @onclick:stopPropagation="true">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-heading">Audit Log Details</h2>
                 <button class="text-text-muted hover:text-white" @onclick="CloseDetails">&#10005;</button>
@@ -142,7 +142,7 @@
                 {
                     <div>
                         <span class="text-text-secondary">Metadata:</span>
-                        <pre class="mt-2 p-3 rounded-sm bg-bg-secondary border border-border font-mono text-xs overflow-x-auto">@FormatJson(_selectedLog.Metadata.Value)</pre>
+                        <pre class="mt-2 code-block">@FormatJson(_selectedLog.Metadata.Value)</pre>
                     </div>
                 }
             </div>

@@ -20,10 +20,10 @@
             <span class="text-sm text-text-secondary">@_connectionStatus</span>
         </div>
     </div>
-    <div class="card border-l-2 border-neon-green bg-bg-secondary">
+    <div class="card-featured-green bg-bg-secondary">
         @if (_liveEvents.Count == 0)
         {
-            <p class="text-text-muted text-center py-4 italic">Waiting for events... Events will appear here in real-time.</p>
+            <p class="empty-state">Waiting for events... Events will appear here in real-time.</p>
         }
         else
         {
@@ -57,7 +57,7 @@
 </section>
 
 <section class="mb-8">
-    <h2 class="text-heading mb-4 text-glitch">RabbitMQ Overview</h2>
+    <h2 class="section-header">RabbitMQ Overview</h2>
     @if (_overview == null)
     {
         <p class="text-text-secondary text-center py-4">Loading...</p>
@@ -86,10 +86,10 @@
 </section>
 
 <section class="mb-8">
-    <h2 class="text-heading mb-4 text-glitch">Queues</h2>
+    <h2 class="section-header">Queues</h2>
     @if (_queues.Count == 0)
     {
-        <p class="text-text-muted text-center py-4 italic">No queues found</p>
+        <p class="empty-state">No queues found</p>
     }
     else
     {
@@ -124,10 +124,10 @@
 </section>
 
 <section class="mb-8">
-    <h2 class="text-heading mb-4 text-glitch">Exchanges</h2>
+    <h2 class="section-header">Exchanges</h2>
     @if (_exchanges.Count == 0)
     {
-        <p class="text-text-muted text-center py-4 italic">No custom exchanges found</p>
+        <p class="empty-state">No custom exchanges found</p>
     }
     else
     {
@@ -155,7 +155,7 @@
     }
     else if (_recentEvents.Count == 0)
     {
-        <p class="text-text-muted text-center py-4 italic">No events in queue (events are consumed by workers)</p>
+        <p class="empty-state">No events in queue (events are consumed by workers)</p>
     }
     else
     {
@@ -173,7 +173,7 @@
                     </div>
                     <details class="mt-2">
                         <summary class="cursor-pointer text-sm text-neon-pink hover:underline">View Data</summary>
-                        <pre class="mt-2 p-3 rounded-sm bg-bg-secondary border border-border font-mono text-xs overflow-x-auto">@evt.GetFormattedData()</pre>
+                        <pre class="mt-2 code-block">@evt.GetFormattedData()</pre>
                     </details>
                 </div>
             }
@@ -181,7 +181,7 @@
     }
 </section>
 
-<section class="card border-l-2 border-neon-pink">
+<section class="card-featured">
     <h2 class="text-subheading mb-3">External Tools</h2>
     <div class="flex gap-4">
         <a href="http://localhost:15672" target="_blank" rel="noopener" class="link">

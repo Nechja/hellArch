@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"os"
+	"strings"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -20,6 +21,10 @@ func Setup(ctx context.Context, serviceName string) (func(context.Context) error
 		endpoint = "localhost:4318"
 	}
 
+	// Strip http:// or https:// prefix if present - WithEndpoint expects host:port
+	endpoint = strings.TrimPrefix(endpoint, "http://")
+	endpoint = strings.TrimPrefix(endpoint, "https://")
+
 	exporter, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithEndpoint(endpoint),
 		otlptracehttp.WithInsecure(),
@@ -28,12 +33,10 @@ func Setup(ctx context.Context, serviceName string) (func(context.Context) error
 		return nil, err
 	}
 
-	res, err := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceName(serviceName),
-		),
+	res, err := resource.New(ctx,
+		resource.WithAttributes(semconv.ServiceName(serviceName)),
+		resource.WithProcessPID(),
+		resource.WithHost(),
 	)
 	if err != nil {
 		return nil, err

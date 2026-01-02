@@ -65,9 +65,16 @@ public sealed class EventConsumer(
 
     private async Task Connect(CancellationToken ct)
     {
-        var rabbitUrl = configuration["RabbitMQ:Url"]
-            ?? Environment.GetEnvironmentVariable("RABBITMQ_URL")
-            ?? throw new InvalidOperationException("RabbitMQ:Url configuration is required");
+        var rabbitUrl = configuration["RabbitMQ:Url"];
+        if (string.IsNullOrEmpty(rabbitUrl))
+        {
+            rabbitUrl = Environment.GetEnvironmentVariable("RABBITMQ_URL");
+        }
+
+        if (string.IsNullOrEmpty(rabbitUrl))
+        {
+            throw new InvalidOperationException("RabbitMQ:Url configuration or RABBITMQ_URL environment variable is required");
+        }
 
         var exchangeName = configuration["RabbitMQ:ExchangeName"] ?? "hellarch.events";
         _queueName = configuration["RabbitMQ:QueueName"] ?? "realtime-worker";

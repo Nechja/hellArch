@@ -9,7 +9,7 @@ defineProps<{
 <template>
   <div class="space-y-8">
     <!-- Welcome Section -->
-    <section class="card border-l-2 border-neon-pink">
+    <section class="card-featured">
       <h1 class="text-display text-gradient mb-2">
         Welcome{{ user?.display_name ? `, ${user.display_name}` : '' }}
       </h1>
@@ -20,11 +20,11 @@ defineProps<{
 
     <!-- Quick Actions -->
     <section>
-      <h2 class="text-subheading mb-4 text-glitch">Quick Actions</h2>
+      <h2 class="section-header">Quick Actions</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <RouterLink to="/settings" class="card-glow group">
           <div class="flex items-start gap-4">
-            <div class="w-12 h-12 rounded-sm bg-neon-pink/10 flex-center text-neon-pink group-hover:shadow-glow-pink group-hover:scale-110 transition-all duration-normal">
+            <div class="icon-box-pink group-hover:shadow-glow-pink group-hover:scale-110 transition-all duration-normal">
               <div class="i-carbon-settings text-2xl" />
             </div>
             <div>
@@ -38,7 +38,7 @@ defineProps<{
 
         <a href="/admin" class="card-glow group">
           <div class="flex items-start gap-4">
-            <div class="w-12 h-12 rounded-sm bg-neon-rose/10 flex-center text-neon-rose group-hover:shadow-glow-rose group-hover:scale-110 transition-all duration-normal">
+            <div class="icon-box-rose group-hover:shadow-glow-rose group-hover:scale-110 transition-all duration-normal">
               <div class="i-carbon-dashboard text-2xl" />
             </div>
             <div>
@@ -68,7 +68,7 @@ defineProps<{
 
     <!-- Architecture Info -->
     <section class="card">
-      <h2 class="text-subheading mb-4 text-glitch">Architecture</h2>
+      <h2 class="section-header">Architecture</h2>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
         <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-pink/50 hover:-translate-y-0.5 transition-all duration-fast">
           <div class="text-2xl font-bold text-neon-pink">Vue 3</div>
