@@ -5,7 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 class AuditLog(BaseModel):
-    """Stores a record of every event that passes through the system for audit purposes."""
+    """Audit log entry for tracking system events."""
     model_config = ConfigDict(populate_by_name=True)
 
     id: str

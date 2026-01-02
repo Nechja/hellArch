@@ -20,36 +20,36 @@ const initials = computed(() => {
     <div class="max-w-5xl mx-auto px-4">
       <div class="flex-between h-16">
         <!-- Logo -->
-        <RouterLink to="/" class="text-xl font-bold text-gradient hover:shadow-glow-cyan transition-all">
+        <RouterLink to="/" class="text-xl font-bold text-gradient hover-glow">
           HellArch
         </RouterLink>
 
         <!-- Desktop Navigation -->
-        <div class="hidden md:flex items-center gap-6">
+        <div class="hidden md:flex items-center gap-8">
           <RouterLink
             to="/"
-            class="text-text-secondary hover:text-neon-pink transition-colors relative group"
+            class="topnav-link group"
           >
             Dashboard
             <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-neon-pink group-hover:w-full transition-all duration-normal" />
           </RouterLink>
           <RouterLink
             to="/settings"
-            class="text-text-secondary hover:text-neon-pink transition-colors relative group"
+            class="topnav-link group"
           >
             Settings
             <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-neon-pink group-hover:w-full transition-all duration-normal" />
           </RouterLink>
 
           <!-- User Menu -->
-          <div v-if="user" class="flex items-center gap-3">
+          <div v-if="user" class="flex items-center gap-3 ml-2">
             <img
               v-if="user.avatar_url"
               :src="user.avatar_url"
               :alt="user.display_name || user.email"
-              class="w-8 h-8 rounded-full border border-neon-pink/30"
+              class="w-8 h-8 rounded-full border-2 border-neon-pink/30 hover:border-neon-pink transition-colors"
             />
-            <div v-else class="w-8 h-8 rounded-full bg-neon-pink flex-center text-sm font-bold text-bg-primary">
+            <div v-else class="w-8 h-8 rounded-full bg-neon-pink flex-center text-sm font-bold text-bg-primary hover:shadow-glow-pink transition-shadow">
               {{ initials }}
             </div>
             <a

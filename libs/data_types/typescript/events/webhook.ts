@@ -1,8 +1,9 @@
 import type { WebhookDelivery } from './webhook_delivery';
 
-/** A registered webhook endpoint that receives event notifications. */
+/** Webhook endpoint registration for event delivery. */
 export interface Webhook {
   id: string;
+  name: string;
   url: string;
   secret: string;
   event_types: string[];

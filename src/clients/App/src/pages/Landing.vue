@@ -24,7 +24,7 @@ defineProps<{
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <RouterLink to="/settings" class="card-glow group">
           <div class="flex items-start gap-4">
-            <div class="w-12 h-12 rounded-sm bg-neon-pink/10 flex-center text-neon-pink group-hover:shadow-glow-cyan transition-all">
+            <div class="w-12 h-12 rounded-sm bg-neon-pink/10 flex-center text-neon-pink group-hover:shadow-glow-pink group-hover:scale-110 transition-all duration-normal">
               <div class="i-carbon-settings text-2xl" />
             </div>
             <div>
@@ -38,7 +38,7 @@ defineProps<{
 
         <a href="/admin" class="card-glow group">
           <div class="flex items-start gap-4">
-            <div class="w-12 h-12 rounded-sm bg-neon-rose/10 flex-center text-neon-rose group-hover:shadow-glow-magenta transition-all">
+            <div class="w-12 h-12 rounded-sm bg-neon-rose/10 flex-center text-neon-rose group-hover:shadow-glow-rose group-hover:scale-110 transition-all duration-normal">
               <div class="i-carbon-dashboard text-2xl" />
             </div>
             <div>
@@ -70,19 +70,19 @@ defineProps<{
     <section class="card">
       <h2 class="text-subheading mb-4 text-glitch">Architecture</h2>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-        <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-pink/50 transition-colors">
+        <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-pink/50 hover:-translate-y-0.5 transition-all duration-fast">
           <div class="text-2xl font-bold text-neon-pink">Vue 3</div>
           <div class="text-caption">This app</div>
         </div>
-        <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-rose/50 transition-colors">
+        <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-rose/50 hover:-translate-y-0.5 transition-all duration-fast">
           <div class="text-2xl font-bold text-neon-rose">Blazor</div>
           <div class="text-caption">Login & Admin</div>
         </div>
-        <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-peach/50 transition-colors">
+        <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-peach/50 hover:-translate-y-0.5 transition-all duration-fast">
           <div class="text-2xl font-bold text-neon-peach">Go</div>
           <div class="text-caption">Auth Service</div>
         </div>
-        <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-orange/50 transition-colors">
+        <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-orange/50 hover:-translate-y-0.5 transition-all duration-fast">
           <div class="text-2xl font-bold text-neon-orange">F#</div>
           <div class="text-caption">User Service</div>
         </div>

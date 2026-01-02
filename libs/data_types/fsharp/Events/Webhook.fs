@@ -2,9 +2,10 @@ namespace HellArch.DataTypes.Events
 
 open System
 
-/// A registered webhook endpoint that receives event notifications.
+/// Webhook endpoint registration for event delivery.
 type Webhook = {
     Id: Guid
+    Name: string
     Url: string
     Secret: string
     EventTypes: string list

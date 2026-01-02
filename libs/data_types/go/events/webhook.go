@@ -2,9 +2,10 @@ package events
 
 import "time"
 
-// A registered webhook endpoint that receives event notifications.
+// Webhook endpoint registration for event delivery.
 type Webhook struct {
 	ID string `json:"id"`
+	Name string `json:"name"`
 	URL string `json:"url"`
 	Secret string `json:"secret"`
 	EventTypes []*string `json:"event_types"`

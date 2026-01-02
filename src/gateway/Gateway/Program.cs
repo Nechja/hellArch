@@ -138,6 +138,9 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseRouting();
 
+// WebSocket support for SignalR (Blazor Server circuits and realtime hubs)
+app.UseWebSockets();
+
 // SPA fallback routes - serve index.html for client-side routing
 app.MapFallbackToFile("/login/{**path}", "login/index.html");
 app.MapFallbackToFile("/app/{**path}", "app/index.html");

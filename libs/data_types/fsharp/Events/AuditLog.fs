@@ -2,14 +2,14 @@ namespace HellArch.DataTypes.Events
 
 open System
 
-/// Stores a record of every event that passes through the system for audit purposes.
+/// Audit log entry for tracking system events.
 type AuditLog = {
     Id: Guid
     EventType: string
     EventId: string
     Source: string
-    ActorId: Guid option
-    TargetId: Guid option
+    ActorId: string option
+    TargetId: string option
     Metadata: string option
     CreatedAt: DateTime
 }

@@ -1,4 +1,4 @@
-/** Stores a record of every event that passes through the system for audit purposes. */
+/** Audit log entry for tracking system events. */
 export interface AuditLog {
   id: string;
   event_type: string;

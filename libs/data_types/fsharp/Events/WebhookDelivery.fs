@@ -2,17 +2,17 @@ namespace HellArch.DataTypes.Events
 
 open System
 
-/// Tracks each attempt to deliver an event to a webhook endpoint.
+/// Record of a webhook delivery attempt.
 type WebhookDelivery = {
     Id: Guid
     WebhookId: Guid
     EventId: string
     EventType: string
-    Payload: string
-    StatusCode: int option
+    Payload: string option
+    StatusCode: int
     ResponseBody: string option
-    Error: string option
-    AttemptNumber: int
+    Success: bool
+    Attempt: int
     CreatedAt: DateTime
-    Webhook: Webhook
+    Webhook: Webhook option
 }

@@ -10,7 +10,9 @@ hellArch/
 │   │   ├── auth/          # Go Auth Service
 │   │   ├── user/          # F# User Service
 │   │   └── health/        # Gleam Health Service
-│   ├── workers/           # Background workers (TBD)
+│   ├── workers/           # Background workers
+│   │   ├── audit/         # Go Audit Worker
+│   │   └── webhooks/      # Go Webhooks Worker
 │   ├── schema/
 │   │   ├── Schema/        # EF Core contexts + migrations
 │   │   ├── Schema.Codegen/# Legacy reflection codegen

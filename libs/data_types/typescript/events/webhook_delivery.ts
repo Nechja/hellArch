@@ -1,16 +1,16 @@
 import type { Webhook } from './webhook';
 
-/** Tracks each attempt to deliver an event to a webhook endpoint. */
+/** Record of a webhook delivery attempt. */
 export interface WebhookDelivery {
   id: string;
   webhook_id: string;
   event_id: string;
   event_type: string;
-  payload: string;
-  status_code?: number | null;
+  payload?: string | null;
+  status_code: number;
   response_body?: string | null;
-  error?: string | null;
-  attempt_number: number;
+  success: boolean;
+  attempt: number;
   created_at: string;
-  webhook: Webhook;
+  webhook?: Webhook | null;
 }

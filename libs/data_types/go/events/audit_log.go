@@ -2,7 +2,7 @@ package events
 
 import "time"
 
-// Stores a record of every event that passes through the system for audit purposes.
+// Audit log entry for tracking system events.
 type AuditLog struct {
 	ID string `json:"id"`
 	EventType string `json:"event_type"`

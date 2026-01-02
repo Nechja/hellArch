@@ -21,6 +21,7 @@
   <ItemGroup>
     <Compile Include="..\..\..\libs\data_types\csharp\Auth\*.cs" Link="Generated\Auth\%(Filename)%(Extension)" />
     <Compile Include="..\..\..\libs\data_types\csharp\User\*.cs" Link="Generated\User\%(Filename)%(Extension)" />
+    <Compile Include="..\..\..\libs\data_types\csharp\Events\*.cs" Link="Generated\Events\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

@@ -5,17 +5,17 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 class WebhookDelivery(BaseModel):
-    """Tracks each attempt to deliver an event to a webhook endpoint."""
+    """Record of a webhook delivery attempt."""
     model_config = ConfigDict(populate_by_name=True)
 
     id: str
     webhook_id: str
     event_id: str
     event_type: str
-    payload: str
-    attempt_number: int
+    status_code: int
+    success: bool
+    attempt: int
     created_at: datetime
-    status_code: int | None = None
+    payload: str | None = None
     response_body: str | None = None
-    error: str | None = None
-    webhook: Webhook = null!
+    webhook: Webhook | None = None

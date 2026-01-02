@@ -5,14 +5,15 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 class Webhook(BaseModel):
-    """A registered webhook endpoint that receives event notifications."""
+    """Webhook endpoint registration for event delivery."""
     model_config = ConfigDict(populate_by_name=True)
 
     id: str
+    name: str
     url: str
     secret: str
-    event_types: list[str]
     created_at: datetime
     updated_at: datetime
+    event_types: list[str] = []
     is_active: bool = True
     deliveries: list[WebhookDelivery] = []

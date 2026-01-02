@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/nechja/hellarch/golibs/telemetry"
+	"github.com/nechja/hellarch/workers/audit/internal/client"
 	"github.com/nechja/hellarch/workers/audit/internal/config"
 	"github.com/nechja/hellarch/workers/audit/internal/consumer"
-	"github.com/nechja/hellarch/workers/audit/internal/store"
-	"github.com/nechja/hellarch/workers/audit/internal/telemetry"
 )
 
 func main() {
@@ -34,20 +34,17 @@ func run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	shutdownTelemetry, err := telemetry.Setup(ctx, cfg.OTLPEndpoint)
+	shutdownTelemetry, err := telemetry.Setup(ctx, "audit-worker")
 	if err != nil {
 		slog.Warn("failed to initialize telemetry", "error", err)
 	} else {
 		defer func() { _ = shutdownTelemetry(ctx) }()
 	}
 
-	pgStore, err := store.NewPostgres(ctx, cfg.DatabaseURL)
-	if err != nil {
-		return err
-	}
-	defer pgStore.Close()
+	eventsClient := client.NewEventsClient(cfg.EventsAPIURL)
+	slog.Info("events API client initialized", "url", cfg.EventsAPIURL)
 
-	cons, err := consumer.New(ctx, cfg.RabbitMQURL, pgStore)
+	cons, err := consumer.New(ctx, cfg.RabbitMQURL, eventsClient)
 	if err != nil {
 		return err
 	}

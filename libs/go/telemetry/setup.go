@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"context"
+	"os"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -11,7 +12,14 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
-func Setup(ctx context.Context, endpoint string) (func(context.Context) error, error) {
+// Setup initializes OpenTelemetry with OTLP HTTP exporter.
+// Returns a shutdown function that should be called on application exit.
+func Setup(ctx context.Context, serviceName string) (func(context.Context) error, error) {
+	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if endpoint == "" {
+		endpoint = "localhost:4318"
+	}
+
 	exporter, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithEndpoint(endpoint),
 		otlptracehttp.WithInsecure(),
@@ -24,7 +32,7 @@ func Setup(ctx context.Context, endpoint string) (func(context.Context) error, e
 		resource.Default(),
 		resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceName("webhooks-worker"),
+			semconv.ServiceName(serviceName),
 		),
 	)
 	if err != nil {

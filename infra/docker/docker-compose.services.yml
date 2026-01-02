@@ -129,6 +129,30 @@ services:
       - hellarch
     restart: unless-stopped
 
+  events:
+    build:
+      context: ../../src/services/events
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hellarch-events
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "5005:5005"
+    environment:
+      - HTTP_ADDRESS=:5005
+      - DATABASE_URL=postgres://hellarch:hellarch@events-db:5432/events_db
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - OTEL_SERVICE_NAME=events
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - LOG_LEVEL=debug
+    volumes:
+      - ../../src/services/events:/app
+      - ../../libs:/libs
+      - events-go-cache:/go/pkg/mod
+    networks:
+      - hellarch
+    restart: unless-stopped
+
   audit-worker:
     build:
       context: ../../src/workers/audit
@@ -137,7 +161,7 @@ services:
     container_name: hellarch-audit-worker
     user: "${UID:-1000}:${GID:-1000}"
     environment:
-      - DATABASE_URL=postgres://hellarch:hellarch@events-db:5432/events_db
+      - EVENTS_API_URL=http://events:5005
       - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
       - OTEL_SERVICE_NAME=audit-worker
       - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4318
@@ -157,7 +181,7 @@ services:
     container_name: hellarch-webhooks-worker
     user: "${UID:-1000}:${GID:-1000}"
     environment:
-      - DATABASE_URL=postgres://hellarch:hellarch@events-db:5432/events_db
+      - EVENTS_API_URL=http://events:5005
       - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
       - OTEL_SERVICE_NAME=webhooks-worker
       - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4318
@@ -201,6 +225,7 @@ volumes:
   auth-go-cache:
   user-nuget:
   admin-nuget:
+  events-go-cache:
   audit-go-cache:
   webhooks-go-cache:
   realtime-nuget:

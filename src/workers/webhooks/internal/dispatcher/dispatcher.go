@@ -6,13 +6,15 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"time"
 
-	"github.com/nechja/hellarch/workers/webhooks/internal/store"
+	"github.com/nechja/hellarch/workers/webhooks/internal/client"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -22,23 +24,24 @@ import (
 var tracer = otel.Tracer("webhooks-dispatcher")
 
 type Dispatcher struct {
-	client  *http.Client
-	store   *store.Store
-	timeout time.Duration
+	httpClient   *http.Client
+	eventsClient *client.EventsClient
+	timeout      time.Duration
 }
 
-func New(store *store.Store, timeout time.Duration) *Dispatcher {
+func New(eventsClient *client.EventsClient, timeout time.Duration) *Dispatcher {
 	return &Dispatcher{
-		client: &http.Client{
-			Timeout: timeout,
+		httpClient: &http.Client{
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+			Timeout:   timeout,
 		},
-		store:   store,
-		timeout: timeout,
+		eventsClient: eventsClient,
+		timeout:      timeout,
 	}
 }
 
 type DeliveryRequest struct {
-	Webhook   store.Webhook
+	Webhook   *client.Webhook
 	EventID   string
 	EventType string
 	Payload   []byte
@@ -61,7 +64,7 @@ func (d *Dispatcher) Deliver(ctx context.Context, req DeliveryRequest) error {
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, req.Webhook.URL, bytes.NewReader(req.Payload))
 	if err != nil {
-		return d.recordDelivery(ctx, req, nil, "", fmt.Errorf("failed to create request: %w", err))
+		return d.recordDelivery(ctx, req, 0, "", false)
 	}
 
 	httpReq.Header.Set("Content-Type", "application/cloudevents+json")
@@ -69,61 +72,57 @@ func (d *Dispatcher) Deliver(ctx context.Context, req DeliveryRequest) error {
 	httpReq.Header.Set("X-Event-ID", req.EventID)
 	httpReq.Header.Set("X-Event-Type", req.EventType)
 
-	resp, err := d.client.Do(httpReq)
+	resp, err := d.httpClient.Do(httpReq)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "request failed")
-		return d.recordDelivery(ctx, req, nil, "", fmt.Errorf("request failed: %w", err))
+		return d.recordDelivery(ctx, req, 0, "", false)
 	}
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 	responseBody := string(body)
 
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+	success := resp.StatusCode >= 200 && resp.StatusCode < 300
+	if success {
 		slog.Debug("webhook delivered successfully",
 			"webhook_id", req.Webhook.ID,
 			"event_id", req.EventID,
 			"status_code", resp.StatusCode,
 		)
-		return d.recordDelivery(ctx, req, &resp.StatusCode, responseBody, nil)
+	} else {
+		span.RecordError(fmt.Errorf("webhook returned status %d", resp.StatusCode))
+		span.SetStatus(codes.Error, "non-2xx response")
 	}
 
-	err = fmt.Errorf("webhook returned status %d", resp.StatusCode)
-	span.RecordError(err)
-	span.SetStatus(codes.Error, "non-2xx response")
-	return d.recordDelivery(ctx, req, &resp.StatusCode, responseBody, err)
+	return d.recordDelivery(ctx, req, resp.StatusCode, responseBody, success)
 }
 
-func (d *Dispatcher) recordDelivery(ctx context.Context, req DeliveryRequest, statusCode *int, responseBody string, deliveryErr error) error {
-	var errStr *string
-	if deliveryErr != nil {
-		s := deliveryErr.Error()
-		errStr = &s
-	}
-
+func (d *Dispatcher) recordDelivery(ctx context.Context, req DeliveryRequest, statusCode int, responseBody string, success bool) error {
 	var respBody *string
 	if responseBody != "" {
 		respBody = &responseBody
 	}
 
-	delivery := &store.WebhookDelivery{
-		WebhookID:     req.Webhook.ID,
-		EventID:       req.EventID,
-		EventType:     req.EventType,
-		Payload:       req.Payload,
-		StatusCode:    statusCode,
-		ResponseBody:  respBody,
-		Error:         errStr,
-		AttemptNumber: req.Attempt,
-		CreatedAt:     time.Now().UTC(),
+	deliveryReq := client.CreateDeliveryRequest{
+		WebhookID:    req.Webhook.ID,
+		EventID:      req.EventID,
+		EventType:    req.EventType,
+		Payload:      json.RawMessage(req.Payload),
+		StatusCode:   statusCode,
+		ResponseBody: respBody,
+		Success:      success,
+		Attempt:      req.Attempt,
 	}
 
-	if err := d.store.InsertDelivery(ctx, delivery); err != nil {
+	if err := d.eventsClient.CreateDelivery(ctx, deliveryReq); err != nil {
 		slog.Error("failed to record delivery", "error", err)
 	}
 
-	return deliveryErr
+	if !success {
+		return fmt.Errorf("delivery failed with status %d", statusCode)
+	}
+	return nil
 }
 
 func computeSignature(payload []byte, secret string) string {
