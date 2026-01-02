@@ -30,8 +30,13 @@ def base_urls() -> dict[str, str]:
 
 @pytest.fixture(scope="session")
 def jwt_keys() -> tuple[str, str]:
-    private_key_path = PROJECT_ROOT / "infra" / "keys" / "dev-private.pem"
-    public_key_path = PROJECT_ROOT / "infra" / "keys" / "dev-public.pem"
+    # Support both containerized (env var) and local (project root) paths
+    private_key_path = Path(
+        os.getenv("JWT_PRIVATE_KEY_PATH", str(PROJECT_ROOT / "infra" / "keys" / "dev-private.pem"))
+    )
+    public_key_path = Path(
+        os.getenv("JWT_PUBLIC_KEY_PATH", str(PROJECT_ROOT / "infra" / "keys" / "dev-public.pem"))
+    )
 
     private_key = private_key_path.read_text()
     public_key = public_key_path.read_text()

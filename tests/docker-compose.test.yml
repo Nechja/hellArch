@@ -1,4 +1,8 @@
 services:
+  # ==========================================================================
+  # Infrastructure
+  # ==========================================================================
+
   auth-db:
     image: hellarch-auth-db
     build:
@@ -68,6 +72,119 @@ services:
       retries: 5
     networks:
       - hellarch-test
+
+  # ==========================================================================
+  # Services
+  # ==========================================================================
+
+  auth:
+    image: hellarch-auth-test
+    build:
+      context: ..
+      dockerfile: src/services/auth/Dockerfile.test
+      target: prod
+    container_name: hellarch-test-auth
+    environment:
+      HELLARCH_ENV: test
+      HTTP_ADDRESS: ":5001"
+      GRPC_ADDRESS: ":50051"
+      AUTH_DATABASE_URL: postgres://hellarch:hellarch@auth-db:5432/auth_db
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://hellarch:hellarch@rabbitmq:5672
+      JWT_PRIVATE_KEY_PATH: /keys/dev-private.pem
+      JWT_PUBLIC_KEY_PATH: /keys/dev-public.pem
+      # Test OAuth credentials (fake for testing)
+      DISCORD_CLIENT_ID: test-discord-client-id
+      DISCORD_CLIENT_SECRET: test-discord-client-secret
+      GOOGLE_CLIENT_ID: test-google-client-id
+      GOOGLE_CLIENT_SECRET: test-google-client-secret
+      GITHUB_CLIENT_ID: test-github-client-id
+      GITHUB_CLIENT_SECRET: test-github-client-secret
+      ALLOWED_REDIRECT_URIS: "http://localhost:5000,http://test-runner:5000"
+      SECURE_COOKIES: "false"
+      LOG_LEVEL: debug
+    ports:
+      - "5001:5001"
+      - "50051:50051"
+    # Keys are baked into the test image (Dockerfile.test)
+    depends_on:
+      auth-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5001/auth/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - hellarch-test
+
+  user:
+    image: hellarch-user-test
+    build:
+      context: ..
+      dockerfile: src/services/user/Dockerfile.test
+      target: prod
+    container_name: hellarch-test-user
+    environment:
+      ASPNETCORE_ENVIRONMENT: Testing
+      ASPNETCORE_URLS: http://+:5002
+      USER_DATABASE_URL: Host=user-db;Port=5432;Database=user_db;Username=hellarch;Password=hellarch
+      RABBITMQ_URL: amqp://hellarch:hellarch@rabbitmq:5672
+      REDIS_URL: redis://redis:6379
+      LOG_LEVEL: Debug
+    ports:
+      - "5002:5002"
+    depends_on:
+      user-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:5002/user/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - hellarch-test
+
+  # ==========================================================================
+  # Test Runner
+  # ==========================================================================
+
+  test-runner:
+    image: hellarch-test-runner
+    build:
+      context: ..
+      dockerfile: tests/Dockerfile.test
+    container_name: hellarch-test-runner
+    environment:
+      AUTH_URL: http://auth:5001
+      USER_URL: http://user:5002
+      GATEWAY_URL: http://auth:5001
+      ADMIN_URL: http://auth:5001
+      AUTH_DATABASE_URL: postgres://hellarch:hellarch@auth-db:5432/auth_db
+      USER_DATABASE_URL: postgres://hellarch:hellarch@user-db:5432/user_db
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://hellarch:hellarch@rabbitmq:5672/
+    volumes:
+      - ./coverage_html:/tests/coverage_html
+    depends_on:
+      auth:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+    networks:
+      - hellarch-test
+    profiles:
+      - test
 
 networks:
   hellarch-test:
