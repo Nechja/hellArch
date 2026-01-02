@@ -17,23 +17,23 @@
 
 .login-card {
     background: var(--color-bg-card);
-    border: 1px solid var(--color-neon-cyan);
+    border: 1px solid var(--color-neon-pink);
     border-radius: var(--radius-sm);
     padding: 2.5rem;
     text-align: center;
-    box-shadow: var(--glow-cyan);
+    box-shadow: var(--glow-pink);
     transition: box-shadow var(--duration-normal);
 }
 
 .login-card:hover {
-    box-shadow: var(--glow-cyan), 0 0 40px rgba(0, 255, 242, 0.3);
+    box-shadow: var(--glow-pink), 0 0 40px rgba(209, 98, 164, 0.3);
 }
 
 .login-card h1 {
     font-size: var(--text-4xl);
     font-weight: var(--font-bold);
     margin-bottom: 0.5rem;
-    background: linear-gradient(135deg, var(--color-neon-cyan), var(--color-neon-magenta));
+    background: linear-gradient(135deg, var(--color-neon-pink), var(--color-neon-orange));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -116,9 +116,9 @@
 
 /* Blazor loading - neon styled */
 #blazor-error-ui {
-    background: var(--color-neon-red);
+    background: var(--color-neon-coral);
     bottom: 0;
-    box-shadow: var(--glow-red);
+    box-shadow: var(--glow-coral);
     display: none;
     left: 0;
     padding: 0.75rem 1.5rem;
@@ -137,7 +137,7 @@
 }
 
 .blazor-error-boundary {
-    background: var(--color-neon-red);
+    background: var(--color-neon-coral);
     padding: 1rem;
     color: white;
     border-radius: var(--radius-sm);
@@ -166,10 +166,10 @@
 }
 
 .loading-progress circle:last-child {
-    stroke: var(--color-neon-cyan);
+    stroke: var(--color-neon-pink);
     stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
     transition: stroke-dasharray 0.05s ease-in-out;
-    filter: drop-shadow(0 0 8px var(--color-neon-cyan));
+    filter: drop-shadow(0 0 8px var(--color-neon-pink));
 }
 
 .loading-progress-text {
@@ -177,7 +177,7 @@
     text-align: center;
     font-weight: var(--font-bold);
     inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
-    color: var(--color-neon-cyan);
+    color: var(--color-neon-pink);
     font-family: var(--font-mono);
     text-transform: uppercase;
     letter-spacing: var(--tracking-wider);

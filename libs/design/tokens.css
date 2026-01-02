@@ -30,40 +30,42 @@
   --color-text-muted: #555555;
   --color-text-inverse: #0a0a0a;
 
-  /* Colors - Neon Accents */
-  --color-neon-cyan: #00fff2;
-  --color-neon-magenta: #ff00ff;
-  --color-neon-lime: #39ff14;
-  --color-neon-orange: #ff6b00;
-  --color-neon-red: #ff0040;
+  /* Colors - Neon Accents (Warm Palette) */
+  --color-neon-pink: #D162A4;        /* primary accent */
+  --color-neon-rose: #A30262;        /* dark accent */
+  --color-neon-dusty: #B55690;       /* muted pink */
+  --color-neon-peach: #FF9A56;       /* light orange */
+  --color-neon-orange: #EF7627;      /* orange */
+  --color-neon-coral: #D52D00;       /* dark orange */
 
-  /* Colors - Brand (keep cyan as primary) */
-  --color-accent: var(--color-neon-cyan);
-  --color-accent-hover: #00ccc4;
-  --color-accent-active: #009994;
+  /* Colors - Brand */
+  --color-accent: var(--color-neon-pink);
+  --color-accent-hover: var(--color-neon-dusty);
+  --color-accent-active: var(--color-neon-rose);
 
   /* Colors - Semantic */
-  --color-success: var(--color-neon-lime);
+  --color-success: var(--color-neon-peach);
   --color-warning: var(--color-neon-orange);
-  --color-error: var(--color-neon-red);
-  --color-info: var(--color-neon-cyan);
+  --color-error: var(--color-neon-coral);
+  --color-info: var(--color-neon-pink);
 
   /* Colors - Borders */
   --color-border: #2a2a2a;
   --color-border-hover: #3a3a3a;
-  --color-border-focus: var(--color-neon-cyan);
+  --color-border-focus: var(--color-neon-pink);
 
   /* Colors - Providers */
   --color-discord: #5865f2;
   --color-github: #f0f0f0;
   --color-google: #ea4335;
 
-  /* Glow Effects - subtle and clean */
-  --glow-cyan: 0 0 8px rgba(0, 255, 242, 0.3);
-  --glow-magenta: 0 0 8px rgba(255, 0, 255, 0.3);
-  --glow-lime: 0 0 8px rgba(57, 255, 20, 0.3);
-  --glow-orange: 0 0 8px rgba(255, 107, 0, 0.3);
-  --glow-red: 0 0 8px rgba(255, 0, 64, 0.3);
+  /* Glow Effects - warm neon */
+  --glow-pink: 0 0 8px rgba(209, 98, 164, 0.4);
+  --glow-rose: 0 0 8px rgba(163, 2, 98, 0.4);
+  --glow-dusty: 0 0 8px rgba(181, 86, 144, 0.4);
+  --glow-peach: 0 0 8px rgba(255, 154, 86, 0.4);
+  --glow-orange: 0 0 8px rgba(239, 118, 39, 0.4);
+  --glow-coral: 0 0 8px rgba(213, 45, 0, 0.4);
   --glow-sm: 0 0 4px;
   --glow-md: 0 0 8px;
   --glow-lg: 0 0 16px;
@@ -158,9 +160,9 @@ body {
 
 /* Focus styles - neon glow */
 :focus-visible {
-  outline: 2px solid var(--color-neon-cyan);
+  outline: 2px solid var(--color-neon-pink);
   outline-offset: 2px;
-  box-shadow: var(--glow-cyan);
+  box-shadow: var(--glow-pink);
 }
 
 /* Scrollbar - sleek */
@@ -179,12 +181,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-neon-cyan);
-  box-shadow: var(--glow-cyan);
+  background: var(--color-neon-pink);
+  box-shadow: var(--glow-pink);
 }
 
 /* Selection - neon highlight */
 ::selection {
-  background: var(--color-neon-cyan);
+  background: var(--color-neon-pink);
   color: var(--color-bg-primary);
 }

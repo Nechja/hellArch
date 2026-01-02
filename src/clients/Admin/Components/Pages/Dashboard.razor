@@ -98,15 +98,15 @@
     <h2 class="text-heading mb-4 text-glitch">Quick Links</h2>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <a href="http://localhost:16686" target="_blank" rel="noopener" class="card-glow block">
-            <h3 class="font-bold text-neon-cyan mb-1">Jaeger Tracing</h3>
+            <h3 class="font-bold text-neon-pink mb-1">Jaeger Tracing</h3>
             <p class="text-sm text-text-secondary">View distributed traces</p>
         </a>
         <a href="http://localhost:15672" target="_blank" rel="noopener" class="card-glow block">
-            <h3 class="font-bold text-neon-magenta mb-1">RabbitMQ Management</h3>
+            <h3 class="font-bold text-neon-rose mb-1">RabbitMQ Management</h3>
             <p class="text-sm text-text-secondary">Message queue dashboard</p>
         </a>
         <a href="http://localhost:5004/status" target="_blank" rel="noopener" class="card-glow block">
-            <h3 class="font-bold text-neon-lime mb-1">Health API</h3>
+            <h3 class="font-bold text-neon-peach mb-1">Health API</h3>
             <p class="text-sm text-text-secondary">Raw health status JSON</p>
         </a>
     </div>
@@ -170,9 +170,9 @@
 
     private static string GetOverallBorderClass(string status) => status.ToLower() switch
     {
-        "healthy" => "border-neon-lime",
+        "healthy" => "border-neon-peach",
         "degraded" => "border-neon-orange",
-        _ => "border-neon-red"
+        _ => "border-neon-coral"
     };
 
     private static string FormatServiceName(string name) => name switch

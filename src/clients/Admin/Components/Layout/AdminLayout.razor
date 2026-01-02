@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 
 <div class="grid md:grid-cols-[220px_1fr] min-h-screen">
+    <!-- Desktop Sidebar -->
     <aside class="bg-bg-secondary border-r border-border sticky top-0 h-screen overflow-y-auto hidden md:block">
         <div class="p-4 border-b border-border mb-4">
             <h2 class="text-xl font-bold text-gradient">HellArch</h2>
@@ -9,12 +10,39 @@
         <NavMenu />
     </aside>
 
+    <!-- Mobile Nav Overlay -->
+    @if (_mobileNavOpen)
+    {
+        <div class="mobile-nav-overlay md:hidden" @onclick="CloseMobileNav"></div>
+        <aside class="mobile-nav-panel translate-x-0 md:hidden">
+            <div class="p-4 border-b border-border mb-4 flex-between">
+                <div>
+                    <h2 class="text-xl font-bold text-gradient">HellArch</h2>
+                    <span class="text-xs text-text-muted uppercase tracking-wider">Admin Console</span>
+                </div>
+                <button class="text-text-secondary hover:text-neon-pink p-2" @onclick="CloseMobileNav">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <NavMenu />
+        </aside>
+    }
+
     <main class="flex flex-col min-h-screen">
-        <header class="flex justify-end items-center px-6 py-3 bg-bg-secondary border-b border-border">
-            <div class="text-text-secondary text-sm">
+        <header class="flex-between px-6 py-3 bg-bg-secondary border-b border-border">
+            <!-- Hamburger (mobile only) -->
+            <button class="hamburger md:hidden" @onclick="ToggleMobileNav">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+
+            <div class="text-text-secondary text-sm ml-auto">
                 @if (Username is not null)
                 {
-                    <span class="text-neon-cyan">@Username</span>
+                    <span class="text-neon-pink">@Username</span>
                 }
             </div>
         </header>
@@ -29,4 +57,9 @@
     public HttpContext? HttpContext { get; set; }
 
     private string? Username => HttpContext?.Items["Username"]?.ToString();
+
+    private bool _mobileNavOpen;
+
+    private void ToggleMobileNav() => _mobileNavOpen = !_mobileNavOpen;
+    private void CloseMobileNav() => _mobileNavOpen = false;
 }

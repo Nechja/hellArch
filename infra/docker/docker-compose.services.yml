@@ -169,6 +169,33 @@ services:
       - hellarch
     restart: unless-stopped
 
+  realtime-worker:
+    build:
+      context: ../../src/workers/realtime
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hellarch-realtime-worker
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "5020:5020"
+    env_file:
+      - ../../.env
+      - ../../.env.secrets
+    environment:
+      - ASPNETCORE_URLS=http://+:5020
+      - ASPNETCORE_ENVIRONMENT=Development
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - CORS_ORIGINS=http://localhost:5000,http://localhost:5010,http://hellarch-gateway:5000
+      - OTEL_SERVICE_NAME=realtime-worker
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - LOG_LEVEL=debug
+    volumes:
+      - ../../src/workers/realtime:/app
+      - realtime-nuget:/root/.nuget
+    networks:
+      - hellarch
+    restart: unless-stopped
+
 volumes:
   gateway-nuget:
   auth-go-cache:
@@ -176,6 +203,7 @@ volumes:
   admin-nuget:
   audit-go-cache:
   webhooks-go-cache:
+  realtime-nuget:
 
 networks:
   hellarch:

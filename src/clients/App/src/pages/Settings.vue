@@ -80,8 +80,8 @@ async function saveProfile() {
           :class="[
             'p-3 rounded-sm text-sm border-l-2',
             message.type === 'success'
-              ? 'bg-neon-lime/10 text-neon-lime border-neon-lime'
-              : 'bg-neon-red/10 text-neon-red border-neon-red'
+              ? 'bg-neon-peach/10 text-neon-peach border-neon-peach'
+              : 'bg-neon-coral/10 text-neon-coral border-neon-coral'
           ]"
         >
           {{ message.text }}
@@ -131,8 +131,8 @@ async function saveProfile() {
     </section>
 
     <!-- Danger Zone -->
-    <section class="card border border-neon-red/30">
-      <h2 class="text-subheading text-neon-red mb-4">Danger Zone</h2>
+    <section class="card border border-neon-coral/30">
+      <h2 class="text-subheading text-neon-coral mb-4">Danger Zone</h2>
       <p class="text-text-secondary mb-4">
         Once you delete your account, there is no going back. Please be certain.
       </p>

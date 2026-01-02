@@ -26,13 +26,14 @@ export default defineConfig({
         muted: 'var(--color-text-muted)',
         inverse: 'var(--color-text-inverse)',
       },
-      // Neon accents
+      // Neon accents (warm palette)
       neon: {
-        cyan: 'var(--color-neon-cyan)',
-        magenta: 'var(--color-neon-magenta)',
-        lime: 'var(--color-neon-lime)',
+        pink: 'var(--color-neon-pink)',
+        rose: 'var(--color-neon-rose)',
+        dusty: 'var(--color-neon-dusty)',
+        peach: 'var(--color-neon-peach)',
         orange: 'var(--color-neon-orange)',
-        red: 'var(--color-neon-red)',
+        coral: 'var(--color-neon-coral)',
       },
       // Brand
       accent: {
@@ -70,12 +71,13 @@ export default defineConfig({
       sm: 'var(--shadow-sm)',
       md: 'var(--shadow-md)',
       lg: 'var(--shadow-lg)',
-      // Glow effects
-      'glow-cyan': 'var(--glow-cyan)',
-      'glow-magenta': 'var(--glow-magenta)',
-      'glow-lime': 'var(--glow-lime)',
+      // Glow effects (warm palette)
+      'glow-pink': 'var(--glow-pink)',
+      'glow-rose': 'var(--glow-rose)',
+      'glow-dusty': 'var(--glow-dusty)',
+      'glow-peach': 'var(--glow-peach)',
       'glow-orange': 'var(--glow-orange)',
-      'glow-red': 'var(--glow-red)',
+      'glow-coral': 'var(--glow-coral)',
     },
 
     fontFamily: {
@@ -140,23 +142,23 @@ export default defineConfig({
     // Cards
     'card': 'bg-bg-card border border-border rounded-sm p-6',
     'card-elevated': 'bg-bg-elevated border border-border rounded-sm p-6 shadow-md',
-    'card-glow': 'bg-bg-card border border-neon-cyan/30 rounded-sm p-6 hover:border-neon-cyan hover:shadow-glow-cyan transition-all duration-normal',
+    'card-glow': 'bg-bg-card border border-neon-pink/30 rounded-sm p-6 hover:border-neon-pink hover:shadow-glow-pink transition-all duration-normal',
     'card-brutal': 'bg-bg-card border-2 border-text-primary p-6',
 
     // Buttons - base
     'btn': 'inline-flex items-center justify-center gap-2 px-4 py-2 rounded-sm font-semibold transition-all duration-normal cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm',
 
     // Buttons - neon variants
-    'btn-neon': 'btn bg-transparent border border-neon-cyan text-neon-cyan hover:bg-neon-cyan hover:text-bg-primary hover:shadow-glow-cyan',
-    'btn-neon-solid': 'btn bg-neon-cyan text-bg-primary font-bold hover:shadow-glow-cyan',
-    'btn-neon-magenta': 'btn bg-transparent border border-neon-magenta text-neon-magenta hover:bg-neon-magenta hover:text-bg-primary hover:shadow-glow-magenta',
+    'btn-neon': 'btn bg-transparent border border-neon-pink text-neon-pink hover:bg-neon-pink hover:text-bg-primary hover:shadow-glow-pink',
+    'btn-neon-solid': 'btn bg-neon-pink text-bg-primary font-bold hover:shadow-glow-pink',
+    'btn-neon-rose': 'btn bg-transparent border border-neon-rose text-neon-rose hover:bg-neon-rose hover:text-white hover:shadow-glow-rose',
 
     // Buttons - semantic
-    'btn-primary': 'btn bg-accent text-bg-primary font-bold hover:shadow-glow-cyan',
-    'btn-secondary': 'btn bg-bg-secondary text-text-primary border border-border hover:bg-bg-elevated hover:border-neon-cyan/50',
-    'btn-ghost': 'btn bg-transparent text-text-secondary hover:text-neon-cyan',
-    'btn-danger': 'btn bg-transparent border border-neon-red text-neon-red hover:bg-neon-red hover:text-white hover:shadow-glow-red',
-    'btn-success': 'btn bg-transparent border border-neon-lime text-neon-lime hover:bg-neon-lime hover:text-bg-primary hover:shadow-glow-lime',
+    'btn-primary': 'btn bg-accent text-bg-primary font-bold hover:shadow-glow-pink',
+    'btn-secondary': 'btn bg-bg-secondary text-text-primary border border-border hover:bg-bg-elevated hover:border-neon-pink/50',
+    'btn-ghost': 'btn bg-transparent text-text-secondary hover:text-neon-pink',
+    'btn-danger': 'btn bg-transparent border border-neon-coral text-neon-coral hover:bg-neon-coral hover:text-white hover:shadow-glow-coral',
+    'btn-success': 'btn bg-transparent border border-neon-peach text-neon-peach hover:bg-neon-peach hover:text-bg-primary hover:shadow-glow-peach',
 
     // Buttons - providers
     'btn-discord': 'btn bg-discord text-white hover:opacity-90',
@@ -164,7 +166,7 @@ export default defineConfig({
     'btn-google': 'btn bg-google text-white hover:opacity-90',
 
     // Inputs
-    'input': 'w-full px-4 py-2 bg-bg-secondary border border-border rounded-sm text-text-primary placeholder:text-text-muted focus:border-neon-cyan focus:shadow-glow-cyan focus:outline-none transition-all duration-normal',
+    'input': 'w-full px-4 py-2 bg-bg-secondary border border-border rounded-sm text-text-primary placeholder:text-text-muted focus:border-neon-pink focus:shadow-glow-pink focus:outline-none transition-all duration-normal',
     'input-sm': 'px-3 py-1.5 text-sm',
 
     // Typography
@@ -174,24 +176,24 @@ export default defineConfig({
     'text-body': 'text-base text-text-primary',
     'text-caption': 'text-sm text-text-secondary',
     'text-muted': 'text-sm text-text-muted',
-    'text-neon': 'text-neon-cyan',
+    'text-neon': 'text-neon-pink',
     'text-glitch': 'font-mono uppercase tracking-wider',
-    'text-gradient': 'bg-gradient-to-r from-neon-cyan to-neon-magenta bg-clip-text text-transparent',
+    'text-gradient': 'bg-gradient-to-r from-neon-pink to-neon-orange bg-clip-text text-transparent',
 
     // Links
-    'link': 'text-neon-cyan hover:underline cursor-pointer transition-colors duration-fast',
-    'link-subtle': 'text-text-secondary hover:text-neon-cyan transition-colors duration-fast',
+    'link': 'text-neon-pink hover:underline cursor-pointer transition-colors duration-fast',
+    'link-subtle': 'text-text-secondary hover:text-neon-pink transition-colors duration-fast',
 
     // Admin components
     'stat-card': 'card p-4',
-    'stat-value': 'text-3xl font-bold text-neon-cyan',
+    'stat-value': 'text-3xl font-bold text-neon-pink',
     'stat-label': 'text-xs uppercase tracking-wide text-text-muted',
 
     // Health indicators
     'health-dot': 'w-3 h-3 rounded-full',
-    'health-dot-healthy': 'health-dot bg-neon-lime shadow-glow-lime',
+    'health-dot-healthy': 'health-dot bg-neon-peach shadow-glow-peach',
     'health-dot-warning': 'health-dot bg-neon-orange shadow-glow-orange',
-    'health-dot-danger': 'health-dot bg-neon-red shadow-glow-red',
+    'health-dot-danger': 'health-dot bg-neon-coral shadow-glow-coral',
 
     // Data tables
     'data-table': 'w-full border-collapse',
@@ -201,18 +203,29 @@ export default defineConfig({
 
     // Badges
     'badge': 'inline-block px-2 py-0.5 rounded-sm text-xs font-medium bg-bg-elevated text-text-secondary',
-    'badge-success': 'badge bg-neon-lime/15 text-neon-lime',
+    'badge-success': 'badge bg-neon-peach/15 text-neon-peach',
     'badge-warning': 'badge bg-neon-orange/15 text-neon-orange',
-    'badge-danger': 'badge bg-neon-red/15 text-neon-red',
-    'badge-info': 'badge bg-neon-cyan/15 text-neon-cyan',
+    'badge-danger': 'badge bg-neon-coral/15 text-neon-coral',
+    'badge-info': 'badge bg-neon-pink/15 text-neon-pink',
 
     // Nav - Blazor NavLink compatible (active class adds to base, doesn't replace)
     'nav-link': 'flex items-center gap-3 px-3 py-2 rounded-sm text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all duration-fast no-underline border-l-2 border-solid border-transparent',
-    'nav-link-active': 'text-neon-cyan! bg-bg-card! border-neon-cyan!',
+    'nav-link-active': 'text-neon-pink! bg-bg-card! border-neon-pink!',
+
+    // Top nav link with underline animation
+    'topnav-link': 'relative text-text-secondary hover:text-neon-pink transition-colors no-underline',
+
+    // Hamburger button
+    'hamburger': 'flex flex-col justify-center items-center w-10 h-10 gap-1.5 cursor-pointer bg-transparent border-none',
+    'hamburger-line': 'w-6 h-0.5 bg-text-primary transition-all duration-normal',
+
+    // Mobile nav overlay
+    'mobile-nav-overlay': 'fixed inset-0 bg-bg-overlay z-modal',
+    'mobile-nav-panel': 'fixed top-0 left-0 h-full w-64 bg-bg-secondary border-r border-border z-modal transform transition-transform duration-normal',
 
     // Effects
-    'glow-pulse': 'animate-pulse shadow-glow-cyan',
-    'border-glow': 'border border-neon-cyan shadow-glow-cyan',
+    'glow-pulse': 'animate-pulse shadow-glow-pink',
+    'border-glow': 'border border-neon-pink shadow-glow-pink',
   },
 
   // Safelist classes that should always be generated (for Blazor)
@@ -239,7 +252,7 @@ export default defineConfig({
     'card', 'card-elevated', 'card-glow', 'card-brutal',
 
     // Shortcuts - buttons
-    'btn', 'btn-neon', 'btn-neon-solid', 'btn-neon-magenta',
+    'btn', 'btn-neon', 'btn-neon-solid', 'btn-neon-rose',
     'btn-primary', 'btn-secondary', 'btn-ghost', 'btn-danger', 'btn-success',
     'btn-discord', 'btn-github', 'btn-google',
 
@@ -259,27 +272,30 @@ export default defineConfig({
     'data-table', 'data-th', 'data-td', 'data-row',
     'badge', 'badge-success', 'badge-warning', 'badge-danger', 'badge-info',
     'nav-link', 'nav-link-active',
+    'topnav-link', 'hamburger', 'hamburger-line',
+    'mobile-nav-overlay', 'mobile-nav-panel',
     'glow-pulse', 'border-glow',
 
     // Colors - backgrounds
     'bg-bg-primary', 'bg-bg-secondary', 'bg-bg-card', 'bg-bg-elevated',
-    'bg-neon-cyan', 'bg-neon-magenta', 'bg-neon-lime', 'bg-neon-orange', 'bg-neon-red',
-    'bg-neon-cyan/15', 'bg-neon-lime/15', 'bg-neon-orange/15', 'bg-neon-red/15',
+    'bg-neon-pink', 'bg-neon-rose', 'bg-neon-dusty', 'bg-neon-peach', 'bg-neon-orange', 'bg-neon-coral',
+    'bg-neon-pink/15', 'bg-neon-rose/15', 'bg-neon-peach/15', 'bg-neon-orange/15', 'bg-neon-coral/15',
     'bg-discord', 'bg-github', 'bg-google',
 
     // Colors - text
     'text-text-primary', 'text-text-secondary', 'text-text-muted', 'text-text-inverse',
-    'text-neon-cyan', 'text-neon-magenta', 'text-neon-lime', 'text-neon-orange', 'text-neon-red',
+    'text-neon-pink', 'text-neon-rose', 'text-neon-dusty', 'text-neon-peach', 'text-neon-orange', 'text-neon-coral',
     'text-white', 'text-black',
 
     // Colors - borders
-    'border-border', 'border-border-hover', 'border-neon-cyan', 'border-neon-cyan/30', 'border-neon-cyan/50',
-    'border-neon-magenta', 'border-neon-lime', 'border-neon-orange', 'border-neon-red',
+    'border-border', 'border-border-hover',
+    'border-neon-pink', 'border-neon-pink/30', 'border-neon-pink/50',
+    'border-neon-rose', 'border-neon-dusty', 'border-neon-peach', 'border-neon-orange', 'border-neon-coral',
     'border-text-primary', 'border-l-2',
 
     // Shadows
     'shadow-sm', 'shadow-md', 'shadow-lg',
-    'shadow-glow-cyan', 'shadow-glow-magenta', 'shadow-glow-lime', 'shadow-glow-orange', 'shadow-glow-red',
+    'shadow-glow-pink', 'shadow-glow-rose', 'shadow-glow-dusty', 'shadow-glow-peach', 'shadow-glow-orange', 'shadow-glow-coral',
 
     // Utilities
     'rounded-none', 'rounded-sm', 'rounded-md', 'rounded-lg', 'rounded-xl', 'rounded-full',
@@ -301,19 +317,24 @@ export default defineConfig({
     'border', 'border-b', 'border-t', 'border-l', 'border-r', 'border-2',
     'z-dropdown', 'z-sticky', 'z-modal', 'z-toast',
 
+    // Transforms
+    'transform', '-translate-x-full', 'translate-x-0',
+    'rotate-45', '-rotate-45', 'translate-y-2', '-translate-y-2',
+
     // Responsive
-    'md:flex', 'md:hidden', 'lg:flex', 'lg:hidden',
+    'md:flex', 'md:hidden', 'md:block', 'lg:flex', 'lg:hidden',
     'md:flex-row', 'md:grid-cols-2', 'md:grid-cols-3',
 
     // Hover states
-    'hover:bg-bg-elevated', 'hover:bg-neon-cyan', 'hover:bg-neon-magenta', 'hover:bg-neon-lime', 'hover:bg-neon-red',
-    'hover:text-text-primary', 'hover:text-neon-cyan',
-    'hover:border-neon-cyan', 'hover:border-neon-cyan/50',
-    'hover:shadow-glow-cyan', 'hover:shadow-glow-magenta', 'hover:shadow-glow-lime', 'hover:shadow-glow-red',
+    'hover:bg-bg-elevated',
+    'hover:bg-neon-pink', 'hover:bg-neon-rose', 'hover:bg-neon-dusty', 'hover:bg-neon-peach', 'hover:bg-neon-orange', 'hover:bg-neon-coral',
+    'hover:text-text-primary', 'hover:text-neon-pink', 'hover:text-neon-coral',
+    'hover:border-neon-pink', 'hover:border-neon-pink/50',
+    'hover:shadow-glow-pink', 'hover:shadow-glow-rose', 'hover:shadow-glow-peach', 'hover:shadow-glow-coral',
     'hover:opacity-90', 'hover:underline',
 
     // Focus states
-    'focus:border-neon-cyan', 'focus:shadow-glow-cyan', 'focus:outline-none',
+    'focus:border-neon-pink', 'focus:shadow-glow-pink', 'focus:outline-none',
 
     // Disabled states
     'disabled:opacity-50', 'disabled:cursor-not-allowed',

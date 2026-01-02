@@ -89,7 +89,7 @@
             @foreach (var exchange in _exchanges)
             {
                 <div class="card">
-                    <h3 class="font-bold text-neon-cyan mb-2">@exchange.Name</h3>
+                    <h3 class="font-bold text-neon-pink mb-2">@exchange.Name</h3>
                     <p class="text-sm text-text-secondary">Type: @exchange.Type</p>
                     <p class="text-xs text-text-muted mt-1">@(exchange.Durable ? "Durable" : "Transient")</p>
                 </div>
@@ -126,7 +126,7 @@
                         <span>Source: @evt.Source</span>
                     </div>
                     <details class="mt-2">
-                        <summary class="cursor-pointer text-sm text-neon-cyan hover:underline">View Data</summary>
+                        <summary class="cursor-pointer text-sm text-neon-pink hover:underline">View Data</summary>
                         <pre class="mt-2 p-3 rounded-sm bg-bg-secondary border border-border font-mono text-xs overflow-x-auto">@evt.GetFormattedData()</pre>
                     </details>
                 </div>
@@ -135,7 +135,7 @@
     }
 </section>
 
-<section class="card border-l-2 border-neon-cyan">
+<section class="card border-l-2 border-neon-pink">
     <h2 class="text-subheading mb-3">External Tools</h2>
     <div class="flex gap-4">
         <a href="http://localhost:15672" target="_blank" rel="noopener" class="link">

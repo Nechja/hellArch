@@ -11,7 +11,7 @@ var activitySource = new ActivitySource(ServiceName);
 if (args.Length < 2)
 {
     Console.Error.WriteLine("Usage: MigrationRunner <context> <connection-string>");
-    Console.Error.WriteLine("  context: auth | user | events");
+    Console.Error.WriteLine("  context: auth | user");
     return 1;
 }
 
@@ -32,7 +32,6 @@ try
     {
         "auth" => RunAuthMigrations(connectionString),
         "user" => RunUserMigrations(connectionString),
-        "events" => RunEventsMigrations(connectionString),
         _ => throw new ArgumentException($"Unknown context: {contextType}")
     };
 
@@ -85,30 +84,6 @@ int RunUserMigrations(string connString)
         .Options;
 
     using var context = new UserDbContext(options);
-    var pending = context.Database.GetPendingMigrations().ToList();
-
-    using var migrationActivity = activitySource.StartActivity("migrations.apply");
-    migrationActivity?.SetTag("db.migrations.pending", pending.Count);
-
-    foreach (var migration in pending)
-    {
-        using var stepActivity = activitySource.StartActivity("migration.step");
-        stepActivity?.SetTag("db.migration.name", migration);
-        Console.WriteLine($"    Applying: {migration}");
-    }
-
-    context.Database.Migrate();
-    return pending.Count;
-}
-
-int RunEventsMigrations(string connString)
-{
-    var options = new DbContextOptionsBuilder<EventsDbContext>()
-        .UseNpgsql(connString)
-        .UseSnakeCaseNamingConvention()
-        .Options;
-
-    using var context = new EventsDbContext(options);
     var pending = context.Database.GetPendingMigrations().ToList();
 
     using var migrationActivity = activitySource.StartActivity("migrations.apply");

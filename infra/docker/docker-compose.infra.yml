@@ -47,30 +47,6 @@ services:
     networks:
       - hellarch
 
-  events-db:
-    image: hellarch-events-db
-    build:
-      context: ../..
-      dockerfile: infra/dbs/events-db/Dockerfile
-    container_name: hellarch-events-db
-    environment:
-      POSTGRES_USER: hellarch
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hellarch}
-      POSTGRES_DB: events_db
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
-      HELLARCH_ENV: development
-    ports:
-      - "5435:5432"
-    volumes:
-      - events-db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hellarch -d events_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - hellarch
-
   redis:
     image: redis:7-alpine
     container_name: hellarch-redis
@@ -104,7 +80,6 @@ services:
 volumes:
   auth-db-data:
   user-db-data:
-  events-db-data:
   redis-data:
   rabbitmq-data:
 

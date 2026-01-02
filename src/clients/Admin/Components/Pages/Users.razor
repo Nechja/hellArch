@@ -98,7 +98,7 @@ else
                         @foreach (var perm in _userDetail.Permissions.Where(p => p.Value))
                         {
                             <div class="flex items-center justify-between p-2 rounded-sm bg-bg-secondary">
-                                <span class="font-mono text-sm text-neon-cyan">@perm.Key</span>
+                                <span class="font-mono text-sm text-neon-pink">@perm.Key</span>
                                 <button @onclick="() => RemovePermission(perm.Key)" class="btn-danger text-xs">Remove</button>
                             </div>
                         }

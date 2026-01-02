@@ -9,7 +9,7 @@ defineProps<{
 <template>
   <div class="space-y-8">
     <!-- Welcome Section -->
-    <section class="card border-l-2 border-neon-cyan">
+    <section class="card border-l-2 border-neon-pink">
       <h1 class="text-display text-gradient mb-2">
         Welcome{{ user?.display_name ? `, ${user.display_name}` : '' }}
       </h1>
@@ -24,11 +24,11 @@ defineProps<{
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <RouterLink to="/settings" class="card-glow group">
           <div class="flex items-start gap-4">
-            <div class="w-12 h-12 rounded-sm bg-neon-cyan/10 flex-center text-neon-cyan group-hover:shadow-glow-cyan transition-all">
+            <div class="w-12 h-12 rounded-sm bg-neon-pink/10 flex-center text-neon-pink group-hover:shadow-glow-cyan transition-all">
               <div class="i-carbon-settings text-2xl" />
             </div>
             <div>
-              <h3 class="font-bold text-text-primary group-hover:text-neon-cyan transition-colors">
+              <h3 class="font-bold text-text-primary group-hover:text-neon-pink transition-colors">
                 Settings
               </h3>
               <p class="text-caption">Manage your account preferences</p>
@@ -38,11 +38,11 @@ defineProps<{
 
         <a href="/admin" class="card-glow group">
           <div class="flex items-start gap-4">
-            <div class="w-12 h-12 rounded-sm bg-neon-magenta/10 flex-center text-neon-magenta group-hover:shadow-glow-magenta transition-all">
+            <div class="w-12 h-12 rounded-sm bg-neon-rose/10 flex-center text-neon-rose group-hover:shadow-glow-magenta transition-all">
               <div class="i-carbon-dashboard text-2xl" />
             </div>
             <div>
-              <h3 class="font-bold text-text-primary group-hover:text-neon-magenta transition-colors">
+              <h3 class="font-bold text-text-primary group-hover:text-neon-rose transition-colors">
                 Admin Panel
               </h3>
               <p class="text-caption">Access administrative tools</p>
@@ -70,16 +70,16 @@ defineProps<{
     <section class="card">
       <h2 class="text-subheading mb-4 text-glitch">Architecture</h2>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-        <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-cyan/50 transition-colors">
-          <div class="text-2xl font-bold text-neon-cyan">Vue 3</div>
+        <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-pink/50 transition-colors">
+          <div class="text-2xl font-bold text-neon-pink">Vue 3</div>
           <div class="text-caption">This app</div>
         </div>
-        <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-magenta/50 transition-colors">
-          <div class="text-2xl font-bold text-neon-magenta">Blazor</div>
+        <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-rose/50 transition-colors">
+          <div class="text-2xl font-bold text-neon-rose">Blazor</div>
           <div class="text-caption">Login & Admin</div>
         </div>
-        <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-lime/50 transition-colors">
-          <div class="text-2xl font-bold text-neon-lime">Go</div>
+        <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-peach/50 transition-colors">
+          <div class="text-2xl font-bold text-neon-peach">Go</div>
           <div class="text-caption">Auth Service</div>
         </div>
         <div class="p-4 rounded-sm bg-bg-secondary border border-border hover:border-neon-orange/50 transition-colors">
