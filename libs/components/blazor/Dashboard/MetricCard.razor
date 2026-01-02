@@ -1,0 +1,39 @@
+@namespace HellArch.Components.Dashboard
+
+<div class="metric-card @Class">
+    @if (TrendValue.HasValue)
+    {
+        <div class="@GetTrendClass()">
+            <span>@GetTrendIcon()</span>
+            <span>@Math.Abs(TrendValue.Value).ToString("0.#")%</span>
+        </div>
+    }
+    <div class="metric-value">@Value</div>
+    <div class="metric-label">@Label</div>
+    @if (Subtitle is not null)
+    {
+        <div class="text-xs text-text-muted mt-1">@Subtitle</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = "0";
+    [Parameter] public string Label { get; set; } = "Metric";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public double? TrendValue { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string GetTrendClass() => TrendValue switch
+    {
+        > 0 => "metric-trend-up",
+        < 0 => "metric-trend-down",
+        _ => "metric-trend-neutral"
+    };
+
+    private string GetTrendIcon() => TrendValue switch
+    {
+        > 0 => "↑",
+        < 0 => "↓",
+        _ => "→"
+    };
+}

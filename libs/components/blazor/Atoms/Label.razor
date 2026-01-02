@@ -1,0 +1,16 @@
+@namespace HellArch.Components.Atoms
+
+<span class="@GetLabelClass()">@ChildContent</span>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool Caps { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string GetLabelClass()
+    {
+        var baseClass = Caps ? "label-caps" : "label";
+        var custom = !string.IsNullOrEmpty(Class) ? $" {Class}" : "";
+        return $"{baseClass}{custom}";
+    }
+}

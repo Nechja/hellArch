@@ -1,0 +1,34 @@
+@namespace HellArch.Components.Atoms
+
+<span class="@GetBadgeClass()">
+    @if (Dot)
+    {
+        <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+    }
+    @ChildContent
+</span>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public BadgeVariant Variant { get; set; } = BadgeVariant.Default;
+    [Parameter] public bool Dot { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string GetBadgeClass()
+    {
+        var variantClass = Variant switch
+        {
+            BadgeVariant.Success => "badge-success",
+            BadgeVariant.Warning => "badge-warning",
+            BadgeVariant.Danger => "badge-danger",
+            BadgeVariant.Info => "badge-info",
+            _ => "badge"
+        };
+
+        var dotClass = Dot ? " badge-dot" : "";
+        var custom = !string.IsNullOrEmpty(Class) ? $" {Class}" : "";
+        return $"{variantClass}{dotClass}{custom}";
+    }
+
+    public enum BadgeVariant { Default, Success, Warning, Danger, Info }
+}

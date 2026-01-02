@@ -1,0 +1,84 @@
+@namespace HellArch.Components.Dashboard
+
+<div class="pagination">
+    <button type="button"
+            class="@(CurrentPage <= 1 ? "page-btn-disabled" : "page-btn")"
+            disabled="@(CurrentPage <= 1)"
+            @onclick="() => GoToPage(CurrentPage - 1)">
+        ←
+    </button>
+
+    @foreach (var page in GetVisiblePages())
+    {
+        @if (page == -1)
+        {
+            <span class="page-ellipsis">…</span>
+        }
+        else
+        {
+            <button type="button"
+                    class="@(page == CurrentPage ? "page-btn-active" : "page-btn")"
+                    @onclick="() => GoToPage(page)">
+                @page
+            </button>
+        }
+    }
+
+    <button type="button"
+            class="@(CurrentPage >= TotalPages ? "page-btn-disabled" : "page-btn")"
+            disabled="@(CurrentPage >= TotalPages)"
+            @onclick="() => GoToPage(CurrentPage + 1)">
+        →
+    </button>
+</div>
+
+@code {
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public int TotalPages { get; set; } = 1;
+    [Parameter] public int VisiblePages { get; set; } = 5;
+    [Parameter] public EventCallback<int> CurrentPageChanged { get; set; }
+
+    private async Task GoToPage(int page)
+    {
+        if (page < 1 || page > TotalPages || page == CurrentPage) return;
+        CurrentPage = page;
+        await CurrentPageChanged.InvokeAsync(page);
+    }
+
+    private IEnumerable<int> GetVisiblePages()
+    {
+        if (TotalPages <= VisiblePages)
+        {
+            return Enumerable.Range(1, TotalPages);
+        }
+
+        var pages = new List<int>();
+        var half = VisiblePages / 2;
+        var start = Math.Max(1, CurrentPage - half);
+        var end = Math.Min(TotalPages, start + VisiblePages - 1);
+
+        if (end - start < VisiblePages - 1)
+        {
+            start = Math.Max(1, end - VisiblePages + 1);
+        }
+
+        if (start > 1)
+        {
+            pages.Add(1);
+            if (start > 2) pages.Add(-1); // ellipsis
+        }
+
+        for (var i = start; i <= end; i++)
+        {
+            pages.Add(i);
+        }
+
+        if (end < TotalPages)
+        {
+            if (end < TotalPages - 1) pages.Add(-1); // ellipsis
+            pages.Add(TotalPages);
+        }
+
+        return pages;
+    }
+}

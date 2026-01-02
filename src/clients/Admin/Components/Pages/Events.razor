@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject Admin.Services.RabbitMqAdapter RabbitMq
 @inject Admin.Services.RealtimeHubService RealtimeHub
+@inject IHttpContextAccessor HttpContextAccessor
 @inject ILogger<Events> Logger
 
 <PageTitle>Events - HellArch Admin</PageTitle>
@@ -209,6 +210,19 @@
         RealtimeHub.OnEventReceived += HandleEventReceived;
         RealtimeHub.OnConnectionStateChanged += HandleConnectionStateChanged;
         _connectionStatus = RealtimeHub.ConnectionStateText;
+
+        // Connect to realtime hub with session token (lazy connect on first admin visit)
+        var sessionToken = HttpContextAccessor.HttpContext?.Items["SessionToken"] as string;
+        if (!string.IsNullOrEmpty(sessionToken))
+        {
+            await RealtimeHub.Connect(sessionToken);
+            _connectionStatus = RealtimeHub.ConnectionStateText;
+        }
+        else
+        {
+            Logger.LogWarning("No session token available for realtime hub connection");
+            _connectionStatus = "No Auth";
+        }
 
         // Load initial data from RabbitMQ
         await LoadData();

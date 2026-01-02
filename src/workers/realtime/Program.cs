@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -85,17 +86,101 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         // SignalR sends token in query string for WebSocket connections
         options.Events = new JwtBearerEvents
         {
-            OnMessageReceived = context =>
+            OnMessageReceived = async context =>
             {
-                var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
-
-                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                if (!path.StartsWithSegments("/hubs"))
                 {
-                    context.Token = accessToken;
+                    return;
                 }
 
-                return Task.CompletedTask;
+                // Try JWT access_token first
+                var accessToken = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    context.Token = accessToken;
+                    return;
+                }
+
+                // Fallback: session_token validation via auth service
+                var sessionToken = context.Request.Query["session_token"];
+                if (string.IsNullOrEmpty(sessionToken))
+                {
+                    return;
+                }
+
+                var httpClientFactory = context.HttpContext.RequestServices.GetRequiredService<IHttpClientFactory>();
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("SessionAuth");
+
+                try
+                {
+                    using var client = httpClientFactory.CreateClient("AuthService");
+                    using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/validate");
+                    request.Headers.Add("X-Session-Token", sessionToken.ToString());
+
+                    using var response = await client.SendAsync(request);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        logger.LogDebug("Session validation failed: {StatusCode}", response.StatusCode);
+                        return;
+                    }
+
+                    var content = await response.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(content);
+
+                    if (!doc.RootElement.TryGetProperty("user_id", out var userIdElement))
+                    {
+                        logger.LogDebug("No user_id in session validation response");
+                        return;
+                    }
+
+                    var userId = userIdElement.GetString();
+                    if (string.IsNullOrEmpty(userId))
+                    {
+                        return;
+                    }
+
+                    // Build claims from session validation response
+                    var claims = new List<Claim>
+                    {
+                        new(ClaimTypes.NameIdentifier, userId),
+                        new("sub", userId)
+                    };
+
+                    if (doc.RootElement.TryGetProperty("username", out var usernameElement))
+                    {
+                        var username = usernameElement.GetString();
+                        if (!string.IsNullOrEmpty(username))
+                        {
+                            claims.Add(new Claim(ClaimTypes.Name, username));
+                        }
+                    }
+
+                    // Check for admin permission
+                    if (doc.RootElement.TryGetProperty("permissions", out var permissionsElement))
+                    {
+                        if (permissionsElement.TryGetProperty("admin.panel", out var adminPerm) &&
+                            adminPerm.GetBoolean())
+                        {
+                            claims.Add(new Claim(ClaimTypes.Role, "admin"));
+                        }
+                    }
+
+                    var identity = new ClaimsIdentity(claims, "SessionToken");
+                    context.Principal = new ClaimsPrincipal(identity);
+                    context.Success();
+
+                    logger.LogDebug("Session authenticated for user {UserId}", userId);
+                }
+                catch (HttpRequestException ex)
+                {
+                    logger.LogWarning(ex, "HTTP error validating session");
+                }
+                catch (JsonException ex)
+                {
+                    logger.LogWarning(ex, "Failed to parse session validation response");
+                }
             }
         };
     });
@@ -129,6 +214,17 @@ builder.Services.AddCors(options =>
 
 // Health checks
 builder.Services.AddHealthChecks();
+
+// HTTP client for session validation (fallback auth)
+var authServiceUrl = Environment.GetEnvironmentVariable("AUTH_SERVICE_URL")
+    ?? builder.Configuration["Auth:ServiceUrl"]
+    ?? "http://hellarch-auth:5001";
+
+builder.Services.AddHttpClient("AuthService", client =>
+{
+    client.BaseAddress = new Uri(authServiceUrl);
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
 
 // RabbitMQ consumer
 builder.Services.AddHostedService<EventConsumer>();

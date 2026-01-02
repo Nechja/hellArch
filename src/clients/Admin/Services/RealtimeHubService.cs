@@ -5,21 +5,27 @@ namespace Admin.Services;
 
 /// <summary>
 /// Service for connecting to the realtime SignalR hub and receiving live events.
-/// Registered as a singleton to maintain a single connection across all components.
+/// Registered as a singleton. Connection is established lazily when Connect is called
+/// with a valid session token.
 /// </summary>
 public sealed class RealtimeHubService : IAsyncDisposable
 {
-    private readonly HubConnection _hubConnection;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<RealtimeHubService> _logger;
     private readonly List<CloudEventDto> _recentEvents = [];
     private readonly object _eventsLock = new();
+    private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private const int MaxRecentEvents = 50;
+
+    private HubConnection? _hubConnection;
+    private string? _currentSessionToken;
 
     public event EventHandler<CloudEventReceivedEventArgs>? OnEventReceived;
     public event EventHandler<ConnectionStateChangedEventArgs>? OnConnectionStateChanged;
 
-    public HubConnectionState ConnectionState => _hubConnection.State;
-    public string ConnectionStateText => _hubConnection.State.ToString();
+    public HubConnectionState ConnectionState => _hubConnection?.State ?? HubConnectionState.Disconnected;
+    public string ConnectionStateText => _hubConnection?.State.ToString() ?? "Disconnected";
+    public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
 
     public IReadOnlyList<CloudEventDto> RecentEvents
     {
@@ -34,43 +40,108 @@ public sealed class RealtimeHubService : IAsyncDisposable
 
     public RealtimeHubService(IConfiguration configuration, ILogger<RealtimeHubService> logger)
     {
+        _configuration = configuration;
         _logger = logger;
+    }
 
+    /// <summary>
+    /// Connects to the realtime hub with the provided session token.
+    /// If already connected with the same token, this is a no-op.
+    /// If connected with a different token, reconnects with the new token.
+    /// </summary>
+    public async Task Connect(string sessionToken, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(sessionToken))
+        {
+            _logger.LogWarning("Cannot connect to realtime hub without a session token");
+            return;
+        }
+
+        await _connectionLock.WaitAsync(cancellationToken);
+        try
+        {
+            // Already connected with this token
+            if (_hubConnection?.State == HubConnectionState.Connected && _currentSessionToken == sessionToken)
+            {
+                return;
+            }
+
+            // Different token - disconnect first
+            if (_hubConnection is not null && _currentSessionToken != sessionToken)
+            {
+                await DisconnectInternal();
+            }
+
+            // Build new connection if needed
+            if (_hubConnection is null)
+            {
+                _hubConnection = BuildConnection(sessionToken);
+                _currentSessionToken = sessionToken;
+            }
+
+            // Connect
+            if (_hubConnection.State == HubConnectionState.Disconnected)
+            {
+                await _hubConnection.StartAsync(cancellationToken);
+                _logger.LogInformation("Connected to realtime hub");
+                OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Connected"));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to connect to realtime hub");
+            OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Failed"));
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
+    }
+
+    private HubConnection BuildConnection(string sessionToken)
+    {
         var gatewayUrl = Environment.GetEnvironmentVariable("GATEWAY_URL")
-            ?? configuration.GetValue<string>("Gateway:Url")
+            ?? _configuration.GetValue<string>("Gateway:Url")
             ?? "http://localhost:5000";
 
         var hubUrl = $"{gatewayUrl}/hubs/events";
 
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl(hubUrl)
+        var connection = new HubConnectionBuilder()
+            .WithUrl(hubUrl, options =>
+            {
+                options.AccessTokenProvider = () => Task.FromResult<string?>(null);
+                // Pass session token for authentication
+                options.Headers["X-Session-Token"] = sessionToken;
+                options.Url = new Uri($"{hubUrl}?session_token={Uri.EscapeDataString(sessionToken)}");
+            })
             .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10) })
             .Build();
 
-        ConfigureHandlers();
+        ConfigureHandlers(connection);
+        return connection;
     }
 
-    private void ConfigureHandlers()
+    private void ConfigureHandlers(HubConnection connection)
     {
-        _hubConnection.On<CloudEventDto>("ReceiveEvent", HandleEvent);
-        _hubConnection.On<string>("SessionInvalidated", HandleSessionInvalidated);
-        _hubConnection.On("UserUpdated", HandleUserUpdated);
+        connection.On<CloudEventDto>("ReceiveEvent", HandleEvent);
+        connection.On<string>("SessionInvalidated", HandleSessionInvalidated);
+        connection.On("UserUpdated", HandleUserUpdated);
 
-        _hubConnection.Reconnecting += error =>
+        connection.Reconnecting += error =>
         {
             _logger.LogWarning(error, "SignalR connection lost, attempting to reconnect...");
             OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Reconnecting"));
             return Task.CompletedTask;
         };
 
-        _hubConnection.Reconnected += connectionId =>
+        connection.Reconnected += connectionId =>
         {
             _logger.LogInformation("SignalR reconnected with connection ID: {ConnectionId}", connectionId);
             OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Connected"));
             return Task.CompletedTask;
         };
 
-        _hubConnection.Closed += error =>
+        connection.Closed += error =>
         {
             _logger.LogWarning(error, "SignalR connection closed");
             OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Disconnected"));
@@ -78,42 +149,41 @@ public sealed class RealtimeHubService : IAsyncDisposable
         };
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken = default)
+    public async Task Disconnect(CancellationToken cancellationToken = default)
     {
-        if (_hubConnection.State != HubConnectionState.Disconnected)
-        {
-            return;
-        }
-
+        await _connectionLock.WaitAsync(cancellationToken);
         try
         {
-            await _hubConnection.StartAsync(cancellationToken);
-            _logger.LogInformation("Connected to realtime hub");
-            OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Connected"));
+            await DisconnectInternal();
         }
-        catch (Exception ex)
+        finally
         {
-            _logger.LogError(ex, "Failed to connect to realtime hub");
-            OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Failed"));
-            throw;
+            _connectionLock.Release();
         }
     }
 
-    public async Task StopAsync(CancellationToken cancellationToken = default)
+    private async Task DisconnectInternal()
     {
-        if (_hubConnection.State == HubConnectionState.Disconnected)
+        if (_hubConnection is null)
         {
             return;
         }
 
-        await _hubConnection.StopAsync(cancellationToken);
+        if (_hubConnection.State != HubConnectionState.Disconnected)
+        {
+            await _hubConnection.StopAsync();
+        }
+
+        await _hubConnection.DisposeAsync();
+        _hubConnection = null;
+        _currentSessionToken = null;
         _logger.LogInformation("Disconnected from realtime hub");
         OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Disconnected"));
     }
 
     public async Task SubscribeToEventType(string eventType)
     {
-        if (_hubConnection.State != HubConnectionState.Connected)
+        if (_hubConnection?.State != HubConnectionState.Connected)
         {
             _logger.LogWarning("Cannot subscribe - not connected to hub");
             return;
@@ -125,7 +195,7 @@ public sealed class RealtimeHubService : IAsyncDisposable
 
     public async Task UnsubscribeFromEventType(string eventType)
     {
-        if (_hubConnection.State != HubConnectionState.Connected)
+        if (_hubConnection?.State != HubConnectionState.Connected)
         {
             return;
         }
@@ -162,7 +232,19 @@ public sealed class RealtimeHubService : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        await _hubConnection.DisposeAsync();
+        await _connectionLock.WaitAsync();
+        try
+        {
+            if (_hubConnection is not null)
+            {
+                await _hubConnection.DisposeAsync();
+            }
+        }
+        finally
+        {
+            _connectionLock.Release();
+            _connectionLock.Dispose();
+        }
     }
 }
 

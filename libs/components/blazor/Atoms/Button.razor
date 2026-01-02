@@ -1,0 +1,46 @@
+@namespace HellArch.Components.Atoms
+
+<button type="@Type" class="@GetButtonClass()" disabled="@Disabled" @onclick="OnClick">
+    @ChildContent
+</button>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public ButtonVariant Variant { get; set; } = ButtonVariant.Primary;
+    [Parameter] public ButtonSize Size { get; set; } = ButtonSize.Default;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string Type { get; set; } = "button";
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string GetButtonClass()
+    {
+        var variantClass = Variant switch
+        {
+            ButtonVariant.Primary => "btn-primary",
+            ButtonVariant.Secondary => "btn-secondary",
+            ButtonVariant.Ghost => "btn-ghost",
+            ButtonVariant.Danger => "btn-danger",
+            ButtonVariant.Success => "btn-success",
+            ButtonVariant.Neon => "btn-neon",
+            ButtonVariant.NeonSolid => "btn-neon-solid",
+            ButtonVariant.Discord => "btn-discord",
+            ButtonVariant.Github => "btn-github",
+            ButtonVariant.Google => "btn-google",
+            _ => "btn-primary"
+        };
+
+        var sizeClass = Size switch
+        {
+            ButtonSize.Small => " input-sm",
+            ButtonSize.Large => " px-6 py-3 text-lg",
+            _ => ""
+        };
+
+        var custom = !string.IsNullOrEmpty(Class) ? $" {Class}" : "";
+        return $"{variantClass}{sizeClass}{custom}";
+    }
+
+    public enum ButtonVariant { Primary, Secondary, Ghost, Danger, Success, Neon, NeonSolid, Discord, Github, Google }
+    public enum ButtonSize { Default, Small, Large }
+}

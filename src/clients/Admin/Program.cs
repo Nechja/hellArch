@@ -90,10 +90,10 @@ builder.Services.AddScoped<RedisBrowserAdapter>();
 builder.Services.AddScoped<RabbitMqAdapter>();
 builder.Services.AddScoped<HealthAdapter>();
 
-// Realtime SignalR hub connection (singleton for shared connection)
+// Realtime SignalR hub connection (singleton for shared connection, lazy connect)
 builder.Services.AddSingleton<RealtimeHubService>();
 builder.Services.AddSingleton<ToastService>();
-builder.Services.AddHostedService<RealtimeHubHostedService>();
+builder.Services.AddHttpContextAccessor();
 
 var otelEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT")
     ?? "http://localhost:4318";

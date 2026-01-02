@@ -1,0 +1,35 @@
+@namespace HellArch.Components.Dashboard
+
+<span class="@GetPillClass()">
+    @if (ShowDot)
+    {
+        <span class="w-1.5 h-1.5 rounded-full @GetDotClass()"></span>
+    }
+    @Text
+</span>
+
+@code {
+    [Parameter] public string Text { get; set; } = "Status";
+    [Parameter] public PillVariant Variant { get; set; } = PillVariant.Neutral;
+    [Parameter] public bool ShowDot { get; set; } = true;
+
+    private string GetPillClass() => Variant switch
+    {
+        PillVariant.Success or PillVariant.Online => "pill-success",
+        PillVariant.Warning or PillVariant.Pending => "pill-warning",
+        PillVariant.Danger or PillVariant.Offline => "pill-danger",
+        PillVariant.Info => "pill-info",
+        _ => "pill-neutral"
+    };
+
+    private string GetDotClass() => Variant switch
+    {
+        PillVariant.Success or PillVariant.Online => "bg-success",
+        PillVariant.Warning or PillVariant.Pending => "bg-warning animate-pulse",
+        PillVariant.Danger or PillVariant.Offline => "bg-danger",
+        PillVariant.Info => "bg-info",
+        _ => "bg-text-muted"
+    };
+
+    public enum PillVariant { Neutral, Success, Warning, Danger, Info, Online, Offline, Pending }
+}

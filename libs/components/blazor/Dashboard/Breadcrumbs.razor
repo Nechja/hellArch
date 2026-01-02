@@ -1,0 +1,26 @@
+@namespace HellArch.Components.Dashboard
+
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+    @for (var i = 0; i < Items.Count; i++)
+    {
+        var item = Items[i];
+        var isLast = i == Items.Count - 1;
+
+        @if (isLast)
+        {
+            <span class="breadcrumb-current" aria-current="page">@item.Label</span>
+        }
+        else
+        {
+            <a href="@item.Href" class="breadcrumb">@item.Label</a>
+            <span class="breadcrumb-sep" aria-hidden="true">@Separator</span>
+        }
+    }
+</nav>
+
+@code {
+    [Parameter] public IReadOnlyList<BreadcrumbItem> Items { get; set; } = [];
+    [Parameter] public string Separator { get; set; } = "/";
+
+    public record BreadcrumbItem(string Label, string? Href = null);
+}

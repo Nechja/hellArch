@@ -211,8 +211,9 @@ services:
       - ASPNETCORE_URLS=http://+:5020
       - ASPNETCORE_ENVIRONMENT=Development
       - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - AUTH_SERVICE_URL=http://hellarch-auth:5001
       - JWT_PUBLIC_KEY_PATH=/keys/dev-public.pem
-      - CORS_ORIGINS=http://localhost:5000,http://localhost:5010,http://hellarch-gateway:5000
+      - CORS_ORIGINS=http://localhost:5000,http://localhost:5010,http://hellarch-gateway:5000,http://hellarch-admin:5003
       - OTEL_SERVICE_NAME=realtime-worker
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
@@ -249,6 +250,29 @@ services:
       - hellarch
     restart: unless-stopped
 
+  dlq-worker:
+    build:
+      context: ../../src/workers/dlq
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hellarch-dlq-worker
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "5025:5025"
+    environment:
+      - ASPNETCORE_URLS=http://+:5025
+      - ASPNETCORE_ENVIRONMENT=Development
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - OTEL_SERVICE_NAME=dlq-worker
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - LOG_LEVEL=debug
+    volumes:
+      - ../../src/workers/dlq:/app
+      - dlq-nuget:/root/.nuget
+    networks:
+      - hellarch
+    restart: unless-stopped
+
 volumes:
   gateway-nuget:
   auth-go-cache:
@@ -259,6 +283,7 @@ volumes:
   webhooks-go-cache:
   realtime-nuget:
   infra-go-cache:
+  dlq-nuget:
 
 networks:
   hellarch:

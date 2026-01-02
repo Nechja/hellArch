@@ -1,0 +1,42 @@
+@namespace HellArch.Components.Dashboard
+
+<div class="@GetAlertClass()" role="alert">
+    <span class="alert-icon">@GetIcon()</span>
+    <div class="alert-content">
+        @if (Title is not null)
+        {
+            <div class="alert-title">@Title</div>
+        }
+        @ChildContent
+    </div>
+    @if (Dismissible)
+    {
+        <button type="button" class="alert-dismiss" @onclick="OnDismiss">×</button>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public AlertVariant Variant { get; set; } = AlertVariant.Info;
+    [Parameter] public bool Dismissible { get; set; }
+    [Parameter] public EventCallback OnDismiss { get; set; }
+
+    private string GetAlertClass() => Variant switch
+    {
+        AlertVariant.Success => "alert-success",
+        AlertVariant.Warning => "alert-warning",
+        AlertVariant.Danger => "alert-danger",
+        _ => "alert-info"
+    };
+
+    private string GetIcon() => Variant switch
+    {
+        AlertVariant.Success => "✓",
+        AlertVariant.Warning => "⚠",
+        AlertVariant.Danger => "✕",
+        _ => "ℹ"
+    };
+
+    public enum AlertVariant { Info, Success, Warning, Danger }
+}

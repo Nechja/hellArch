@@ -1,0 +1,31 @@
+@namespace HellArch.Components.Atoms
+
+@if (Vertical)
+{
+    <div class="@GetClass()"></div>
+}
+else if (ChildContent != null)
+{
+    <div class="divider-text">
+        <span class="divider flex-1"></span>
+        @ChildContent
+        <span class="divider flex-1"></span>
+    </div>
+}
+else
+{
+    <hr class="@GetClass()" />
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool Vertical { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string GetClass()
+    {
+        var baseClass = Vertical ? "divider-vertical" : "divider";
+        var custom = !string.IsNullOrEmpty(Class) ? $" {Class}" : "";
+        return $"{baseClass}{custom}";
+    }
+}
