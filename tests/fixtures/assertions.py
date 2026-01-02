@@ -7,8 +7,8 @@ from pydantic import BaseModel, ValidationError
 T = TypeVar("T", bound=BaseModel)
 
 
-class AssertionError(Exception):
-    """Custom assertion error with detailed messages."""
+class TestAssertionError(AssertionError):
+    """Custom assertion error with detailed messages for test failures."""
 
     pass
 
@@ -18,7 +18,7 @@ def assert_status(response: httpx.Response, expected: int, message: str | None =
     if response.status_code != expected:
         body = response.text[:500] if response.text else "(empty)"
         msg = message or f"Expected status {expected}, got {response.status_code}"
-        raise AssertionError(f"{msg}\nResponse body: {body}")
+        raise TestAssertionError(f"{msg}\nResponse body: {body}")
 
 
 def assert_json_contains(response: httpx.Response, expected: dict[str, Any]) -> None:
@@ -26,9 +26,9 @@ def assert_json_contains(response: httpx.Response, expected: dict[str, Any]) -> 
     data = response.json()
     for key, value in expected.items():
         if key not in data:
-            raise AssertionError(f"Missing key '{key}' in response: {data}")
+            raise TestAssertionError(f"Missing key '{key}' in response: {data}")
         if data[key] != value:
-            raise AssertionError(f"Expected {key}={value!r}, got {data[key]!r}")
+            raise TestAssertionError(f"Expected {key}={value!r}, got {data[key]!r}")
 
 
 def assert_json_structure(response: httpx.Response, keys: list[str]) -> None:
@@ -36,7 +36,7 @@ def assert_json_structure(response: httpx.Response, keys: list[str]) -> None:
     data = response.json()
     missing = [k for k in keys if k not in data]
     if missing:
-        raise AssertionError(f"Missing keys in response: {missing}\nGot: {list(data.keys())}")
+        raise TestAssertionError(f"Missing keys in response: {missing}\nGot: {list(data.keys())}")
 
 
 def assert_error_response(
@@ -49,9 +49,9 @@ def assert_error_response(
     assert_status(response, expected_status)
     data = response.json()
     if error_key not in data:
-        raise AssertionError(f"Expected error key '{error_key}' in response: {data}")
+        raise TestAssertionError(f"Expected error key '{error_key}' in response: {data}")
     if expected_error and data[error_key] != expected_error:
-        raise AssertionError(f"Expected error '{expected_error}', got '{data[error_key]}'")
+        raise TestAssertionError(f"Expected error '{expected_error}', got '{data[error_key]}'")
 
 
 def assert_valid_uuid(value: str, field_name: str = "value") -> None:
@@ -63,7 +63,7 @@ def assert_valid_uuid(value: str, field_name: str = "value") -> None:
         re.IGNORECASE,
     )
     if not uuid_pattern.match(value):
-        raise AssertionError(f"Invalid UUID for {field_name}: {value}")
+        raise TestAssertionError(f"Invalid UUID for {field_name}: {value}")
 
 
 def assert_valid_datetime(value: str, field_name: str = "value") -> datetime:
@@ -71,7 +71,7 @@ def assert_valid_datetime(value: str, field_name: str = "value") -> datetime:
     try:
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except (ValueError, AttributeError) as e:
-        raise AssertionError(f"Invalid datetime for {field_name}: {value}") from e
+        raise TestAssertionError(f"Invalid datetime for {field_name}: {value}") from e
 
 
 def assert_response_model(response: httpx.Response, model: type[T]) -> T:
@@ -80,7 +80,7 @@ def assert_response_model(response: httpx.Response, model: type[T]) -> T:
         data = response.json()
         return model.model_validate(data)
     except ValidationError as e:
-        raise AssertionError(f"Response does not match {model.__name__}:\n{e}") from e
+        raise TestAssertionError(f"Response does not match {model.__name__}:\n{e}") from e
 
 
 def assert_list_response(
@@ -92,20 +92,20 @@ def assert_list_response(
     """Validate a list response against a Pydantic model."""
     data = response.json()
     if not isinstance(data, list):
-        raise AssertionError(f"Expected list response, got {type(data).__name__}")
+        raise TestAssertionError(f"Expected list response, got {type(data).__name__}")
 
     if len(data) < min_items:
-        raise AssertionError(f"Expected at least {min_items} items, got {len(data)}")
+        raise TestAssertionError(f"Expected at least {min_items} items, got {len(data)}")
 
     if max_items is not None and len(data) > max_items:
-        raise AssertionError(f"Expected at most {max_items} items, got {len(data)}")
+        raise TestAssertionError(f"Expected at most {max_items} items, got {len(data)}")
 
     items = []
     for i, item in enumerate(data):
         try:
             items.append(item_model.model_validate(item))
         except ValidationError as e:
-            raise AssertionError(f"Item {i} does not match {item_model.__name__}:\n{e}") from e
+            raise TestAssertionError(f"Item {i} does not match {item_model.__name__}:\n{e}") from e
 
     return items
 
@@ -124,18 +124,18 @@ def assert_pagination_response(
     required_keys = [items_key, total_key]
     missing = [k for k in required_keys if k not in data]
     if missing:
-        raise AssertionError(f"Missing pagination keys: {missing}")
+        raise TestAssertionError(f"Missing pagination keys: {missing}")
 
     items_data = data[items_key]
     if not isinstance(items_data, list):
-        raise AssertionError(f"Expected {items_key} to be a list")
+        raise TestAssertionError(f"Expected {items_key} to be a list")
 
     items = []
     for i, item in enumerate(items_data):
         try:
             items.append(item_model.model_validate(item))
         except ValidationError as e:
-            raise AssertionError(f"Item {i} does not match {item_model.__name__}:\n{e}") from e
+            raise TestAssertionError(f"Item {i} does not match {item_model.__name__}:\n{e}") from e
 
     pagination = {
         "total": data[total_key],
@@ -176,9 +176,9 @@ class ResponseAssertions:
 
     def is_error(self, expected_error: str | None = None) -> "ResponseAssertions":
         if "error" not in self.data:
-            raise AssertionError(f"Expected error response, got: {self.data}")
+            raise TestAssertionError(f"Expected error response, got: {self.data}")
         if expected_error and self.data["error"] != expected_error:
-            raise AssertionError(f"Expected error '{expected_error}', got '{self.data['error']}'")
+            raise TestAssertionError(f"Expected error '{expected_error}', got '{self.data['error']}'")
         return self
 
 

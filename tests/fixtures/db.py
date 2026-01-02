@@ -45,7 +45,7 @@ async def user_db() -> AsyncGenerator[psycopg.AsyncConnection, None]:
 
 
 async def cleanup_auth_db(conn: psycopg.AsyncConnection) -> None:
-    await conn.execute("TRUNCATE sessions, linked_accounts, users CASCADE")
+    await conn.execute("TRUNCATE linked_accounts, users CASCADE")
 
 
 async def cleanup_user_db(conn: psycopg.AsyncConnection) -> None:

@@ -212,11 +212,11 @@ class ProfileBuilder:
 
     def as_update_request(self) -> dict[str, Any]:
         data: dict[str, Any] = {}
-        if self._data.display_name:
+        if self._data.display_name is not None:
             data["display_name"] = self._data.display_name
-        if self._data.bio:
+        if self._data.bio is not None:
             data["bio"] = self._data.bio
-        if self._data.avatar_url:
+        if self._data.avatar_url is not None:
             data["avatar_url"] = self._data.avatar_url
         return data
 

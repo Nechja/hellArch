@@ -50,14 +50,14 @@ type LinkedAccount = {
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/profile/{id}` | Get user profile |
-| POST | `/profile` | Create profile |
-| PUT | `/profile/{id}` | Update profile |
-| GET | `/profile/{id}/preferences` | Get preferences |
-| PUT | `/profile/{id}/preferences` | Update preferences |
-| GET | `/profile/{id}/accounts` | List linked accounts |
-| POST | `/profile/{id}/accounts` | Link account |
-| DELETE | `/profile/{id}/accounts/{provider}` | Unlink account |
+| GET | `/user/health` | Health check (includes DB status) |
+| GET | `/user/me` | Get current user profile |
+| PUT | `/user/me` | Update current user profile |
+| GET | `/user/{id}` | Get user profile |
+| POST | `/user` | Create profile |
+| PUT | `/user/{id}` | Update profile |
+| GET | `/user/{id}/preferences` | Get preferences |
+| PUT | `/user/{id}/preferences` | Update preferences |
 
 ## Event Consuming
 

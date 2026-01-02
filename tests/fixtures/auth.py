@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
@@ -8,9 +8,6 @@ from uuid import uuid4
 import psycopg
 import pytest_asyncio
 import redis.asyncio as redis
-
-from fixtures.db import auth_db_connection
-from fixtures.redis import redis_connection
 
 
 def hash_token(token: str) -> str:
@@ -129,53 +126,46 @@ async def delete_test_session_from_redis(
 
 
 @pytest_asyncio.fixture
-async def test_user_factory() -> Callable[..., AuthUser]:
+async def test_user_factory(auth_db: psycopg.AsyncConnection) -> Callable[..., Awaitable[AuthUser]]:
     created_users: list[str] = []
 
     async def _create(email: str = "test@example.com", username: str = "testuser") -> AuthUser:
-        async with auth_db_connection() as conn:
-            user = await create_test_user(conn, email, username)
-            created_users.append(user.id)
-            await conn.commit()
-            return user
+        user = await create_test_user(auth_db, email, username)
+        created_users.append(user.id)
+        await auth_db.commit()
+        return user
 
     yield _create
 
-    async with auth_db_connection() as conn:
-        for user_id in created_users:
-            await conn.execute("DELETE FROM users WHERE id = %s", (user_id,))
-        await conn.commit()
+    for user_id in created_users:
+        await auth_db.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    await auth_db.commit()
 
 
 @pytest_asyncio.fixture
-async def test_user(test_user_factory: Callable[..., AuthUser]) -> AuthUser:
+async def test_user(test_user_factory: Callable[..., Awaitable[AuthUser]]) -> AuthUser:
     return await test_user_factory()
 
 
 @pytest_asyncio.fixture
-async def test_session(test_user: AuthUser) -> AuthSession:
+async def test_session(test_user: AuthUser, redis_client: redis.Redis) -> AuthSession:
     """Create a test session in Redis for the test user."""
-    async with redis_connection() as redis_client:
-        session = await create_test_session_in_redis(redis_client, test_user.id)
-        yield session
-        # Cleanup
-        await delete_test_session_from_redis(redis_client, session)
+    session = await create_test_session_in_redis(redis_client, test_user.id)
+    yield session
+    await delete_test_session_from_redis(redis_client, session)
 
 
 @pytest_asyncio.fixture
-async def test_session_factory() -> Callable:
+async def test_session_factory(redis_client: redis.Redis) -> Callable[[str], Awaitable[AuthSession]]:
     """Factory fixture for creating multiple test sessions."""
     created_sessions: list[AuthSession] = []
 
     async def _create(user_id: str) -> AuthSession:
-        async with redis_connection() as redis_client:
-            session = await create_test_session_in_redis(redis_client, user_id)
-            created_sessions.append(session)
-            return session
+        session = await create_test_session_in_redis(redis_client, user_id)
+        created_sessions.append(session)
+        return session
 
     yield _create
 
-    # Cleanup all created sessions
-    async with redis_connection() as redis_client:
-        for session in created_sessions:
-            await delete_test_session_from_redis(redis_client, session)
+    for session in created_sessions:
+        await delete_test_session_from_redis(redis_client, session)
