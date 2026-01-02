@@ -725,7 +725,8 @@ export default defineConfig({
     'nav-link', 'nav-link-active', 'nav-icon',
     'topnav-link', 'topnav-link-active', 'hamburger', 'hamburger-line',
     'mobile-nav-overlay', 'mobile-nav-panel',
-    'skeleton', 'skeleton-text', 'skeleton-avatar',
+    'skeleton', 'skeleton-text', 'skeleton-avatar', 'skeleton-rect', 'skeleton-card',
+    'toast', 'toast-info', 'toast-success', 'toast-warning', 'toast-error', 'toast-icon',
     'glow-pulse', 'border-glow', 'hover-lift', 'hover-glow',
 
     // Shortcuts - animation system
