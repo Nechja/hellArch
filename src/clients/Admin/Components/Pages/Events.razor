@@ -34,7 +34,7 @@
                 {
                     <div class="p-3 rounded-sm bg-bg-primary border border-border animate-pulse-once">
                         <div class="flex items-center justify-between mb-1">
-                            <span class="badge-success text-xs">@GetEventTypeName(evt.Type)</span>
+                            <Badge Variant="BadgeVariant.Success" Size="BadgeSize.Small">@GetEventTypeName(evt.Type)</Badge>
                             <span class="text-xs text-text-muted font-mono">@evt.Time.ToString("HH:mm:ss.fff")</span>
                         </div>
                         <div class="flex gap-4 text-xs text-text-muted">
@@ -62,27 +62,17 @@
     <h2 class="section-header">RabbitMQ Overview</h2>
     @if (_overview == null)
     {
-        <p class="text-text-secondary text-center py-4">Loading...</p>
+        <div class="flex-center py-8">
+            <div class="spinner"></div>
+        </div>
     }
     else
     {
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="stat-card">
-                <span class="stat-value">@(_overview.QueueTotals?.Messages ?? 0)</span>
-                <span class="stat-label">Messages</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-value">@(_overview.ObjectTotals?.Queues ?? 0)</span>
-                <span class="stat-label">Queues</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-value">@(_overview.ObjectTotals?.Consumers ?? 0)</span>
-                <span class="stat-label">Consumers</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-value">@(_overview.ObjectTotals?.Connections ?? 0)</span>
-                <span class="stat-label">Connections</span>
-            </div>
+            <MetricCard Label="Messages" Value="@((_overview.QueueTotals?.Messages ?? 0).ToString())" />
+            <MetricCard Label="Queues" Value="@((_overview.ObjectTotals?.Queues ?? 0).ToString())" />
+            <MetricCard Label="Consumers" Value="@((_overview.ObjectTotals?.Consumers ?? 0).ToString())" />
+            <MetricCard Label="Connections" Value="@((_overview.ObjectTotals?.Connections ?? 0).ToString())" />
         </div>
     }
 </section>
@@ -149,11 +139,13 @@
 <section class="mb-8">
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-heading text-glitch">Recent Events</h2>
-        <button class="btn-secondary" @onclick="LoadRecentEvents">Refresh</button>
+        <Button Variant="ButtonVariant.Secondary" OnClick="LoadRecentEvents">Refresh</Button>
     </div>
     @if (_loadingEvents)
     {
-        <p class="text-text-secondary text-center py-4">Loading events...</p>
+        <div class="flex-center py-8">
+            <div class="spinner"></div>
+        </div>
     }
     else if (_recentEvents.Count == 0)
     {
@@ -166,7 +158,7 @@
             {
                 <div class="card">
                     <div class="flex items-center justify-between mb-2">
-                        <span class="badge-info">@evt.GetEventTypeName()</span>
+                        <Badge Variant="BadgeVariant.Info">@evt.GetEventTypeName()</Badge>
                         <span class="text-xs text-text-muted font-mono">@evt.Time</span>
                     </div>
                     <div class="flex gap-4 text-xs text-text-muted mb-2">

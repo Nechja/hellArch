@@ -13,16 +13,16 @@
 <section class="mb-6">
     <div class="flex items-center justify-between">
         <div class="flex gap-2">
-            <button class="btn-secondary text-sm @(_activeTab == Tab.Webhooks ? "btn-primary" : "")" @onclick="() => SwitchTab(Tab.Webhooks)">
+            <Button Variant="@(_activeTab == Tab.Webhooks ? ButtonVariant.Primary : ButtonVariant.Secondary)" Size="ButtonSize.Small" OnClick="() => SwitchTab(Tab.Webhooks)">
                 Webhooks
-            </button>
-            <button class="btn-secondary text-sm @(_activeTab == Tab.Deliveries ? "btn-primary" : "")" @onclick="() => SwitchTab(Tab.Deliveries)">
+            </Button>
+            <Button Variant="@(_activeTab == Tab.Deliveries ? ButtonVariant.Primary : ButtonVariant.Secondary)" Size="ButtonSize.Small" OnClick="() => SwitchTab(Tab.Deliveries)">
                 Deliveries
-            </button>
+            </Button>
         </div>
         @if (_activeTab == Tab.Webhooks)
         {
-            <button class="btn-primary" @onclick="ShowCreateForm">+ New Webhook</button>
+            <Button Variant="ButtonVariant.Primary" OnClick="ShowCreateForm">+ New Webhook</Button>
         }
     </div>
 </section>
@@ -32,13 +32,15 @@
     <section class="mb-8">
         @if (_loadingWebhooks)
         {
-            <p class="text-text-secondary text-center py-8">Loading webhooks...</p>
+            <div class="flex-center py-12">
+                <div class="spinner-lg"></div>
+            </div>
         }
         else if (_webhooks.Count == 0)
         {
             <div class="text-center py-8">
                 <p class="text-text-muted italic mb-4">No webhooks configured</p>
-                <button class="btn-primary" @onclick="ShowCreateForm">Create your first webhook</button>
+                <Button Variant="ButtonVariant.Primary" OnClick="ShowCreateForm">Create your first webhook</Button>
             </div>
         }
         else
@@ -50,7 +52,7 @@
                         <div class="flex items-start justify-between">
                             <div class="flex-1">
                                 <div class="flex items-center gap-3 mb-2">
-                                    <h3 class="font-bold text-lg">@webhook.Name</h3>
+                                    <h3 class="text-subheading">@webhook.Name</h3>
                                     <span class="@(webhook.IsActive ? "badge-success" : "badge-warning")">
                                         @(webhook.IsActive ? "Active" : "Inactive")
                                     </span>
@@ -107,7 +109,9 @@ else
     <section class="mb-8">
         @if (_loadingDeliveries)
         {
-            <p class="text-text-secondary text-center py-8">Loading deliveries...</p>
+            <div class="flex-center py-12">
+                <div class="spinner-lg"></div>
+            </div>
         }
         else if (_deliveries.Count == 0)
         {
@@ -185,8 +189,8 @@ else
 
 @if (_showForm)
 {
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @onclick="CloseForm">
-        <div class="card max-w-lg w-full" @onclick:stopPropagation="true">
+    <div class="modal-overlay enter-fade" @onclick="CloseForm">
+        <div class="modal-panel max-w-lg enter-scale" @onclick:stopPropagation="true">
             <h2 class="text-heading mb-4">@(_editingWebhook == null ? "Create Webhook" : "Edit Webhook")</h2>
             <div class="space-y-4">
                 <div>
@@ -230,8 +234,8 @@ else
 
 @if (_webhookToDelete != null)
 {
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @onclick="() => _webhookToDelete = null">
-        <div class="card max-w-md w-full" @onclick:stopPropagation="true">
+    <div class="modal-overlay enter-fade" @onclick="() => _webhookToDelete = null">
+        <div class="modal-panel max-w-md enter-scale" @onclick:stopPropagation="true">
             <h2 class="text-heading mb-4">Delete Webhook</h2>
             <p class="text-text-secondary mb-6">
                 Are you sure you want to delete <strong>@_webhookToDelete.Name</strong>? This action cannot be undone.
@@ -246,8 +250,8 @@ else
 
 @if (_selectedDelivery != null)
 {
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @onclick="() => _selectedDelivery = null">
-        <div class="card max-w-2xl w-full max-h-[80vh] overflow-auto" @onclick:stopPropagation="true">
+    <div class="modal-overlay enter-fade" @onclick="() => _selectedDelivery = null">
+        <div class="modal-panel max-w-2xl enter-scale" @onclick:stopPropagation="true">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-heading">Delivery Details</h2>
                 <button class="text-text-muted hover:text-white" @onclick="() => _selectedDelivery = null">&#10005;</button>

@@ -7,21 +7,21 @@
 
 <section class="mb-6">
     <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-sm @(_connectionInfo.IsConnected ? "bg-neon-green/10 text-neon-green" : "bg-neon-red/10 text-neon-red")">
-        <span class="@(_connectionInfo.IsConnected ? "health-dot-healthy" : "health-dot-danger")"></span>
+        <HealthDot Status="@(_connectionInfo.IsConnected ? HealthDot.HealthStatus.Healthy : HealthDot.HealthStatus.Danger)" />
         <span class="text-sm font-medium">@(_connectionInfo.IsConnected ? "Connected" : "Disconnected")</span>
     </div>
 </section>
 
 <section class="mb-6">
     <div class="flex gap-2 mb-3">
-        <input type="text" @bind="_pattern" @bind:event="oninput" placeholder="Pattern (e.g., session:*, oauth:*)" class="input flex-1" />
-        <button @onclick="Search" class="btn-neon-solid">Search</button>
+        <Input @bind-Value="_pattern" Placeholder="Pattern (e.g., session:*, oauth:*)" Class="flex-1" />
+        <Button Variant="ButtonVariant.Neon" OnClick="Search">Search</Button>
     </div>
     <div class="flex gap-2 flex-wrap">
-        <button @onclick='() => SearchPattern("session:*")' class="btn-ghost text-xs">Sessions</button>
-        <button @onclick='() => SearchPattern("oauth:state:*")' class="btn-ghost text-xs">OAuth States</button>
-        <button @onclick='() => SearchPattern("revoked:*")' class="btn-ghost text-xs">Revoked Tokens</button>
-        <button @onclick='() => SearchPattern("*")' class="btn-ghost text-xs">All Keys</button>
+        <Button Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick='() => SearchPattern("session:*")'>Sessions</Button>
+        <Button Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick='() => SearchPattern("oauth:state:*")'>OAuth States</Button>
+        <Button Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick='() => SearchPattern("revoked:*")'>Revoked Tokens</Button>
+        <Button Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick='() => SearchPattern("*")'>All Keys</Button>
     </div>
 </section>
 
@@ -63,7 +63,7 @@
                 <dt class="text-xs uppercase text-text-muted">Key</dt>
                 <dd class="font-mono text-sm break-all">@_keyDetail.Key</dd>
                 <dt class="text-xs uppercase text-text-muted">Type</dt>
-                <dd><span class="badge-info">@_keyDetail.Type</span></dd>
+                <dd><Badge Variant="BadgeVariant.Info">@_keyDetail.Type</Badge></dd>
                 <dt class="text-xs uppercase text-text-muted">TTL</dt>
                 <dd>@(_keyDetail.Ttl.HasValue ? FormatTtl(_keyDetail.Ttl.Value) : "No expiry")</dd>
             </dl>
@@ -72,7 +72,7 @@
                 <pre class="p-4 rounded-sm bg-bg-secondary border border-border overflow-x-auto font-mono text-sm max-h-64 overflow-y-auto">@_keyDetail.Value</pre>
             </div>
             <div class="pt-4 border-t border-border">
-                <button @onclick="DeleteSelectedKey" class="btn-danger">Delete Key</button>
+                <Button Variant="ButtonVariant.Danger" OnClick="DeleteSelectedKey">Delete Key</Button>
             </div>
         }
         else

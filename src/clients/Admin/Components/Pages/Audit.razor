@@ -34,26 +34,24 @@
 <section class="mb-6">
     <div class="flex flex-wrap gap-4 items-end">
         <div class="flex flex-col gap-1">
-            <label class="text-sm text-text-secondary">Event Type</label>
-            <input type="text" @bind="_eventTypeFilter" @bind:event="oninput"
-                   placeholder="e.g. hellarch.auth.user.created.v1"
-                   class="input w-64" />
+            <Label>Event Type</Label>
+            <Input @bind-Value="_eventTypeFilter" Placeholder="e.g. hellarch.auth.user.created.v1" Class="w-64" />
         </div>
         <div class="flex flex-col gap-1">
-            <label class="text-sm text-text-secondary">Actor ID</label>
-            <input type="text" @bind="_actorIdFilter" @bind:event="oninput"
-                   placeholder="User ID"
-                   class="input w-48" />
+            <Label>Actor ID</Label>
+            <Input @bind-Value="_actorIdFilter" Placeholder="User ID" Class="w-48" />
         </div>
-        <button class="btn-primary" @onclick="ApplyFilters">Filter</button>
-        <button class="btn-secondary" @onclick="ClearFilters">Clear</button>
+        <Button Variant="ButtonVariant.Primary" OnClick="ApplyFilters">Filter</Button>
+        <Button Variant="ButtonVariant.Secondary" OnClick="ClearFilters">Clear</Button>
     </div>
 </section>
 
 <section class="mb-8">
     @if (_loading)
     {
-        <p class="text-text-secondary text-center py-8">Loading audit logs...</p>
+        <div class="flex-center py-12">
+            <div class="spinner-lg"></div>
+        </div>
     }
     else if (_auditLogs.Count == 0)
     {
@@ -79,10 +77,9 @@
                         <tr class="data-row">
                             <td class="data-td text-xs font-mono">@log.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
                             <td class="data-td">
-                                <button class="badge-info text-xs cursor-pointer hover:opacity-80"
-                                        @onclick="() => FilterByEventType(log.EventType)">
+                                <Badge Variant="BadgeVariant.Info" Class="cursor-pointer hover:opacity-80" @onclick="() => FilterByEventType(log.EventType)">
                                     @GetShortEventType(log.EventType)
-                                </button>
+                                </Badge>
                             </td>
                             <td class="data-td text-sm">@log.Source</td>
                             <td class="data-td font-mono text-xs">@(log.ActorId ?? "-")</td>
@@ -110,13 +107,13 @@
                 Showing @_auditLogs.Count of @_totalCount logs
             </span>
             <div class="flex gap-2">
-                <button class="btn-secondary text-sm" disabled="@(_page <= 1)" @onclick="PreviousPage">
+                <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Disabled="@(_page <= 1)" OnClick="PreviousPage">
                     Previous
-                </button>
+                </Button>
                 <span class="px-3 py-1 text-sm">Page @_page</span>
-                <button class="btn-secondary text-sm" disabled="@(!HasMorePages)" @onclick="NextPage">
+                <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Disabled="@(!HasMorePages)" OnClick="NextPage">
                     Next
-                </button>
+                </Button>
             </div>
         </div>
     }
@@ -124,8 +121,8 @@
 
 @if (_selectedLog != null)
 {
-    <div class="modal-overlay" @onclick="CloseDetails">
-        <div class="modal-panel" @onclick:stopPropagation="true">
+    <div class="modal-overlay enter-fade" @onclick="CloseDetails">
+        <div class="modal-panel enter-scale" @onclick:stopPropagation="true">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-heading">Audit Log Details</h2>
                 <button class="text-text-muted hover:text-white" @onclick="CloseDetails">&#10005;</button>
@@ -133,7 +130,7 @@
             <div class="space-y-3 text-sm">
                 <div><span class="text-text-secondary">ID:</span> <span class="font-mono">@_selectedLog.Id</span></div>
                 <div><span class="text-text-secondary">Event ID:</span> <span class="font-mono">@_selectedLog.EventId</span></div>
-                <div><span class="text-text-secondary">Event Type:</span> <span class="badge-info">@_selectedLog.EventType</span></div>
+                <div><span class="text-text-secondary">Event Type:</span> <Badge Variant="BadgeVariant.Info">@_selectedLog.EventType</Badge></div>
                 <div><span class="text-text-secondary">Source:</span> @_selectedLog.Source</div>
                 <div><span class="text-text-secondary">Actor ID:</span> <span class="font-mono">@(_selectedLog.ActorId ?? "N/A")</span></div>
                 <div><span class="text-text-secondary">Target ID:</span> <span class="font-mono">@(_selectedLog.TargetId ?? "N/A")</span></div>

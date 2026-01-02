@@ -1,7 +1,5 @@
 @page "/"
 @inject AuthAdminFacade AuthAdmin
-@inject RedisBrowserAdapter RedisBrowser
-@inject RabbitMqAdapter RabbitMq
 @inject HealthAdapter Health
 @inject ILogger<Dashboard> Logger
 
@@ -11,22 +9,10 @@
 
 <section class="mb-12">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="stat-card">
-            <h3 class="stat-label">Users</h3>
-            <p class="stat-value">@_stats.UserCount</p>
-        </div>
-        <div class="stat-card">
-            <h3 class="stat-label">Active Sessions</h3>
-            <p class="stat-value">@_stats.SessionCount</p>
-        </div>
-        <div class="stat-card">
-            <h3 class="stat-label">Linked Accounts</h3>
-            <p class="stat-value">@_stats.LinkedAccountCount</p>
-        </div>
-        <div class="stat-card">
-            <h3 class="stat-label">Queued Messages</h3>
-            <p class="stat-value">@_queuedMessages</p>
-        </div>
+        <MetricCard Label="Users" Value="@_stats.UserCount.ToString()" />
+        <MetricCard Label="Active Sessions" Value="@_stats.SessionCount.ToString()" />
+        <MetricCard Label="Linked Accounts" Value="@_stats.LinkedAccountCount.ToString()" />
+        <MetricCard Label="Queued Messages" Value="@QueuedMessages.ToString()" />
     </div>
 </section>
 
@@ -35,15 +21,16 @@
     @if (_healthStatus != null)
     {
         <div class="flex items-center gap-3 p-4 rounded-sm bg-bg-card border mb-4 @GetOverallBorderClass(_healthStatus.Overall)">
-            <span class="@GetHealthDotClass(_healthStatus.Overall)"></span>
+            <HealthDot Status="@GetHealthStatus(_healthStatus.Overall)" />
             <span class="font-semibold">System: @_healthStatus.Overall.ToUpperInvariant()</span>
             <span class="ml-auto text-xs text-text-muted font-mono">Last check: @FormatTime(_healthStatus.CheckedAt)</span>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+            @{ var serviceIndex = 0; }
             @foreach (var (name, info) in _healthStatus.Services.OrderBy(s => s.Key))
             {
-                <div class="card flex items-center gap-3">
-                    <span class="@GetHealthDotClass(info.Status)"></span>
+                <div class="card flex items-center gap-3 enter-up stagger-@(Math.Min(serviceIndex + 1, 8))">
+                    <HealthDot Status="@GetHealthStatus(info.Status)" />
                     <div class="flex-1">
                         <span class="font-medium block">@FormatServiceName(name)</span>
                         <span class="text-xs text-text-muted">@info.Status</span>
@@ -51,48 +38,18 @@
                     <span class="text-xs font-mono text-text-muted">@info.LatencyMs ms</span>
                     @if (!string.IsNullOrEmpty(info.Error))
                     {
-                        <span class="badge-danger" title="@info.Error">Error</span>
+                        <Badge Variant="BadgeVariant.Danger" title="@info.Error">Error</Badge>
                     }
                 </div>
+                serviceIndex++;
             }
         </div>
     }
     else
     {
-        <div class="p-4 rounded-sm bg-bg-card border border-neon-orange/50 text-center mb-4">
-            <p class="text-neon-orange">Health service unavailable</p>
-            <p class="text-xs text-text-muted mt-1">Falling back to direct checks...</p>
-        </div>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
-            <div class="card flex items-center gap-3">
-                <span class="@(_authHealthy ? "health-dot-healthy" : "health-dot-danger")"></span>
-                <div class="flex-1">
-                    <span class="font-medium block">Auth Service</span>
-                    <span class="text-xs text-text-muted">@(_authHealthy ? "Healthy" : "Unhealthy")</span>
-                </div>
-            </div>
-            <div class="card flex items-center gap-3">
-                <span class="@(_userHealthy ? "health-dot-healthy" : "health-dot-danger")"></span>
-                <div class="flex-1">
-                    <span class="font-medium block">User Service</span>
-                    <span class="text-xs text-text-muted">@(_userHealthy ? "Healthy" : "Unhealthy")</span>
-                </div>
-            </div>
-            <div class="card flex items-center gap-3">
-                <span class="@(_redisHealthy ? "health-dot-healthy" : "health-dot-danger")"></span>
-                <div class="flex-1">
-                    <span class="font-medium block">Redis</span>
-                    <span class="text-xs text-text-muted">@(_redisHealthy ? "Connected" : "Disconnected")</span>
-                </div>
-            </div>
-            <div class="card flex items-center gap-3">
-                <span class="@(_rabbitmqHealthy ? "health-dot-healthy" : "health-dot-danger")"></span>
-                <div class="flex-1">
-                    <span class="font-medium block">RabbitMQ</span>
-                    <span class="text-xs text-text-muted">@(_rabbitmqHealthy ? "Connected" : "Disconnected")</span>
-                </div>
-            </div>
-        </div>
+        <Alert Variant="AlertVariant.Warning" Title="Health service unavailable">
+            Cannot display service health status
+        </Alert>
     }
 </section>
 
@@ -101,30 +58,26 @@
     @if (_workersStatus != null)
     {
         <div class="flex items-center gap-3 p-4 rounded-sm bg-bg-card border mb-4 @GetOverallBorderClass(_workersStatus.Overall)">
-            <span class="@GetHealthDotClass(_workersStatus.Overall)"></span>
+            <HealthDot Status="@GetHealthStatus(_workersStatus.Overall)" />
             <span class="font-semibold">Workers: @_workersStatus.Overall.ToUpperInvariant()</span>
         </div>
         @if (_workersStatus.Workers.Count > 0)
         {
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                @{ var workerIndex = 0; }
                 @foreach (var worker in _workersStatus.Workers.OrderBy(w => w.Name))
                 {
-                    <div class="card">
+                    <div class="card enter-up stagger-@(Math.Min(workerIndex + 1, 8))">
                         <div class="flex items-center gap-3 mb-2">
-                            <span class="@GetHealthDotClass(worker.Status)"></span>
+                            <HealthDot Status="@GetHealthStatus(worker.Status)" />
                             <span class="font-medium">@FormatWorkerName(worker.Name)</span>
                         </div>
-                        <div class="grid grid-cols-2 gap-2 text-sm">
-                            <div>
-                                <span class="text-text-muted">Consumers:</span>
-                                <span class="font-mono ml-1">@worker.Consumers</span>
-                            </div>
-                            <div>
-                                <span class="text-text-muted">Messages:</span>
-                                <span class="font-mono ml-1 @(worker.Messages > 100 ? "text-neon-orange" : "")">@worker.Messages</span>
-                            </div>
-                        </div>
+                        <KeyValue>
+                            <KeyValueItem Key="Consumers" Value="@worker.Consumers.ToString()" />
+                            <KeyValueItem Key="Messages" Value="@worker.Messages.ToString()" />
+                        </KeyValue>
                     </div>
+                    workerIndex++;
                 }
             </div>
         }
@@ -135,9 +88,7 @@
     }
     else
     {
-        <div class="p-4 rounded-sm bg-bg-card border border-neon-orange/50 text-center">
-            <p class="text-neon-orange">Worker status unavailable</p>
-        </div>
+        <Alert Variant="AlertVariant.Warning" Title="Worker status unavailable" />
     }
 </section>
 
@@ -161,14 +112,11 @@
 
 @code {
     private AdminStats _stats = new(0, 0, 0);
-    private int _queuedMessages;
     private AggregatedStatus? _healthStatus;
     private WorkersStatus? _workersStatus;
 
-    private bool _authHealthy;
-    private bool _userHealthy;
-    private bool _redisHealthy;
-    private bool _rabbitmqHealthy;
+    private int QueuedMessages => _workersStatus?.Workers.Sum(w => w.Messages) ?? 0;
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -181,9 +129,6 @@
     private async Task LoadStats()
     {
         _stats = await AuthAdmin.GetStats();
-
-        var overview = await RabbitMq.GetOverview();
-        _queuedMessages = overview?.QueueTotals?.Messages ?? 0;
     }
 
     private async Task LoadHealth()
@@ -198,28 +143,15 @@
 
         if (_healthStatus == null)
         {
-            Logger.LogWarning("Health service unavailable, using fallback checks");
-            await FallbackHealthCheck();
+            Logger.LogWarning("Health service unavailable");
         }
     }
 
-    private async Task FallbackHealthCheck()
+    private static HealthDot.HealthStatus GetHealthStatus(string status) => status.ToLower() switch
     {
-        var redisInfo = RedisBrowser.GetConnectionInfo();
-        _redisHealthy = redisInfo.IsConnected;
-
-        var rabbitmqOverview = await RabbitMq.GetOverview();
-        _rabbitmqHealthy = rabbitmqOverview != null;
-
-        _authHealthy = true;
-        _userHealthy = true;
-    }
-
-    private static string GetHealthDotClass(string status) => status.ToLower() switch
-    {
-        "healthy" => "health-dot-healthy",
-        "degraded" => "health-dot-warning",
-        _ => "health-dot-danger"
+        "healthy" => HealthDot.HealthStatus.Healthy,
+        "degraded" => HealthDot.HealthStatus.Warning,
+        _ => HealthDot.HealthStatus.Danger
     };
 
     private static string GetOverallBorderClass(string status) => status.ToLower() switch

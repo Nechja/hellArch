@@ -10,16 +10,13 @@
 </p>
 
 <section class="mb-8">
-    <div class="stat-card inline-block">
-        <h3 class="stat-label">Total Active</h3>
-        <p class="stat-value">@_stats.SessionCount</p>
-    </div>
+    <MetricCard Label="Total Active" Value="@_stats.SessionCount.ToString()" Class="inline-block" />
 </section>
 
 <section class="card border-l-2 border-neon-pink">
     <p class="text-text-secondary">
         To view or revoke sessions for a specific user, go to the
-        <a href="users" class="link">Users</a> page and select a user.
+        <Link Href="users">Users</Link> page and select a user.
     </p>
 </section>
 
