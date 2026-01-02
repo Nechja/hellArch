@@ -1,5 +1,7 @@
 @page "/events"
+@implements IDisposable
 @inject Admin.Services.RabbitMqAdapter RabbitMq
+@inject Admin.Services.RealtimeHubService RealtimeHub
 @inject ILogger<Events> Logger
 
 <PageTitle>Events - HellArch Admin</PageTitle>
@@ -9,6 +11,50 @@
 <p class="text-text-secondary mb-6">
     View CloudEvents published through RabbitMQ and queue statistics.
 </p>
+
+<section class="mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-heading text-glitch">Live Events</h2>
+        <div class="flex items-center gap-2">
+            <span class="@GetConnectionStatusClass()">●</span>
+            <span class="text-sm text-text-secondary">@_connectionStatus</span>
+        </div>
+    </div>
+    <div class="card border-l-2 border-neon-green bg-bg-secondary">
+        @if (_liveEvents.Count == 0)
+        {
+            <p class="text-text-muted text-center py-4 italic">Waiting for events... Events will appear here in real-time.</p>
+        }
+        else
+        {
+            <div class="flex flex-col gap-3 max-h-96 overflow-y-auto">
+                @foreach (var evt in _liveEvents)
+                {
+                    <div class="p-3 rounded-sm bg-bg-primary border border-border animate-pulse-once">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="badge-success text-xs">@GetEventTypeName(evt.Type)</span>
+                            <span class="text-xs text-text-muted font-mono">@evt.Time.ToString("HH:mm:ss.fff")</span>
+                        </div>
+                        <div class="flex gap-4 text-xs text-text-muted">
+                            <span>Source: @evt.Source</span>
+                            @if (evt.GetUserId() is { } userId)
+                            {
+                                <span>User: @userId</span>
+                            }
+                        </div>
+                        @if (evt.Data.HasValue)
+                        {
+                            <details class="mt-2">
+                                <summary class="cursor-pointer text-xs text-neon-pink hover:underline">Data</summary>
+                                <pre class="mt-1 p-2 rounded-sm bg-bg-tertiary text-xs font-mono overflow-x-auto">@FormatJson(evt.Data.Value)</pre>
+                            </details>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</section>
 
 <section class="mb-8">
     <h2 class="text-heading mb-4 text-glitch">RabbitMQ Overview</h2>
@@ -152,11 +198,42 @@
     private IReadOnlyList<Admin.Services.QueueInfo> _queues = [];
     private IReadOnlyList<Admin.Services.ExchangeInfo> _exchanges = [];
     private IReadOnlyList<Admin.Services.CloudEventMessage> _recentEvents = [];
+    private readonly List<Admin.Services.CloudEventDto> _liveEvents = [];
     private bool _loadingEvents;
+    private string _connectionStatus = "Connecting...";
+    private const int MaxLiveEvents = 25;
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe to realtime events
+        RealtimeHub.OnEventReceived += HandleEventReceived;
+        RealtimeHub.OnConnectionStateChanged += HandleConnectionStateChanged;
+        _connectionStatus = RealtimeHub.ConnectionStateText;
+
+        // Load initial data from RabbitMQ
         await LoadData();
+    }
+
+    private void HandleEventReceived(object? sender, Admin.Services.CloudEventReceivedEventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            _liveEvents.Insert(0, e.CloudEvent);
+            if (_liveEvents.Count > MaxLiveEvents)
+            {
+                _liveEvents.RemoveAt(_liveEvents.Count - 1);
+            }
+            StateHasChanged();
+        });
+    }
+
+    private void HandleConnectionStateChanged(object? sender, Admin.Services.ConnectionStateChangedEventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            _connectionStatus = e.State;
+            StateHasChanged();
+        });
     }
 
     private async Task LoadData()
@@ -184,4 +261,37 @@
         "idle" => "badge-warning",
         _ => "badge"
     };
+
+    private string GetConnectionStatusClass() => _connectionStatus switch
+    {
+        "Connected" => "text-neon-green",
+        "Reconnecting" => "text-neon-yellow animate-pulse",
+        "Disconnected" or "Failed" => "text-neon-red",
+        _ => "text-text-muted animate-pulse"
+    };
+
+    private static string GetEventTypeName(string type)
+    {
+        // Extract short name from full type (e.g., "hellarch.user.created" -> "user.created")
+        var parts = type.Split('.');
+        return parts.Length > 1 ? string.Join(".", parts[1..]) : type;
+    }
+
+    private static string FormatJson(System.Text.Json.JsonElement element)
+    {
+        try
+        {
+            return System.Text.Json.JsonSerializer.Serialize(element, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return element.ToString();
+        }
+    }
+
+    public void Dispose()
+    {
+        RealtimeHub.OnEventReceived -= HandleEventReceived;
+        RealtimeHub.OnConnectionStateChanged -= HandleConnectionStateChanged;
+    }
 }

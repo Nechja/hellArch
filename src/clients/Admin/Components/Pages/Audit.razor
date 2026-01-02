@@ -11,6 +11,27 @@
 </p>
 
 <section class="mb-6">
+    <h2 class="text-subheading mb-3">Available Event Types</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        @foreach (var category in EventCategories)
+        {
+            <div class="card">
+                <h3 class="text-sm font-bold text-neon-pink mb-2">@category.Name</h3>
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var eventType in category.Events)
+                    {
+                        <button class="@GetEventTypeButtonClass(eventType.Type)"
+                                @onclick="() => FilterByEventType(eventType.Type)">
+                            @eventType.Label
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+<section class="mb-6">
     <div class="flex flex-wrap gap-4 items-end">
         <div class="flex flex-col gap-1">
             <label class="text-sm text-text-secondary">Event Type</label>
@@ -58,7 +79,10 @@
                         <tr class="data-row">
                             <td class="data-td text-xs font-mono">@log.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
                             <td class="data-td">
-                                <span class="badge-info text-xs">@GetShortEventType(log.EventType)</span>
+                                <button class="badge-info text-xs cursor-pointer hover:opacity-80"
+                                        @onclick="() => FilterByEventType(log.EventType)">
+                                    @GetShortEventType(log.EventType)
+                                </button>
                             </td>
                             <td class="data-td text-sm">@log.Source</td>
                             <td class="data-td font-mono text-xs">@(log.ActorId ?? "-")</td>
@@ -138,6 +162,30 @@
 
     private bool HasMorePages => _page * PageSize < _totalCount;
 
+    private static readonly EventCategory[] EventCategories =
+    [
+        new("Auth - Users", [
+            new("hellarch.auth.user.created.v1", "Created"),
+            new("hellarch.auth.user.updated.v1", "Updated"),
+            new("hellarch.auth.user.deleted.v1", "Deleted")
+        ]),
+        new("Auth - Sessions", [
+            new("hellarch.auth.session.created.v1", "Created"),
+            new("hellarch.auth.session.ended.v1", "Ended")
+        ]),
+        new("Auth - Accounts", [
+            new("hellarch.auth.account.linked.v1", "Linked"),
+            new("hellarch.auth.account.unlinked.v1", "Unlinked")
+        ]),
+        new("Infrastructure", [
+            new("hellarch.infra.service.unhealthy.v1", "Unhealthy"),
+            new("hellarch.infra.service.recovered.v1", "Recovered")
+        ])
+    ];
+
+    private record EventCategory(string Name, EventTypeInfo[] Events);
+    private record EventTypeInfo(string Type, string Label);
+
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
@@ -154,6 +202,13 @@
 
         _loading = false;
         StateHasChanged();
+    }
+
+    private async Task FilterByEventType(string eventType)
+    {
+        _eventTypeFilter = eventType;
+        _page = 1;
+        await LoadData();
     }
 
     private async Task ApplyFilters()
@@ -193,6 +248,14 @@
     private void CloseDetails()
     {
         _selectedLog = null;
+    }
+
+    private string GetEventTypeButtonClass(string eventType)
+    {
+        var isActive = _eventTypeFilter == eventType;
+        return isActive
+            ? "badge-info text-xs cursor-pointer"
+            : "badge text-xs cursor-pointer hover:bg-neon-pink/20";
     }
 
     private static string GetShortEventType(string eventType)

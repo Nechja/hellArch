@@ -20,7 +20,7 @@ public sealed class EventsAdminFacade(
     {
         try
         {
-            var url = $"api/audit-logs?page={page}&page_size={pageSize}";
+            var url = $"audit-logs?page={page}&page_size={pageSize}";
             if (!string.IsNullOrEmpty(eventType))
             {
                 url += $"&event_type={Uri.EscapeDataString(eventType)}";
@@ -54,7 +54,7 @@ public sealed class EventsAdminFacade(
     {
         try
         {
-            return await _client.GetFromJsonAsync<AuditLog>($"api/audit-logs/{id}", ct);
+            return await _client.GetFromJsonAsync<AuditLog>($"audit-logs/{id}", ct);
         }
         catch (HttpRequestException ex)
         {
@@ -80,7 +80,7 @@ public sealed class EventsAdminFacade(
         try
         {
             var response = await _client.GetFromJsonAsync<WebhooksResponse>(
-                $"api/webhooks?page={page}&page_size={pageSize}", ct);
+                $"webhooks?page={page}&page_size={pageSize}", ct);
             return response ?? new WebhooksResponse([], 0, page, pageSize);
         }
         catch (HttpRequestException ex)
@@ -104,7 +104,7 @@ public sealed class EventsAdminFacade(
     {
         try
         {
-            return await _client.GetFromJsonAsync<Webhook>($"api/webhooks/{id}", ct);
+            return await _client.GetFromJsonAsync<Webhook>($"webhooks/{id}", ct);
         }
         catch (HttpRequestException ex)
         {
@@ -127,7 +127,7 @@ public sealed class EventsAdminFacade(
     {
         try
         {
-            var response = await _client.PostAsJsonAsync("api/webhooks", request, ct);
+            var response = await _client.PostAsJsonAsync("webhooks", request, ct);
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<Webhook>(ct);
@@ -151,7 +151,7 @@ public sealed class EventsAdminFacade(
     {
         try
         {
-            var response = await _client.PutAsJsonAsync($"api/webhooks/{id}", request, ct);
+            var response = await _client.PutAsJsonAsync($"webhooks/{id}", request, ct);
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<Webhook>(ct);
@@ -175,7 +175,7 @@ public sealed class EventsAdminFacade(
     {
         try
         {
-            var response = await _client.DeleteAsync($"api/webhooks/{id}", ct);
+            var response = await _client.DeleteAsync($"webhooks/{id}", ct);
             return response.IsSuccessStatusCode;
         }
         catch (HttpRequestException ex)
@@ -201,7 +201,7 @@ public sealed class EventsAdminFacade(
     {
         try
         {
-            var url = $"api/webhook-deliveries?page={page}&page_size={pageSize}";
+            var url = $"webhook-deliveries?page={page}&page_size={pageSize}";
             if (!string.IsNullOrEmpty(webhookId))
             {
                 url += $"&webhook_id={Uri.EscapeDataString(webhookId)}";
@@ -235,7 +235,7 @@ public sealed class EventsAdminFacade(
     {
         try
         {
-            return await _client.GetFromJsonAsync<WebhookDelivery>($"api/webhook-deliveries/{id}", ct);
+            return await _client.GetFromJsonAsync<WebhookDelivery>($"webhook-deliveries/{id}", ct);
         }
         catch (HttpRequestException ex)
         {
