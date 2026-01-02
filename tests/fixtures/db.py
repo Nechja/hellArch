@@ -1,23 +1,22 @@
 import os
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import psycopg
-import pytest
 import pytest_asyncio
 
 
 def get_auth_db_url() -> str:
     return os.getenv(
         "AUTH_DATABASE_URL",
-        "postgres://hellarch:hellarch@localhost:5434/auth_db",
+        "postgres://hellarch:hellarch@localhost:5444/auth_db",
     )
 
 
 def get_user_db_url() -> str:
     return os.getenv(
         "USER_DATABASE_URL",
-        "postgres://hellarch:hellarch@localhost:5433/user_db",
+        "postgres://hellarch:hellarch@localhost:5443/user_db",
     )
 
 
@@ -46,7 +45,7 @@ async def user_db() -> AsyncGenerator[psycopg.AsyncConnection, None]:
 
 
 async def cleanup_auth_db(conn: psycopg.AsyncConnection) -> None:
-    await conn.execute("TRUNCATE sessions, linked_accounts, users CASCADE")
+    await conn.execute("TRUNCATE linked_accounts, users CASCADE")
 
 
 async def cleanup_user_db(conn: psycopg.AsyncConnection) -> None:

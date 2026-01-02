@@ -13,7 +13,9 @@ class TestHealthEndpoint:
         response = await http_client.get(f"{base_urls['user']}/user/health")
 
         assert response.status_code == 200
-        assert response.json() == {"status": "healthy"}
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert data["database"] is True
 
 
 class TestGetProfileEndpoint:

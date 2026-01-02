@@ -254,3 +254,9 @@ src/clients/*/dist/
 
 # Generated protos (commit these if you want reproducible builds)
 # src/services/*/proto/
+
+#allowing docs site
+!docs/*.md
+!docs/architecture/**
+!docs/guide/**
+!docs/types/**
