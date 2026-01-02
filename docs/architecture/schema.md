@@ -23,7 +23,7 @@ graph TB
     SERVICE --> ENTITY
     ENTITY --> PG
     ENTITY -->|Schema.Codegen| GEN
-    GEN -->|Go/Rust/F#/Python/C#| SERVICE
+    GEN -->|Go/F#/Python/C#| SERVICE
 ```
 
 ## Protobufs → DTOs
@@ -69,7 +69,6 @@ graph LR
     BUILD --> DLL[Schema.dll]
     DLL --> CODEGEN[Schema.Codegen<br/>Reflection]
     CODEGEN --> GO[Go structs]
-    CODEGEN --> RUST[Rust structs]
     CODEGEN --> FSHARP[F# records]
     CODEGEN --> PYTHON[Python dataclasses]
     CODEGEN --> CSHARP[C# records]
@@ -79,7 +78,6 @@ Output structure:
 ```
 libs/data_types/
 ├── go/           # Go structs + json/db tags
-├── rust/         # Rust + serde + sqlx
 ├── fsharp/       # F# records
 ├── python/       # Python dataclasses
 └── csharp/       # C# records

@@ -18,7 +18,6 @@ Each type is generated for:
 | Language | Output |
 |----------|--------|
 | Go | structs + json tags |
-| Rust | structs + serde |
 | F# | records |
 | Python | Pydantic models |
 | TypeScript | interfaces |

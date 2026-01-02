@@ -42,26 +42,6 @@ type LinkedAccount struct {
 }
 ```
 
-## Rust
-
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct LinkedAccount {
-    pub id: uuid::Uuid,
-    pub user_id: uuid::Uuid,
-    pub provider: String,
-    pub provider_user_id: String,
-    pub email: Option<String>,
-    pub username: Option<String>,
-    pub avatar_url: Option<String>,
-    pub access_token: Option<String>,
-    pub refresh_token: Option<String>,
-    pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub updated_at: chrono::DateTime<chrono::Utc>,
-}
-```
-
 ## F#
 
 ```fsharp

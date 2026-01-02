@@ -44,7 +44,6 @@ foreach (var (typeDef, domain) in typeDefs)
     Console.WriteLine($"  {typeDef.Namespace}.{typeDef.Name}");
 
     GenerateGo(typeDef, domain, outputDir);
-    GenerateRust(typeDef, domain, outputDir);
     GeneratePython(typeDef, domain, outputDir);
     GenerateFSharp(typeDef, domain, outputDir);
     GenerateTypeScript(typeDef, domain, outputDir, typeMap);
@@ -216,90 +215,6 @@ string CSharpToGo(string type, bool nullable)
     };
 
     return nullable ? $"*{goType}" : goType;
-}
-
-void GenerateRust(TypeDef def, string domain, string outDir)
-{
-    var dir = Path.Combine(outDir, "rust", domain.ToLower());
-    Directory.CreateDirectory(dir);
-    var file = Path.Combine(dir, $"{ToSnakeCase(def.Name)}.rs");
-
-    var sb = new System.Text.StringBuilder();
-    sb.AppendLine("use serde::{Deserialize, Serialize};");
-
-    if (def.Properties.Any(p => p.Type is "DateTime" or "DateTimeOffset"))
-        sb.AppendLine("use chrono::{DateTime, Utc};");
-
-    sb.AppendLine();
-
-    foreach (var e in def.Enums)
-    {
-        sb.AppendLine("#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]");
-        sb.AppendLine("#[serde(rename_all = \"snake_case\")]");
-        sb.AppendLine($"pub enum {e.Name} {{");
-        foreach (var v in e.Values)
-            sb.AppendLine($"    {v},");
-        sb.AppendLine("}");
-        sb.AppendLine();
-    }
-
-    if (!string.IsNullOrEmpty(def.Doc))
-        foreach (var line in SplitDocLines(def.Doc))
-            sb.AppendLine($"/// {line}");
-    sb.AppendLine("#[derive(Debug, Clone, Serialize, Deserialize)]");
-    sb.AppendLine($"pub struct {def.Name} {{");
-
-    foreach (var p in def.Properties)
-    {
-        var rustType = CSharpToRust(p.Type, p.IsNullable);
-        var fieldName = ToSnakeCase(p.Name);
-        sb.AppendLine($"    #[serde(rename = \"{fieldName}\")]");
-        sb.AppendLine($"    pub {fieldName}: {rustType},");
-    }
-
-    sb.AppendLine("}");
-    File.WriteAllText(file, sb.ToString());
-    Console.WriteLine($"    rust: ok");
-}
-
-string CSharpToRust(string type, bool nullable)
-{
-    if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
-        type.StartsWith("List<", StringComparison.Ordinal) ||
-        type.StartsWith("IEnumerable<", StringComparison.Ordinal))
-    {
-#pragma warning disable CA1865, CA1307
-        var innerType = type.Substring(type.IndexOf('<') + 1).TrimEnd('>');
-#pragma warning restore CA1865, CA1307
-        var rustInner = CSharpToRust(innerType, false);
-        return $"Vec<{rustInner}>";
-    }
-
-    // Handle Dictionary<K, V> -> HashMap<K, V>
-    if (type.StartsWith("Dictionary<", StringComparison.Ordinal))
-    {
-        var inner = type.Substring(11).TrimEnd('>');
-        var parts = inner.Split(',', 2);
-        if (parts.Length == 2)
-        {
-            var keyType = CSharpToRust(parts[0].Trim(), false);
-            var valType = CSharpToRust(parts[1].Trim(), false);
-            var mapType = $"HashMap<{keyType}, {valType}>";
-            return nullable ? $"Option<{mapType}>" : mapType;
-        }
-    }
-
-    var rustType = type switch
-    {
-        "Guid" or "string" => "String",
-        "int" => "i32",
-        "long" => "i64",
-        "bool" => "bool",
-        "DateTime" or "DateTimeOffset" => "DateTime<Utc>",
-        _ => type
-    };
-
-    return nullable ? $"Option<{rustType}>" : rustType;
 }
 
 void GeneratePython(TypeDef def, string domain, string outDir)

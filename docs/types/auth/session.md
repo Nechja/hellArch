@@ -28,19 +28,6 @@ type Session struct {
 }
 ```
 
-## Rust
-
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct Session {
-    pub id: uuid::Uuid,
-    pub user_id: uuid::Uuid,
-    pub token: String,
-    pub expires_at: chrono::DateTime<chrono::Utc>,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-}
-```
-
 ## F#
 
 ```fsharp
