@@ -13,6 +13,7 @@ pytest_plugins = [
     "fixtures.user",
     "fixtures.redis",
     "fixtures.rabbitmq",
+    "fixtures.events",
 ]
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -25,6 +26,7 @@ def base_urls() -> dict[str, str]:
         "auth": os.getenv("AUTH_URL", "http://localhost:5001"),
         "user": os.getenv("USER_URL", "http://localhost:5002"),
         "admin": os.getenv("ADMIN_URL", "http://localhost:5003"),
+        "events": os.getenv("EVENTS_URL", "http://localhost:5005"),
     }
 
 

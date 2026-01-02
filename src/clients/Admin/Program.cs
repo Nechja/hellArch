@@ -92,6 +92,7 @@ builder.Services.AddScoped<HealthAdapter>();
 
 // Realtime SignalR hub connection (singleton for shared connection)
 builder.Services.AddSingleton<RealtimeHubService>();
+builder.Services.AddSingleton<ToastService>();
 builder.Services.AddHostedService<RealtimeHubHostedService>();
 
 var otelEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT")

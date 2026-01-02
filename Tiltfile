@@ -39,9 +39,23 @@ docker_build(
     ignore=['**/bin', '**/obj'],
 )
 
+docker_build(
+    'hellarch-events-db',
+    '.',
+    dockerfile='infra/dbs/events-db/Dockerfile',
+    only=[
+        'src/schema/Schema/',
+        'src/schema/MigrationRunner/',
+        'libs/data_types/csharp/',
+        'infra/dbs/events-db/',
+    ],
+    ignore=['**/bin', '**/obj'],
+)
+
 # Label infrastructure resources
 dc_resource('auth-db', labels=['infra'])
 dc_resource('user-db', labels=['infra'])
+dc_resource('events-db', labels=['infra'])
 dc_resource('redis', labels=['infra'])
 dc_resource('rabbitmq', labels=['infra'])
 
@@ -56,12 +70,14 @@ dc_resource('gateway', labels=['services'], resource_deps=['auth-db', 'redis', '
 dc_resource('auth', labels=['services'], resource_deps=['auth-db', 'redis', 'rabbitmq'], links=['http://localhost:5001'])
 dc_resource('user', labels=['services'], resource_deps=['user-db', 'redis', 'rabbitmq'], links=['http://localhost:5002'])
 dc_resource('admin', labels=['clients'], resource_deps=['auth', 'user', 'redis'], links=['http://localhost:5003'])
-dc_resource('health', labels=['services'], resource_deps=['redis', 'rabbitmq'], links=['http://localhost:5004/health', 'http://localhost:5004/status'])
+dc_resource('health', labels=['services'], resource_deps=['redis', 'rabbitmq', 'events'], links=['http://localhost:5004/health', 'http://localhost:5004/status'])
+dc_resource('events', labels=['services'], resource_deps=['events-db', 'rabbitmq'], links=['http://localhost:5005'])
 
 # Workers
 dc_resource('audit-worker', labels=['workers'], resource_deps=['rabbitmq'])
 dc_resource('webhooks-worker', labels=['workers'], resource_deps=['rabbitmq'])
 dc_resource('realtime-worker', labels=['workers'], resource_deps=['rabbitmq', 'gateway'], links=['http://localhost:5020/health'])
+dc_resource('infra-worker', labels=['workers'], resource_deps=['rabbitmq', 'health'])
 
 # Frontend clients (design system + login + app)
 # Built to src/gateway/Gateway/wwwroot/ - volume mount picks up changes immediately
