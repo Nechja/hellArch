@@ -76,52 +76,79 @@ const initials = computed(() => {
         </button>
       </div>
 
-      <!-- Mobile Menu -->
-      <div
-        v-show="mobileMenuOpen"
-        class="md:hidden py-4 border-t border-border"
-      >
-        <div class="flex flex-col gap-4">
-          <RouterLink
-            to="/"
-            class="text-text-secondary hover:text-neon-pink transition-colors py-2"
-            @click="mobileMenuOpen = false"
-          >
-            Dashboard
-          </RouterLink>
-          <RouterLink
-            to="/settings"
-            class="text-text-secondary hover:text-neon-pink transition-colors py-2"
-            @click="mobileMenuOpen = false"
-          >
-            Settings
-          </RouterLink>
-
-          <div class="border-t border-border pt-4 mt-2">
-            <div v-if="user" class="flex items-center gap-3">
-              <img
-                v-if="user.avatar_url"
-                :src="user.avatar_url"
-                :alt="user.display_name || user.email"
-                class="w-8 h-8 rounded-full border border-neon-pink/30"
-              />
-              <div v-else class="w-8 h-8 rounded-full bg-neon-pink flex-center text-sm font-bold text-bg-primary">
-                {{ initials }}
-              </div>
-              <span class="text-text-secondary text-sm">{{ user.display_name || user.email }}</span>
-              <a
-                href="/api/auth/logout"
-                class="ml-auto text-sm text-text-muted hover:text-neon-coral transition-colors"
-              >
-                Logout
-              </a>
-            </div>
-            <a v-else href="/login" class="btn-neon text-sm w-full text-center">
-              Sign in
-            </a>
-          </div>
-        </div>
-      </div>
     </div>
   </nav>
+
+  <!-- Mobile Menu Overlay -->
+  <Teleport to="body">
+    <div v-if="mobileMenuOpen" class="mobile-nav-overlay md:hidden" @click="mobileMenuOpen = false" />
+    <aside
+      class="mobile-nav-panel md:hidden"
+      :class="mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'"
+    >
+      <div class="p-4 border-b border-border mb-4 flex-between">
+        <div>
+          <h2 class="text-xl font-bold text-gradient">HellArch</h2>
+          <span class="text-xs text-text-muted uppercase tracking-wider">Menu</span>
+        </div>
+        <button
+          class="text-text-secondary hover:text-neon-pink p-2 transition-colors"
+          @click="mobileMenuOpen = false"
+          aria-label="Close menu"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <nav class="flex flex-col gap-1 px-2">
+        <RouterLink
+          to="/"
+          class="nav-link"
+          active-class="nav-link-active"
+          @click="mobileMenuOpen = false"
+        >
+          <span class="text-neon-pink">&#9632;</span>
+          <span>Dashboard</span>
+        </RouterLink>
+        <RouterLink
+          to="/settings"
+          class="nav-link"
+          active-class="nav-link-active"
+          @click="mobileMenuOpen = false"
+        >
+          <span class="text-neon-rose">&#9679;</span>
+          <span>Settings</span>
+        </RouterLink>
+
+        <div class="h-px bg-border my-3" />
+
+        <div v-if="user" class="px-3 py-2">
+          <div class="flex items-center gap-3 mb-3">
+            <img
+              v-if="user.avatar_url"
+              :src="user.avatar_url"
+              :alt="user.display_name || user.email"
+              class="w-8 h-8 rounded-full border border-neon-pink/30"
+            />
+            <div v-else class="w-8 h-8 rounded-full bg-neon-pink flex-center text-sm font-bold text-bg-primary">
+              {{ initials }}
+            </div>
+            <span class="text-text-secondary text-sm">{{ user.display_name || user.email }}</span>
+          </div>
+          <a
+            href="/api/auth/logout"
+            class="nav-link text-neon-coral hover:bg-neon-coral/10"
+          >
+            <span>&#10140;</span>
+            <span>Logout</span>
+          </a>
+        </div>
+        <a v-else href="/login" class="btn-neon text-sm mx-2">
+          Sign in
+        </a>
+      </nav>
+    </aside>
+  </Teleport>
 </template>

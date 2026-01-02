@@ -162,8 +162,8 @@ export default defineConfig({
     'btn-primary': 'btn bg-accent text-bg-primary font-bold hover:shadow-glow-pink hover:brightness-110 active:brightness-90',
     'btn-secondary': 'btn bg-bg-secondary text-text-primary border border-border hover:bg-bg-elevated hover:border-neon-pink/50 active:bg-bg-card',
     'btn-ghost': 'btn bg-transparent text-text-secondary hover:text-neon-pink hover:bg-bg-elevated/50',
-    'btn-danger': 'btn bg-transparent border border-neon-coral text-neon-coral hover:bg-neon-coral hover:text-white hover:shadow-glow-coral active:shadow-none',
-    'btn-success': 'btn bg-transparent border border-neon-peach text-neon-peach hover:bg-neon-peach hover:text-bg-primary hover:shadow-glow-peach active:shadow-none',
+    'btn-danger': 'btn bg-transparent border border-neon-red text-neon-red hover:bg-neon-red hover:text-white hover:shadow-glow-red active:shadow-none',
+    'btn-success': 'btn bg-transparent border border-neon-green text-neon-green hover:bg-neon-green hover:text-bg-primary hover:shadow-glow-green active:shadow-none',
 
     // Buttons - providers with subtle lift
     'btn-discord': 'btn bg-discord text-white hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0',
@@ -172,8 +172,8 @@ export default defineConfig({
 
     // Inputs with states
     'input': 'w-full px-4 py-2 bg-bg-secondary border border-border rounded-sm text-text-primary placeholder:text-text-muted focus:border-neon-pink focus:shadow-glow-pink focus:outline-none transition-all duration-fast',
-    'input-error': 'input border-neon-coral focus:border-neon-coral focus:shadow-glow-coral',
-    'input-success': 'input border-neon-peach focus:border-neon-peach focus:shadow-glow-peach',
+    'input-error': 'input border-neon-red focus:border-neon-red focus:shadow-glow-red',
+    'input-success': 'input border-neon-green focus:border-neon-green focus:shadow-glow-green',
     'input-sm': 'px-3 py-1.5 text-sm',
 
     // Typography
@@ -357,6 +357,7 @@ export default defineConfig({
     // Hover states
     'hover:bg-bg-elevated', 'hover:bg-bg-elevated/50',
     'hover:bg-neon-pink', 'hover:bg-neon-rose', 'hover:bg-neon-dusty', 'hover:bg-neon-peach', 'hover:bg-neon-orange', 'hover:bg-neon-coral',
+    'hover:bg-neon-coral/10',
     'hover:text-text-primary', 'hover:text-neon-pink', 'hover:text-neon-dusty', 'hover:text-neon-coral',
     'hover:border-neon-pink', 'hover:border-neon-pink/30', 'hover:border-neon-pink/50',
     'hover:border-neon-rose/50', 'hover:border-neon-peach/50', 'hover:border-neon-orange/50',

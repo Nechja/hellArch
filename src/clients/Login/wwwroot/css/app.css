@@ -66,6 +66,15 @@
     transition: all var(--duration-normal);
     cursor: pointer;
     border: 1px solid transparent;
+    transform: translateY(0);
+}
+
+.provider-btn:hover {
+    transform: translateY(-2px);
+}
+
+.provider-btn:active {
+    transform: translateY(0) scale(0.98);
 }
 
 .provider-btn.discord {
@@ -74,7 +83,7 @@
 }
 
 .provider-btn.discord:hover {
-    box-shadow: 0 0 20px rgba(88, 101, 242, 0.5);
+    box-shadow: 0 0 20px rgba(88, 101, 242, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .provider-btn.github {
@@ -83,7 +92,7 @@
 }
 
 .provider-btn.github:hover {
-    box-shadow: 0 0 20px rgba(240, 240, 240, 0.3);
+    box-shadow: 0 0 20px rgba(240, 240, 240, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .provider-btn.google {
@@ -92,7 +101,7 @@
 }
 
 .provider-btn.google:hover {
-    box-shadow: 0 0 20px rgba(234, 67, 53, 0.5);
+    box-shadow: 0 0 20px rgba(234, 67, 53, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .footer-text {

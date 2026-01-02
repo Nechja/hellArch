@@ -33,16 +33,19 @@
     <main class="flex flex-col min-h-screen">
         <header class="flex-between px-6 py-3 bg-bg-secondary border-b border-border">
             <!-- Hamburger (mobile only) -->
-            <button class="hamburger md:hidden" @onclick="ToggleMobileNav">
-                <span class="hamburger-line"></span>
-                <span class="hamburger-line"></span>
-                <span class="hamburger-line"></span>
+            <button class="hamburger md:hidden" @onclick="ToggleMobileNav" aria-label="Toggle menu">
+                <span class="hamburger-line @(_mobileNavOpen ? "rotate-45 translate-y-2" : "")"></span>
+                <span class="hamburger-line @(_mobileNavOpen ? "opacity-0" : "")"></span>
+                <span class="hamburger-line @(_mobileNavOpen ? "-rotate-45 -translate-y-2" : "")"></span>
             </button>
 
-            <div class="text-text-secondary text-sm ml-auto">
+            <div class="flex items-center gap-4 ml-auto">
                 @if (Username is not null)
                 {
-                    <span class="text-neon-pink">@Username</span>
+                    <span class="text-sm text-neon-pink">@Username</span>
+                    <a href="/api/auth/logout" class="text-sm text-text-muted hover:text-neon-coral transition-colors">
+                        Logout
+                    </a>
                 }
             </div>
         </header>

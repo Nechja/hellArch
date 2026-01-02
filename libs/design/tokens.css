@@ -46,9 +46,9 @@
   --color-accent-active: var(--color-neon-rose);
 
   /* Colors - Semantic */
-  --color-success: var(--color-neon-peach);
-  --color-warning: var(--color-neon-orange);
-  --color-error: var(--color-neon-coral);
+  --color-success: var(--color-neon-green);
+  --color-warning: var(--color-neon-yellow);
+  --color-error: var(--color-neon-red);
   --color-info: var(--color-neon-pink);
 
   /* Colors - Borders */

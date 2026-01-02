@@ -46,9 +46,19 @@ public class HealthAdapter(IHttpClientFactory httpClientFactory, ILogger<HealthA
             var json = await response.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<ServiceStatus>(json, JsonOptions.Default);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
             logger.LogWarning(ex, "Failed to get status for service {Name}", name);
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timed out for service {Name}", name);
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse response for service {Name}", name);
             return null;
         }
     }
@@ -73,7 +83,7 @@ public record ServiceStatus(
     [property: JsonPropertyName("latency_ms")] int LatencyMs,
     [property: JsonPropertyName("last_check")] string LastCheck,
     [property: JsonPropertyName("error")] string? Error,
-    [property: JsonPropertyName("history")] List<HealthCheck> History
+    [property: JsonPropertyName("history")] IReadOnlyList<HealthCheck> History
 );
 
 public record HealthCheck(

@@ -17,3 +17,8 @@ pub fn get_poll_interval() -> Int {
   |> result.try(int.parse)
   |> result.unwrap(default_poll_interval_ms)
 }
+
+pub fn get_events_url() -> String {
+  envoy.get("EVENTS_SERVICE_URL")
+  |> result.unwrap("http://events:5005")
+}

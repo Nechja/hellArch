@@ -170,9 +170,9 @@
 
     private static string GetOverallBorderClass(string status) => status.ToLower() switch
     {
-        "healthy" => "border-neon-peach",
-        "degraded" => "border-neon-orange",
-        _ => "border-neon-coral"
+        "healthy" => "border-neon-green",
+        "degraded" => "border-neon-yellow",
+        _ => "border-neon-red"
     };
 
     private static string FormatServiceName(string name) => name switch
