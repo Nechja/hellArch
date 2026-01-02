@@ -1,4 +1,4 @@
-import health/types.{type Service, HttpGet, RabbitMqConsumer, Service, TcpConnect}
+import health/types.{type Service, HttpGet, Service, TcpConnect}
 
 pub fn services() -> List(Service) {
   [
@@ -62,23 +62,11 @@ pub fn services() -> List(Service) {
       check_type: TcpConnect,
       critical: True,
     ),
-    // Workers - check RabbitMQ consumer count
+    // Workers - checked via events API
     Service(
-      name: "audit-worker",
-      url: "",
-      check_type: RabbitMqConsumer("audit-worker"),
-      critical: False,
-    ),
-    Service(
-      name: "webhooks-worker",
-      url: "",
-      check_type: RabbitMqConsumer("webhooks-worker"),
-      critical: False,
-    ),
-    Service(
-      name: "infra-worker",
-      url: "",
-      check_type: RabbitMqConsumer("infra-events"),
+      name: "workers",
+      url: "http://events:5005",
+      check_type: HttpGet("/api/workers/status"),
       critical: False,
     ),
   ]

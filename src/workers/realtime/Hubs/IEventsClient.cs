@@ -1,4 +1,4 @@
-using System.Text.Json;
+using HellArch.CloudEvents;
 
 namespace Realtime.Hubs;
 
@@ -24,35 +24,4 @@ public interface IEventsClient
     /// Clients should refresh their cached user data.
     /// </summary>
     Task UserUpdated();
-}
-
-/// <summary>
-/// CloudEvent DTO for SignalR transmission.
-/// Matches the CloudEvents 1.0 specification.
-/// </summary>
-public sealed record CloudEventDto
-{
-    public required string Id { get; init; }
-    public required string Source { get; init; }
-    public required string Type { get; init; }
-    public required DateTimeOffset Time { get; init; }
-    public JsonElement? Data { get; init; }
-
-    /// <summary>
-    /// Extracts user_id from the event data if present.
-    /// </summary>
-    public string? GetUserId()
-    {
-        if (Data is not { } data)
-        {
-            return null;
-        }
-
-        if (data.TryGetProperty("user_id", out var userId))
-        {
-            return userId.GetString();
-        }
-
-        return null;
-    }
 }

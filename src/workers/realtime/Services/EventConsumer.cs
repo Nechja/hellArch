@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using HellArch.CloudEvents;
+using HellArch.RabbitMQ;
 using Microsoft.AspNetCore.SignalR;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -149,7 +151,7 @@ public sealed class EventConsumer(
     private async Task ProcessEvent(BasicDeliverEventArgs ea, CancellationToken ct)
     {
         var body = Encoding.UTF8.GetString(ea.Body.Span);
-        var cloudEvent = JsonSerializer.Deserialize<CloudEventDto>(body, JsonOptions.Default);
+        var cloudEvent = JsonSerializer.Deserialize<CloudEventDto>(body, CloudEventJson.Options);
 
         if (cloudEvent is null)
         {
@@ -233,7 +235,7 @@ public sealed class EventConsumer(
 
     private static Activity? StartActivity(BasicDeliverEventArgs ea)
     {
-        var eventType = GetHeader(ea.BasicProperties.Headers, "ce-type");
+        var eventType = RabbitMqHeaders.GetHeader(ea.BasicProperties.Headers, RabbitMqHeaders.CloudEventType);
 
         var activity = ActivitySource.StartActivity(
             "realtime.process_event",
@@ -244,27 +246,6 @@ public sealed class EventConsumer(
         activity?.SetTag("messaging.cloudevents.type", eventType);
 
         return activity;
-    }
-
-    private static string? GetHeader(IDictionary<string, object?>? headers, string key)
-    {
-        if (headers is null)
-        {
-            return null;
-        }
-
-        if (!headers.TryGetValue(key, out var value))
-        {
-            return null;
-        }
-
-        return value switch
-        {
-            byte[] bytes => Encoding.UTF8.GetString(bytes),
-            string s => s,
-            null => null,
-            _ => value.ToString()
-        };
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)
@@ -288,13 +269,4 @@ public sealed class EventConsumer(
         _connection?.Dispose();
         base.Dispose();
     }
-}
-
-internal static class JsonOptions
-{
-    public static readonly JsonSerializerOptions Default = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
 }

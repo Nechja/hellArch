@@ -12,12 +12,14 @@ import (
 type Handler struct {
 	store     *store.Store
 	publisher *rabbitmq.Publisher
+	mgmt      *rabbitmq.ManagementClient
 }
 
-func New(store *store.Store, publisher *rabbitmq.Publisher) *Handler {
+func New(store *store.Store, publisher *rabbitmq.Publisher, mgmt *rabbitmq.ManagementClient) *Handler {
 	return &Handler{
 		store:     store,
 		publisher: publisher,
+		mgmt:      mgmt,
 	}
 }
 
@@ -40,6 +42,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	// Event publishing
 	mux.Handle("POST /api/events/publish", otelhttp.NewHandler(http.HandlerFunc(h.publishEvent), "publish_event"))
+
+	// Workers status
+	mux.Handle("GET /api/workers/status", otelhttp.NewHandler(http.HandlerFunc(h.workersStatus), "workers_status"))
 
 	// Health
 	mux.HandleFunc("GET /health", h.health)

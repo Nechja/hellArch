@@ -15,4 +15,9 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.11.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../../../libs/csharp/HellArch.RabbitMQ/HellArch.RabbitMQ.csproj" />
+    <ProjectReference Include="../../../libs/cloud_events/csharp/HellArch.CloudEvents.csproj" />
+  </ItemGroup>
+
 </Project>

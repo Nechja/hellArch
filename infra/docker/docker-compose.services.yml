@@ -122,7 +122,6 @@ services:
       - PORT=5004
       - POLL_INTERVAL_MS=10000
       - EVENTS_SERVICE_URL=http://events:5005
-      - RABBITMQ_MANAGEMENT_URL=http://hellarch:hellarch@rabbitmq:15672
       - OTEL_SERVICE_NAME=health
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
@@ -144,6 +143,7 @@ services:
       - HTTP_ADDRESS=:5005
       - DATABASE_URL=postgres://hellarch:hellarch@events-db:5432/events_db
       - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - RABBITMQ_MANAGEMENT_URL=http://hellarch:hellarch@rabbitmq:15672
       - OTEL_SERVICE_NAME=events
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug

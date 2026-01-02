@@ -10,7 +10,6 @@ pub type Status {
 pub type CheckType {
   HttpGet(path: String)
   TcpConnect
-  RabbitMqConsumer(queue: String)
 }
 
 pub type Service {

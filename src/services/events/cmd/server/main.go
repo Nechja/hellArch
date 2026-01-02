@@ -78,8 +78,11 @@ func main() {
 		}
 	}
 
+	// Create RabbitMQ management client for worker status checks
+	mgmt := rabbitmq.NewManagementClient(cfg.RabbitMQManagementURL)
+
 	// Setup HTTP server
-	h := handler.New(st, publisher)
+	h := handler.New(st, publisher, mgmt)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 

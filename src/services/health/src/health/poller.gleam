@@ -12,8 +12,8 @@ import health/http_client
 import health/registry
 import health/types.{
   type AggregatedStatus, type HealthCheck, type ServiceStatus, type Status,
-  AggregatedStatus, Degraded, HealthCheck, Healthy, HttpGet, RabbitMqConsumer,
-  ServiceStatus, TcpConnect, Unhealthy,
+  AggregatedStatus, Degraded, HealthCheck, Healthy, HttpGet, ServiceStatus,
+  TcpConnect, Unhealthy,
 }
 
 pub opaque type Poller {
@@ -240,23 +240,6 @@ fn check_service(service: types.Service) -> HealthCheck {
         False -> Error("Connection refused")
       }
     }
-    RabbitMqConsumer(queue) -> {
-      let mgmt_url = config.get_rabbitmq_management_url()
-      let url = mgmt_url <> "/api/queues/%2F/" <> queue
-      case http_client.get(url, check_timeout_ms) {
-        http_client.HttpOk(status, body) if status >= 200 && status < 300 -> {
-          case parse_consumer_count(body) {
-            Ok(count) if count > 0 -> Ok(Nil)
-            Ok(_) -> Error("No consumers")
-            Error(e) -> Error(e)
-          }
-        }
-        http_client.HttpOk(404, _) -> Error("Queue not found")
-        http_client.HttpOk(status, _) ->
-          Error("HTTP " <> int.to_string(status))
-        http_client.HttpError(reason) -> Error(reason)
-      }
-    }
   }
 
   let end = birl.monotonic_now()
@@ -290,16 +273,6 @@ fn parse_host_port(url: String) -> #(String, Int) {
     _ -> #(url, 80)
   }
 }
-
-fn parse_consumer_count(json_body: String) -> Result(Int, String) {
-  case do_parse_consumer_count(json_body) {
-    Ok(count) -> Ok(count)
-    Error(_) -> Error("Failed to parse consumer count")
-  }
-}
-
-@external(erlang, "health_rabbitmq_ffi", "parse_consumer_count")
-fn do_parse_consumer_count(json: String) -> Result(Int, Nil)
 
 fn calculate_status(history: List(HealthCheck)) -> Status {
   let recent_failures =
