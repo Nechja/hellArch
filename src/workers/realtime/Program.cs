@@ -47,25 +47,26 @@ builder.Services.AddOpenTelemetry()
         .AddSource("realtime-worker")
         .AddOtlpExporter(options => options.Endpoint = new Uri(otelEndpoint)));
 
-// JWT Authentication for SignalR
-var jwtSecret = builder.Configuration["Jwt:Secret"];
-if (string.IsNullOrEmpty(jwtSecret))
+// JWT Authentication for SignalR (RSA public key validation)
+var jwtPublicKeyPath = builder.Configuration["Jwt:PublicKeyPath"];
+if (string.IsNullOrEmpty(jwtPublicKeyPath))
 {
-    jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
+    jwtPublicKeyPath = Environment.GetEnvironmentVariable("JWT_PUBLIC_KEY_PATH");
 }
 
-if (string.IsNullOrEmpty(jwtSecret))
+if (string.IsNullOrEmpty(jwtPublicKeyPath))
 {
-    throw new InvalidOperationException("Jwt:Secret configuration or JWT_SECRET environment variable is required");
+    throw new InvalidOperationException("Jwt:PublicKeyPath configuration or JWT_PUBLIC_KEY_PATH environment variable is required");
 }
+
+var publicKeyText = File.ReadAllText(jwtPublicKeyPath);
+var rsa = System.Security.Cryptography.RSA.Create();
+rsa.ImportFromPem(publicKeyText);
+var rsaSecurityKey = new RsaSecurityKey(rsa);
 
 var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
     ?? builder.Configuration["Jwt:Issuer"]
-    ?? "hellarch";
-
-var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
-    ?? builder.Configuration["Jwt:Audience"]
-    ?? "hellarch";
+    ?? "hellarch-auth";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -73,12 +74,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(
-                System.Text.Encoding.UTF8.GetBytes(jwtSecret)),
+            IssuerSigningKey = rsaSecurityKey,
             ValidateIssuer = true,
             ValidIssuer = jwtIssuer,
-            ValidateAudience = true,
-            ValidAudience = jwtAudience,
+            ValidateAudience = false,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1)
         };

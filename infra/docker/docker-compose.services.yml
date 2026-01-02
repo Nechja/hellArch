@@ -210,12 +210,14 @@ services:
       - ASPNETCORE_URLS=http://+:5020
       - ASPNETCORE_ENVIRONMENT=Development
       - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - JWT_PUBLIC_KEY_PATH=/keys/dev-public.pem
       - CORS_ORIGINS=http://localhost:5000,http://localhost:5010,http://hellarch-gateway:5000
       - OTEL_SERVICE_NAME=realtime-worker
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
     volumes:
       - ../../src/workers/realtime:/app
+      - ../../infra/keys:/keys:ro
       - realtime-nuget:/root/.nuget
     networks:
       - hellarch
