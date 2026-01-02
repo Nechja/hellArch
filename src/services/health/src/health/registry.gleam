@@ -27,6 +27,12 @@ pub fn services() -> List(Service) {
       critical: False,
     ),
     Service(
+      name: "events",
+      url: "http://events:5005",
+      check_type: HttpGet("/health"),
+      critical: True,
+    ),
+    Service(
       name: "redis",
       url: "redis:6379",
       check_type: TcpConnect,
@@ -47,6 +53,12 @@ pub fn services() -> List(Service) {
     Service(
       name: "rabbitmq",
       url: "rabbitmq:5672",
+      check_type: TcpConnect,
+      critical: True,
+    ),
+    Service(
+      name: "events-db",
+      url: "events-db:5432",
       check_type: TcpConnect,
       critical: True,
     ),

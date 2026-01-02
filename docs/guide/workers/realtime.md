@@ -1,28 +1,23 @@
 # Realtime Worker
 
-**C# (.NET 10)**
+**C# / ASP.NET Core / SignalR**
 
-Consumes events from RabbitMQ and broadcasts them to connected browser clients via SignalR WebSockets.
+Broadcasts events to connected browser clients in real-time via WebSockets.
 
 ## Overview
 
 | Property | Value |
 |----------|-------|
+| **Port** | 5005 |
 | **Queue** | `realtime-worker` |
 | **Routing Key** | `hellarch.#` (all events) |
 | **Hub Endpoint** | `/hubs/events` |
-| **Port** | `5020` |
 | **Location** | `src/workers/realtime/` |
 
 ## Architecture
 
 ```mermaid
-graph LR
-    subgraph Services
-        AUTH[Auth]
-        USER[User]
-    end
-
+graph TB
     subgraph RabbitMQ
         EX[hellarch.events]
         Q[realtime-worker]
@@ -33,258 +28,142 @@ graph LR
         H[EventsHub]
     end
 
-    subgraph Browsers
-        B1[User Browser]
-        B2[Admin Browser]
+    subgraph Clients
+        B1[Browser 1]
+        B2[Browser 2]
+        B3[Admin Console]
     end
 
-    AUTH -->|publish| EX
-    USER -->|publish| EX
     EX -->|hellarch.#| Q
     Q --> C
     C --> H
     H -->|WebSocket| B1
     H -->|WebSocket| B2
+    H -->|WebSocket| B3
 ```
 
 ## How It Works
 
 ```mermaid
 sequenceDiagram
-    participant S as Auth Service
     participant RMQ as RabbitMQ
-    participant C as EventConsumer
-    participant H as EventsHub
-    participant B as Browser
+    participant EC as EventConsumer
+    participant Hub as EventsHub
+    participant Client as Browser
 
-    Note over B,H: Connection Phase
-    B->>H: Connect with JWT
-    H->>H: Validate token
-    H->>H: Add to groups (user:123, all)
-    H-->>B: Connected
+    Note over Client,Hub: Client connects with JWT
+    Client->>Hub: Connect(/hubs/events?access_token=xxx)
+    Hub->>Hub: Validate JWT
+    Hub->>Hub: Add to groups (user:xxx, all)
+    Hub-->>Client: Connected
 
-    Note over S,B: Event Flow
-    S->>RMQ: Publish user.updated
-    RMQ->>C: Deliver message
-    C->>C: Parse CloudEvent
-    C->>H: Broadcast to user:123
-    H->>B: ReceiveEvent(event)
-    B->>B: Update UI
-    C->>RMQ: Ack message
+    Note over RMQ,Client: Event broadcast flow
+    RMQ->>EC: Deliver CloudEvent
+    EC->>EC: Parse event, extract userId
+    EC->>Hub: Broadcast to groups
+    Hub->>Client: ReceiveEvent(cloudEvent)
 ```
 
 ## SignalR Groups
 
-Clients are automatically added to groups on connection:
+Clients are automatically organized into groups for targeted delivery:
 
-| Group | Pattern | Who Joins | Use Case |
-|-------|---------|-----------|----------|
-| `all` | Static | All users | Broadcast messages |
-| `user:{id}` | `user:abc-123` | Single user | User-specific events |
-| `admins` | Static | Admin role | Admin-only events |
-| `event:{type}` | `event:hellarch.auth.user.created.v1` | Subscribers | Opt-in to specific types |
+| Group | Pattern | Description |
+|-------|---------|-------------|
+| `all` | All authenticated | Broadcast events |
+| `user:{userId}` | Per-user | User-specific events |
+| `admins` | Admin role | Admin-only events |
+| `event:{type}` | Per-event-type | Subscribed event types |
 
 ## Client Interface
 
-Methods the server can call on connected clients:
-
 ```typescript
-interface IEventsClient {
-  // Receive any CloudEvent
-  receiveEvent(event: CloudEvent): void;
+// TypeScript client example
+import * as signalR from "@microsoft/signalr";
 
-  // Session was invalidated - redirect to login
-  sessionInvalidated(reason: string): void;
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl("/hubs/events", {
+        accessTokenFactory: () => getAccessToken()
+    })
+    .withAutomaticReconnect()
+    .build();
 
-  // User data changed - refetch profile
-  userUpdated(): void;
-}
+// Receive any CloudEvent
+connection.on("ReceiveEvent", (event: CloudEvent) => {
+    console.log("Event received:", event.type, event.data);
+});
+
+// Session was invalidated (redirect to login)
+connection.on("SessionInvalidated", (reason: string) => {
+    console.log("Session ended:", reason);
+    window.location.href = "/login";
+});
+
+// User data changed (refresh cached data)
+connection.on("UserUpdated", () => {
+    console.log("User data updated");
+    refreshUserProfile();
+});
+
+await connection.start();
+
+// Subscribe to specific event types
+await connection.invoke("SubscribeToEventType", "hellarch.auth.session.created.v1");
 ```
+
+## Server Methods
+
+Methods clients can invoke on the hub:
+
+| Method | Parameters | Description |
+|--------|------------|-------------|
+| `SubscribeToEventType` | `eventType: string` | Join event-type specific group |
+| `UnsubscribeFromEventType` | `eventType: string` | Leave event-type specific group |
+
+## Client Methods
+
+Methods the server can invoke on clients:
+
+| Method | Parameters | Description |
+|--------|------------|-------------|
+| `ReceiveEvent` | `CloudEventDto` | Receive a CloudEvent |
+| `SessionInvalidated` | `reason: string` | Session was ended |
+| `UserUpdated` | - | User profile changed |
 
 ## Event Routing
 
-When an event arrives, the consumer broadcasts to relevant groups:
+```mermaid
+flowchart TD
+    E[CloudEvent] --> T{Event Type?}
 
-```csharp
-// 1. Send to event-type subscribers
-await hubContext.Clients
-    .Group($"event:{eventType}")
-    .ReceiveEvent(cloudEvent);
+    T -->|session.ended| SI[SessionInvalidated]
+    T -->|user.updated| UU[UserUpdated]
+    T -->|user.created/deleted| AG[Admin Group]
+    T -->|any| ET[Event Type Group]
+    T -->|has userId| UG[User Group]
 
-// 2. Send to user-specific group
-if (userId is not null)
-{
-    await hubContext.Clients
-        .Group($"user:{userId}")
-        .ReceiveEvent(cloudEvent);
-}
-
-// 3. Special handlers for specific events
-if (eventType.Contains("session.ended"))
-{
-    await hubContext.Clients
-        .Group($"user:{userId}")
-        .SessionInvalidated(reason);
-}
-
-// 4. Admin events to admin group
-if (IsAdminEvent(eventType))
-{
-    await hubContext.Clients
-        .Group("admins")
-        .ReceiveEvent(cloudEvent);
-}
-```
-
-## Frontend Usage
-
-### TypeScript/JavaScript
-
-```typescript
-import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
-
-const connection = new HubConnectionBuilder()
-  .withUrl('/hubs/events', {
-    accessTokenFactory: () => getAccessToken()
-  })
-  .withAutomaticReconnect()
-  .configureLogging(LogLevel.Information)
-  .build();
-
-// Handle incoming events
-connection.on('ReceiveEvent', (event) => {
-  console.log('Event:', event.type, event.data);
-
-  switch (event.type) {
-    case 'hellarch.auth.user.updated.v1':
-      refreshUserProfile();
-      break;
-    case 'hellarch.auth.session.created.v1':
-      showNotification('New login detected');
-      break;
-  }
-});
-
-// Handle session invalidation
-connection.on('SessionInvalidated', (reason) => {
-  console.log('Session ended:', reason);
-  window.location.href = '/login';
-});
-
-// Handle user updates
-connection.on('UserUpdated', () => {
-  refetchUserProfile();
-});
-
-// Start connection
-await connection.start();
-
-// Optional: Subscribe to specific event types
-await connection.invoke('SubscribeToEventType', 'hellarch.auth.user.created.v1');
-```
-
-### Blazor
-
-```csharp
-@inject NavigationManager Navigation
-@implements IAsyncDisposable
-
-@code {
-    private HubConnection? _hub;
-
-    protected override async Task OnInitializedAsync()
-    {
-        _hub = new HubConnectionBuilder()
-            .WithUrl(Navigation.ToAbsoluteUri("/hubs/events"), options =>
-            {
-                options.AccessTokenProvider = () => Task.FromResult(GetToken());
-            })
-            .WithAutomaticReconnect()
-            .Build();
-
-        _hub.On<CloudEventDto>("ReceiveEvent", OnEventReceived);
-        _hub.On<string>("SessionInvalidated", OnSessionInvalidated);
-        _hub.On("UserUpdated", OnUserUpdated);
-
-        await _hub.StartAsync();
-    }
-
-    private void OnEventReceived(CloudEventDto evt)
-    {
-        // Handle event
-        InvokeAsync(StateHasChanged);
-    }
-
-    private void OnSessionInvalidated(string reason)
-    {
-        Navigation.NavigateTo("/login", forceLoad: true);
-    }
-
-    private void OnUserUpdated()
-    {
-        // Refetch user data
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_hub is not null)
-            await _hub.DisposeAsync();
-    }
-}
+    SI --> UC[User's Clients]
+    UU --> UC
+    AG --> AC[Admin Clients]
+    ET --> SC[Subscribed Clients]
+    UG --> UC
 ```
 
 ## Authentication
 
-SignalR WebSocket connections can't send HTTP headers, so JWT is passed via query string:
-
-```
-wss://localhost:5000/hubs/events?access_token=eyJhbG...
-```
-
-The worker extracts and validates the token:
+JWT tokens are validated on connection:
 
 ```csharp
-options.Events = new JwtBearerEvents
-{
-    OnMessageReceived = context =>
-    {
-        var accessToken = context.Request.Query["access_token"];
-        var path = context.HttpContext.Request.Path;
+// Token sent via query string for WebSocket upgrade
+/hubs/events?access_token=eyJhbGciOiJIUzI1NiIs...
 
-        if (!string.IsNullOrEmpty(accessToken) &&
-            path.StartsWithSegments("/hubs"))
-        {
-            context.Token = accessToken;
-        }
-
-        return Task.CompletedTask;
-    }
-};
+// Token validation parameters
+ValidateIssuerSigningKey = true
+ValidIssuer = "hellarch"
+ValidAudience = "hellarch"
+ValidateLifetime = true
+ClockSkew = 1 minute
 ```
-
-## CloudEvent DTO
-
-```csharp
-public sealed record CloudEventDto
-{
-    public required string Id { get; init; }
-    public required string Source { get; init; }
-    public required string Type { get; init; }
-    public required DateTimeOffset Time { get; init; }
-    public JsonElement? Data { get; init; }
-}
-```
-
-## OpenTelemetry
-
-Distributed tracing with spans for:
-
-- `realtime.process_event` - Message processing
-
-Span attributes:
-- `messaging.system`: `rabbitmq`
-- `messaging.operation.type`: `process`
-- `messaging.cloudevents.type`: Event type
 
 ## Environment Variables
 
@@ -292,9 +171,9 @@ Span attributes:
 |----------|----------|---------|-------------|
 | `RABBITMQ_URL` | Yes | - | RabbitMQ connection string |
 | `JWT_SECRET` | Yes | - | JWT signing key |
-| `JWT_ISSUER` | No | `hellarch` | Token issuer |
-| `JWT_AUDIENCE` | No | `hellarch` | Token audience |
-| `CORS_ORIGINS` | No | `localhost:5000,5010` | Allowed origins (comma-separated) |
+| `JWT_ISSUER` | No | `hellarch` | Expected JWT issuer |
+| `JWT_AUDIENCE` | No | `hellarch` | Expected JWT audience |
+| `CORS_ORIGINS` | No | `localhost:5000,5010` | Allowed CORS origins (comma-separated) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | No | `localhost:4318` | OTLP endpoint |
 | `LOG_LEVEL` | No | `debug` | Logging level |
 
@@ -305,58 +184,78 @@ realtime-worker:
   build:
     context: ../../src/workers/realtime
     dockerfile: Dockerfile
-    target: dev
   ports:
-    - "5020:5020"
-  env_file:
-    - ../../.env
-    - ../../.env.secrets
+    - "5005:8080"
   environment:
-    - ASPNETCORE_URLS=http://+:5020
     - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+    - JWT_SECRET=${JWT_SECRET}
     - CORS_ORIGINS=http://localhost:5000,http://localhost:5010
     - OTEL_SERVICE_NAME=realtime-worker
-    - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4318
 ```
 
 ## Code Structure
 
 ```
 src/workers/realtime/
-├── Program.cs                    # Entry point, DI setup
+├── Program.cs                 # Entry point, DI, middleware
 ├── Hubs/
-│   ├── EventsHub.cs              # SignalR hub, group management
-│   └── IEventsClient.cs          # Typed client interface, DTOs
+│   ├── EventsHub.cs           # SignalR hub with group management
+│   └── IEventsClient.cs       # Typed client interface + DTOs
 ├── Services/
-│   └── EventConsumer.cs          # RabbitMQ consumer, broadcasting
+│   └── EventConsumer.cs       # RabbitMQ consumer, broadcasts to hub
 ├── appsettings.json
 ├── appsettings.Development.json
 ├── Realtime.csproj
 └── Dockerfile
 ```
 
-## Mise Tasks
+## OpenTelemetry
 
-```bash
-mise run realtime:build    # Build the project
-mise run realtime:run      # Run locally
-mise run realtime:watch    # Hot reload development
-mise run realtime:publish  # Production build
+Tracing spans created:
+
+- `realtime.process_event` - Message processing
+
+Span attributes:
+- `messaging.system`: `rabbitmq`
+- `messaging.operation.type`: `process`
+- `messaging.cloudevents.type`: Event type
+
+## Health Check
+
+```http
+GET /health
 ```
 
-## Gateway Integration
+Returns `200 OK` when the service is running.
 
-The gateway routes SignalR connections to the realtime worker:
+## CORS
 
-```json
-{
-  "hubs-route": {
-    "ClusterId": "realtime-cluster",
-    "Match": {
-      "Path": "/hubs/{**catch-all}"
-    }
-  }
-}
+SignalR requires specific CORS configuration for WebSocket connections:
+
+```csharp
+policy
+    .WithOrigins(corsOrigins)  // Specific origins only
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+    .AllowCredentials();       // Required for SignalR
 ```
 
-YARP automatically handles WebSocket upgrade requests.
+## Reconnection
+
+Clients should use automatic reconnection:
+
+```typescript
+const connection = new signalR.HubConnectionBuilder()
+    .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+    .build();
+
+connection.onreconnecting(() => {
+    showReconnectingUI();
+});
+
+connection.onreconnected(() => {
+    hideReconnectingUI();
+    resubscribeToEvents();
+});
+```
