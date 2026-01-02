@@ -61,7 +61,9 @@ if (string.IsNullOrEmpty(jwtPublicKeyPath))
 }
 
 var publicKeyText = File.ReadAllText(jwtPublicKeyPath);
+#pragma warning disable CA2000 // RSA instance is owned by RsaSecurityKey and must remain undisposed
 var rsa = System.Security.Cryptography.RSA.Create();
+#pragma warning restore CA2000
 rsa.ImportFromPem(publicKeyText);
 var rsaSecurityKey = new RsaSecurityKey(rsa);
 
@@ -78,7 +80,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = rsaSecurityKey,
             ValidateIssuer = true,
             ValidIssuer = jwtIssuer,
+#pragma warning disable CA5404 // Internal service does not require audience validation
             ValidateAudience = false,
+#pragma warning restore CA5404
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1)
         };

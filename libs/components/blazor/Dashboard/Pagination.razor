@@ -8,18 +8,18 @@
         ←
     </button>
 
-    @foreach (var page in GetVisiblePages())
+    @foreach (var pageNum in GetVisiblePages())
     {
-        @if (page == -1)
+        @if (pageNum == -1)
         {
             <span class="page-ellipsis">…</span>
         }
         else
         {
             <button type="button"
-                    class="@(page == CurrentPage ? "page-btn-active" : "page-btn")"
-                    @onclick="() => GoToPage(page)">
-                @page
+                    class="@(pageNum == CurrentPage ? "page-btn-active" : "page-btn")"
+                    @onclick="() => GoToPage(pageNum)">
+                @pageNum
             </button>
         }
     }
@@ -38,11 +38,11 @@
     [Parameter] public int VisiblePages { get; set; } = 5;
     [Parameter] public EventCallback<int> CurrentPageChanged { get; set; }
 
-    private async Task GoToPage(int page)
+    private async Task GoToPage(int pageNum)
     {
-        if (page < 1 || page > TotalPages || page == CurrentPage) return;
-        CurrentPage = page;
-        await CurrentPageChanged.InvokeAsync(page);
+        if (pageNum < 1 || pageNum > TotalPages || pageNum == CurrentPage) return;
+        CurrentPage = pageNum;
+        await CurrentPageChanged.InvokeAsync(pageNum);
     }
 
     private IEnumerable<int> GetVisiblePages()

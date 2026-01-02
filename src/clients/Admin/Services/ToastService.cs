@@ -33,7 +33,11 @@ public sealed class ToastService
         // Auto-dismiss after duration
         if (durationMs > 0)
         {
-            _ = Task.Delay(durationMs).ContinueWith(_ => Dismiss(toast.Id));
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(durationMs);
+                Dismiss(toast.Id);
+            });
         }
     }
 

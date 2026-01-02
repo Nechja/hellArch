@@ -8,25 +8,20 @@ namespace HellArch.RabbitMQ;
 /// <summary>
 /// Base class for RabbitMQ consumers that handles connection management and lifecycle.
 /// </summary>
-public abstract class RabbitMqConsumerBase : BackgroundService
+public abstract class RabbitMqConsumerBase(
+    IConfiguration configuration,
+    ILogger logger) : BackgroundService
 {
-    protected readonly IConfiguration Configuration;
-    protected readonly ILogger Logger;
-
-    protected IConnection? Connection;
-    protected IChannel? Channel;
-    protected string QueueName = null!;
-
-    protected RabbitMqConsumerBase(IConfiguration configuration, ILogger logger)
-    {
-        Configuration = configuration;
-        Logger = logger;
-    }
+    protected IConfiguration Configuration { get; } = configuration;
+    protected ILogger Logger { get; } = logger;
+    protected IConnection? Connection { get; set; }
+    protected IChannel? Channel { get; set; }
+    protected string QueueName { get; set; } = null!;
 
     /// <summary>
     /// Gets the RabbitMQ URL from configuration or environment variables.
     /// </summary>
-    protected string GetRabbitMqUrl()
+    protected Uri GetRabbitMqUri()
     {
         var rabbitUrl = Configuration["RabbitMQ:Url"];
         if (string.IsNullOrEmpty(rabbitUrl))
@@ -39,7 +34,7 @@ public abstract class RabbitMqConsumerBase : BackgroundService
             throw new InvalidOperationException("RabbitMQ:Url configuration or RABBITMQ_URL environment variable is required");
         }
 
-        return rabbitUrl;
+        return new Uri(rabbitUrl);
     }
 
     /// <summary>
@@ -47,11 +42,9 @@ public abstract class RabbitMqConsumerBase : BackgroundService
     /// </summary>
     protected async Task<(IConnection connection, IChannel channel)> CreateConnection(CancellationToken ct)
     {
-        var rabbitUrl = GetRabbitMqUrl();
-
         var factory = new ConnectionFactory
         {
-            Uri = new Uri(rabbitUrl)
+            Uri = GetRabbitMqUri()
         };
 
         var connection = await factory.CreateConnectionAsync(ct);

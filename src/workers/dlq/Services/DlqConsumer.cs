@@ -32,7 +32,9 @@ public sealed class DlqConsumer(
                 await ProcessDeadLetter(ea, stoppingToken);
                 await Channel!.BasicAckAsync(ea.DeliveryTag, multiple: false, stoppingToken);
             }
+#pragma warning disable CA1031 // DLQ handler must catch all exceptions to prevent message loss
             catch (Exception ex)
+#pragma warning restore CA1031
             {
                 Logger.LogError(ex, "Failed to process dead letter event");
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);

@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0-preview.1.25061.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.*-*" />
   </ItemGroup>
 
 </Project>
