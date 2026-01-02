@@ -13,19 +13,15 @@ graph LR
     subgraph Broker
         EX[hellarch.events<br/>topic exchange]
         Q1[user.events queue]
-        Q2[events-worker queue]
     end
 
     subgraph Subscribers
         USER[User Service<br/>F#]
-        WORKER[Events Worker<br/>Rust]
     end
 
     AUTH -->|publish| EX
     EX -->|hellarch.auth.user.#| Q1
-    EX -->|hellarch.#| Q2
     Q1 --> USER
-    Q2 --> WORKER
 ```
 
 ## RabbitMQ Configuration
@@ -38,7 +34,6 @@ graph TB
 
     subgraph Queues
         Q1[user.events]
-        Q2[events-worker]
     end
 
     subgraph Routing Keys
@@ -48,13 +43,11 @@ graph TB
     end
 
     EX -->|hellarch.auth.user.#| Q1
-    EX -->|hellarch.#| Q2
 ```
 
 | Queue | Binding | Consumer | Purpose |
 |-------|---------|----------|---------|
 | `user.events` | `hellarch.auth.user.#` | F# User Service | Create user profiles |
-| `events-worker` | `hellarch.#` | Rust Events Worker | Emails, analytics, audit |
 
 ## Event Structure
 
@@ -237,46 +230,6 @@ graph TB
 
 **Location:** `src/services/user/User/Infrastructure/Events.fs`
 
-## Rust Consumer
-
-The Events Worker handles side effects like emails and analytics.
-
-```mermaid
-graph TB
-    subgraph Events Worker
-        C[Consumer]
-        M[Match event type]
-    end
-
-    subgraph Handlers
-        H1[handle_user_created]
-        H2[handle_session_created]
-        H3[handle_account_linked]
-    end
-
-    subgraph Side Effects
-        E[Welcome email]
-        A[Analytics tracking]
-        AU[Audit logging]
-    end
-
-    C --> M
-    M -->|user.created| H1
-    M -->|session.created| H2
-    M -->|account.linked| H3
-    H1 --> E
-    H1 --> A
-    H2 --> AU
-```
-
-**Key Features:**
-- Binds to `hellarch.#` to receive all events
-- Tokio async runtime
-- Structured JSON logging with tracing
-- Handles user, session, and account events
-
-**Location:** `src/workers/events/`
-
 ## Tracing
 
 OpenTelemetry trace context flows through events:
@@ -388,7 +341,7 @@ graph TB
    }
    ```
 
-5. **Add consumer handler** using generated types from `hellarch_cloud_events` (Rust) or `HellArch.CloudEvents` (F#)
+5. **Add consumer handler** using generated types from `HellArch.CloudEvents` (F#/C#)
 
 ## Error Handling
 
@@ -434,11 +387,4 @@ src/services/auth/internal/events/
 
 src/services/user/User/Infrastructure/
 └── Events.fs                 # F# event consumer
-
-src/workers/events/
-├── src/
-│   ├── main.rs               # Rust consumer + queue setup
-│   └── handlers.rs           # Event handlers
-├── Cargo.toml
-└── Dockerfile
 ```

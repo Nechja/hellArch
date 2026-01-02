@@ -55,7 +55,6 @@ docker_compose('./infra/docker/docker-compose.services.yml')
 dc_resource('gateway', labels=['services'], resource_deps=['auth-db', 'redis', 'clients'], links=['http://localhost:5000', 'http://localhost:5000/login', 'http://localhost:5000/app'])
 dc_resource('auth', labels=['services'], resource_deps=['auth-db', 'redis', 'rabbitmq'], links=['http://localhost:5001'])
 dc_resource('user', labels=['services'], resource_deps=['user-db', 'redis', 'rabbitmq'], links=['http://localhost:5002'])
-dc_resource('events-worker', labels=['workers'], resource_deps=['rabbitmq'])
 dc_resource('admin', labels=['clients'], resource_deps=['auth', 'user', 'redis'], links=['http://localhost:5003'])
 dc_resource('health', labels=['services'], resource_deps=['redis', 'rabbitmq'], links=['http://localhost:5004/health', 'http://localhost:5004/status'])
 

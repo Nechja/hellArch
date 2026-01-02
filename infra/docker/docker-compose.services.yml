@@ -80,21 +80,6 @@ services:
       - hellarch
     restart: unless-stopped
 
-  events-worker:
-    build:
-      context: ../..
-      dockerfile: src/workers/events/Dockerfile
-      target: dev
-    container_name: hellarch-events-worker
-    environment:
-      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
-      - RUST_LOG=info
-      - OTEL_SERVICE_NAME=events-worker
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
-    networks:
-      - hellarch
-    restart: unless-stopped
-
   admin:
     build:
       context: ../../src/clients/Admin

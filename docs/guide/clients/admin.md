@@ -150,7 +150,7 @@ The RabbitMQ adapter connects to the RabbitMQ Management API for queue inspectio
 - View queue overview (message counts, consumers)
 - List queues and exchanges
 - Peek messages from queues (non-destructive)
-- Parse CloudEvents from the `events-worker` queue
+- Parse CloudEvents from queues
 
 ## Environment Variables
 
