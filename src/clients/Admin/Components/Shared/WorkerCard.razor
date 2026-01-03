@@ -1,0 +1,28 @@
+<MudPaper Class="pa-4" Elevation="1">
+    <div class="d-flex align-center mb-3">
+        <MudIcon Icon="@HealthHelpers.GetHealthIcon(Status)"
+                 Color="@HealthHelpers.GetHealthColor(Status)"
+                 Size="Size.Small"
+                 Class="mr-2" />
+        <MudText Typo="Typo.body1" Style="font-weight: 500;">@Name</MudText>
+    </div>
+    <MudSimpleTable Dense="true" Hover="false" Bordered="false">
+        <tbody>
+            <tr>
+                <td><MudText Typo="Typo.caption">Consumers</MudText></td>
+                <td class="text-right"><MudText Typo="Typo.body2">@Consumers</MudText></td>
+            </tr>
+            <tr>
+                <td><MudText Typo="Typo.caption">Messages</MudText></td>
+                <td class="text-right"><MudText Typo="Typo.body2">@Messages</MudText></td>
+            </tr>
+        </tbody>
+    </MudSimpleTable>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter, EditorRequired] public string Status { get; set; } = "";
+    [Parameter] public int Consumers { get; set; }
+    [Parameter] public int Messages { get; set; }
+}

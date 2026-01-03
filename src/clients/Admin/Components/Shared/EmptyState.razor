@@ -1,0 +1,19 @@
+<MudPaper Class="pa-8 text-center" Elevation="@Elevation">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <MudIcon Icon="@Icon" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
+    }
+    <MudText Color="Color.Secondary" Class="mb-4">@Message</MudText>
+    @if (OnAction.HasDelegate)
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OnAction">@ActionText</MudButton>
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public string Message { get; set; } = "";
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string ActionText { get; set; } = "Create";
+    [Parameter] public EventCallback OnAction { get; set; }
+    [Parameter] public int Elevation { get; set; } = 2;
+}

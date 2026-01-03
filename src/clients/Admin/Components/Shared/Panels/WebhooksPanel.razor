@@ -13,10 +13,10 @@
 }
 else if (Webhooks.Count == 0)
 {
-    <MudPaper Class="pa-8 text-center" Elevation="2">
-        <MudText Color="Color.Secondary" Class="mb-4">No webhooks configured yet.</MudText>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ShowCreateForm">Create your first webhook</MudButton>
-    </MudPaper>
+    <EmptyState Message="No webhooks configured yet."
+                Icon="@Icons.Material.Filled.Webhook"
+                ActionText="Create your first webhook"
+                OnAction="ShowCreateForm" />
 }
 else
 {
@@ -130,18 +130,12 @@ else
 </MudDialog>
 
 @* Delete Confirmation *@
-<MudDialog @bind-Visible="_showDeleteConfirm">
-    <TitleContent>
-        <MudText Typo="Typo.h6">Delete Webhook</MudText>
-    </TitleContent>
-    <DialogContent>
-        <MudText>Are you sure you want to delete <strong>@_webhookToDelete?.Name</strong>? This cannot be undone.</MudText>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="() => _showDeleteConfirm = false">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="DeleteWebhook">Delete</MudButton>
-    </DialogActions>
-</MudDialog>
+<ConfirmDialog @bind-Visible="_showDeleteConfirm"
+               Title="Delete Webhook"
+               Message="@($"Are you sure you want to delete {_webhookToDelete?.Name}? This cannot be undone.")"
+               ConfirmText="Delete"
+               ConfirmColor="Color.Error"
+               OnConfirm="DeleteWebhook" />
 
 @code {
     [Parameter] public IReadOnlyList<Webhook> Webhooks { get; set; } = [];
@@ -255,7 +249,6 @@ else
             await OnDelete.InvokeAsync(_webhookToDelete.Id);
             Snackbar.Add("Webhook deleted", Severity.Success);
             _webhookToDelete = null;
-            _showDeleteConfirm = false;
         }
     }
 

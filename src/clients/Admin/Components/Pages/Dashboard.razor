@@ -27,36 +27,17 @@
 <SectionHeader Title="Service Health" />
 @if (_healthStatus != null)
 {
-    <MudAlert Severity="@GetOverallSeverity(_healthStatus.Overall)" Class="mb-4" Variant="Variant.Outlined">
-        <div class="d-flex align-center">
-            <MudIcon Icon="@GetHealthIcon(_healthStatus.Overall)" Class="mr-2" />
-            <span>System: @_healthStatus.Overall.ToUpperInvariant()</span>
-            <MudSpacer />
-            <MudText Typo="Typo.caption">Last check: @FormatTime(_healthStatus.CheckedAt)</MudText>
-        </div>
-    </MudAlert>
+    <HealthStatusBar Label="System" Status="@_healthStatus.Overall" Timestamp="@_healthStatus.CheckedAt" />
 
     <MudGrid Class="mb-8">
         @foreach (var (name, info) in _healthStatus.Services.OrderBy(s => s.Key))
         {
             <MudItem xs="6" md="3">
-                <MudPaper Class="pa-3" Elevation="1">
-                    <div class="d-flex align-center mb-2">
-                        <MudIcon Icon="@GetHealthIcon(info.Status)"
-                                 Color="@GetHealthColor(info.Status)"
-                                 Size="Size.Small"
-                                 Class="mr-2" />
-                        <MudText Typo="Typo.body2" Style="font-weight: 500;">@FormatServiceName(name)</MudText>
-                    </div>
-                    <div class="d-flex justify-space-between align-center">
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">@info.Status</MudText>
-                        <MudText Typo="Typo.caption" Style="font-family: 'JetBrains Mono', monospace;">@info.LatencyMs ms</MudText>
-                    </div>
-                    @if (!string.IsNullOrEmpty(info.Error))
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Class="mt-2">Error</MudChip>
-                    }
-                </MudPaper>
+                <ServiceHealthCard
+                    Name="@HealthHelpers.FormatServiceName(name)"
+                    Status="@info.Status"
+                    LatencyMs="@info.LatencyMs"
+                    HasError="@(!string.IsNullOrEmpty(info.Error))" />
             </MudItem>
         }
     </MudGrid>
@@ -69,12 +50,7 @@ else
 <SectionHeader Title="Worker Status" />
 @if (_workersStatus != null)
 {
-    <MudAlert Severity="@GetOverallSeverity(_workersStatus.Overall)" Class="mb-4" Variant="Variant.Outlined">
-        <div class="d-flex align-center">
-            <MudIcon Icon="@GetHealthIcon(_workersStatus.Overall)" Class="mr-2" />
-            <span>Workers: @_workersStatus.Overall.ToUpperInvariant()</span>
-        </div>
-    </MudAlert>
+    <HealthStatusBar Label="Workers" Status="@_workersStatus.Overall" />
 
     @if (_workersStatus.Workers.Count > 0)
     {
@@ -82,27 +58,11 @@ else
             @foreach (var worker in _workersStatus.Workers.OrderBy(w => w.Name))
             {
                 <MudItem xs="12" md="4">
-                    <MudPaper Class="pa-4" Elevation="1">
-                        <div class="d-flex align-center mb-3">
-                            <MudIcon Icon="@GetHealthIcon(worker.Status)"
-                                     Color="@GetHealthColor(worker.Status)"
-                                     Size="Size.Small"
-                                     Class="mr-2" />
-                            <MudText Typo="Typo.body1" Style="font-weight: 500;">@FormatWorkerName(worker.Name)</MudText>
-                        </div>
-                        <MudSimpleTable Dense="true" Hover="false" Bordered="false">
-                            <tbody>
-                                <tr>
-                                    <td><MudText Typo="Typo.caption">Consumers</MudText></td>
-                                    <td class="text-right"><MudText Typo="Typo.body2">@worker.Consumers</MudText></td>
-                                </tr>
-                                <tr>
-                                    <td><MudText Typo="Typo.caption">Messages</MudText></td>
-                                    <td class="text-right"><MudText Typo="Typo.body2">@worker.Messages</MudText></td>
-                                </tr>
-                            </tbody>
-                        </MudSimpleTable>
-                    </MudPaper>
+                    <WorkerCard
+                        Name="@HealthHelpers.FormatWorkerName(worker.Name)"
+                        Status="@worker.Status"
+                        Consumers="@worker.Consumers"
+                        Messages="@worker.Messages" />
                 </MudItem>
             }
         </MudGrid>
@@ -117,37 +77,7 @@ else
     <MudAlert Severity="Severity.Warning" Class="mb-8">Worker status unavailable</MudAlert>
 }
 
-<SectionHeader Title="Quick Links" />
-<MudGrid>
-    <MudItem xs="12" md="4">
-        <MudCard Elevation="2" Class="mud-theme-primary" Style="cursor: pointer;" @onclick="@(() => NavigateExternal("http://localhost:16686"))">
-            <MudCardContent>
-                <MudText Typo="Typo.h6" Color="Color.Primary">Jaeger Tracing</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary">View distributed traces</MudText>
-            </MudCardContent>
-        </MudCard>
-    </MudItem>
-    <MudItem xs="12" md="4">
-        <MudCard Elevation="2" Style="cursor: pointer;" @onclick="@(() => NavigateExternal("http://localhost:15672"))">
-            <MudCardContent>
-                <MudText Typo="Typo.h6" Style="color: #A30262;">RabbitMQ Management</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary">Message queue dashboard</MudText>
-            </MudCardContent>
-        </MudCard>
-    </MudItem>
-    <MudItem xs="12" md="4">
-        <MudCard Elevation="2" Style="cursor: pointer;" @onclick="@(() => NavigateExternal("http://localhost:5004/status"))">
-            <MudCardContent>
-                <MudText Typo="Typo.h6" Style="color: #FF9A56;">Health API</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary">Raw health status JSON</MudText>
-            </MudCardContent>
-        </MudCard>
-    </MudItem>
-</MudGrid>
-
 @code {
-    [Inject] private IJSRuntime JS { get; set; } = default!;
-
     private AdminStats _stats = new(0, 0, 0);
     private AggregatedStatus? _healthStatus;
     private WorkersStatus? _workersStatus;
@@ -216,55 +146,6 @@ else
         {
             Logger.LogWarning(ex, "Failed to load health status");
         }
-    }
-
-    private static Color GetHealthColor(string status) => status.ToLower() switch
-    {
-        "healthy" => Color.Success,
-        "degraded" => Color.Warning,
-        _ => Color.Error
-    };
-
-    private static string GetHealthIcon(string status) => status.ToLower() switch
-    {
-        "healthy" => Icons.Material.Filled.CheckCircle,
-        "degraded" => Icons.Material.Filled.Warning,
-        _ => Icons.Material.Filled.Error
-    };
-
-    private static Severity GetOverallSeverity(string status) => status.ToLower() switch
-    {
-        "healthy" => Severity.Success,
-        "degraded" => Severity.Warning,
-        _ => Severity.Error
-    };
-
-    private static string FormatServiceName(string name) => name switch
-    {
-        "auth-db" => "Auth DB",
-        "user-db" => "User DB",
-        "rabbitmq" => "RabbitMQ",
-        _ => char.ToUpper(name[0]) + name[1..]
-    };
-
-    private static string FormatWorkerName(string queueName)
-    {
-        var parts = queueName.Split('.', '_', '-');
-        return string.Join(" ", parts.Select(p => char.ToUpper(p[0]) + p[1..]));
-    }
-
-    private static string FormatTime(string isoTime)
-    {
-        if (DateTime.TryParse(isoTime, out var dt))
-        {
-            return dt.ToLocalTime().ToString("HH:mm:ss");
-        }
-        return isoTime;
-    }
-
-    private async Task NavigateExternal(string url)
-    {
-        await JS.InvokeVoidAsync("window.open", url, "_blank");
     }
 
     public void Dispose()
