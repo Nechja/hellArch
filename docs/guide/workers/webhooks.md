@@ -151,6 +151,83 @@ CREATE INDEX idx_webhook_deliveries_webhook_id ON webhook_deliveries(webhook_id)
 CREATE INDEX idx_webhook_deliveries_created_at ON webhook_deliveries(created_at DESC);
 ```
 
+## Payload Formats
+
+Webhooks support three output formats to integrate with different services:
+
+### Raw (CloudEvents)
+
+Default format. Sends the original CloudEvents JSON:
+
+```json
+{
+  "specversion": "1.0",
+  "type": "hellarch.auth.user.created.v1",
+  "source": "auth-service",
+  "id": "evt_123",
+  "time": "2024-01-15T10:30:00Z",
+  "data": { "user_id": "..." }
+}
+```
+
+### Discord
+
+Transforms events into Discord webhook embeds with color-coded event types:
+
+```json
+{
+  "embeds": [{
+    "title": "User Created",
+    "color": 3066993,
+    "fields": [
+      { "name": "User Id", "value": "...", "inline": true }
+    ],
+    "footer": { "text": "Source: auth-service" },
+    "timestamp": "2024-01-15T10:30:00Z"
+  }]
+}
+```
+
+**Color Mapping:**
+| Event Type | Color |
+|------------|-------|
+| `*.created` | Green (#2ECC71) |
+| `*.deleted` | Red (#E74C3C) |
+| `*.updated` | Blue (#3498DB) |
+| `*.failed`, `*.unhealthy` | Red (#E74C3C) |
+| `*.recovered` | Green (#2ECC71) |
+| Other | Purple (#9B59B6) |
+
+### Slack
+
+Transforms events into Slack Block Kit format:
+
+```json
+{
+  "text": "User Created",
+  "blocks": [
+    {
+      "type": "header",
+      "text": { "type": "plain_text", "text": "User Created" }
+    },
+    {
+      "type": "section",
+      "text": { "type": "mrkdwn", "text": "*Source:* auth-service\n*Event ID:* evt_123" }
+    },
+    {
+      "type": "section",
+      "fields": [
+        { "type": "mrkdwn", "text": "*User Id:*\n..." }
+      ]
+    },
+    {
+      "type": "context",
+      "elements": [{ "type": "mrkdwn", "text": "Received at 2024-01-15T10:30:00Z" }]
+    }
+  ]
+}
+```
+
 ## HTTP Delivery
 
 ### Request Format
