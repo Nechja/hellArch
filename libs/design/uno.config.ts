@@ -437,6 +437,7 @@ export default defineConfig({
     'icon-box': 'w-12 h-12 rounded-sm flex-center',
     'icon-box-pink': 'icon-box bg-neon-pink/10 text-neon-pink',
     'icon-box-rose': 'icon-box bg-neon-rose/10 text-neon-rose',
+    'icon-box-dusty': 'icon-box bg-neon-dusty/10 text-neon-dusty',
     'icon-box-peach': 'icon-box bg-neon-peach/10 text-neon-peach',
     'icon-box-orange': 'icon-box bg-neon-orange/10 text-neon-orange',
     'icon-box-coral': 'icon-box bg-neon-coral/10 text-neon-coral',
@@ -591,6 +592,16 @@ export default defineConfig({
     'segmented': 'inline-flex p-1 bg-surface-raised rounded-sm',
     'segment': 'px-3 py-1.5 text-sm font-medium text-text-muted rounded-sm cursor-pointer transition-all hover:text-text',
     'segment-active': 'segment bg-primary text-text-inverse',
+
+    // Toggle switch
+    'toggle': 'relative w-11 h-6 bg-surface-raised rounded-full border border-border cursor-pointer transition-all duration-fast',
+    'toggle-sm': 'relative w-9 h-5 bg-surface-raised rounded-full border border-border cursor-pointer transition-all duration-fast',
+    'toggle-lg': 'relative w-14 h-8 bg-surface-raised rounded-full border border-border cursor-pointer transition-all duration-fast',
+    'toggle-on': 'bg-primary border-primary',
+    'toggle-knob': 'absolute top-0.5 left-0.5 w-4 h-4 bg-text-inverse rounded-full shadow-sm transition-all duration-fast',
+    'toggle-knob-sm': 'absolute top-0.5 left-0.5 w-3 h-3 bg-text-inverse rounded-full shadow-sm transition-all duration-fast',
+    'toggle-knob-lg': 'absolute top-1 left-1 w-5 h-5 bg-text-inverse rounded-full shadow-sm transition-all duration-fast',
+    'toggle-knob-on': 'translate-x-5',
 
     // Breadcrumbs
     'breadcrumbs': 'flex items-center gap-2 text-sm',
@@ -758,7 +769,7 @@ export default defineConfig({
     'card-featured', 'card-featured-green', 'card-featured-coral',
 
     // Shortcuts - icon boxes
-    'icon-box', 'icon-box-pink', 'icon-box-rose', 'icon-box-peach',
+    'icon-box', 'icon-box-pink', 'icon-box-rose', 'icon-box-dusty', 'icon-box-peach',
     'icon-box-orange', 'icon-box-coral', 'icon-box-green',
 
     // Shortcuts - code display
@@ -790,6 +801,7 @@ export default defineConfig({
     'alert', 'alert-info', 'alert-success', 'alert-warning', 'alert-danger', 'alert-icon', 'alert-content', 'alert-title', 'alert-dismiss',
     'tabs', 'tab', 'tab-active', 'tabs-pills', 'tab-pill', 'tab-pill-active',
     'segmented', 'segment', 'segment-active',
+    'toggle', 'toggle-sm', 'toggle-lg', 'toggle-on', 'toggle-knob', 'toggle-knob-sm', 'toggle-knob-lg', 'toggle-knob-on',
     'breadcrumbs', 'breadcrumb', 'breadcrumb-current', 'breadcrumb-sep',
     'pagination', 'page-btn', 'page-btn-active', 'page-btn-disabled', 'page-ellipsis',
     'btn-icon', 'btn-icon-sm', 'btn-icon-danger', 'btn-icon-success',
