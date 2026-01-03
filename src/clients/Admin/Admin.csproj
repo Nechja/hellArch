@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\libs\components\blazor\HellArch.Components.csproj" />
     <ProjectReference Include="..\..\..\libs\cloud_events\csharp\HellArch.CloudEvents.csproj" />
+    <ProjectReference Include="..\..\..\libs\csharp\HellArch.Http\HellArch.Http.csproj" />
   </ItemGroup>
 
   <ItemGroup>

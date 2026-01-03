@@ -84,14 +84,24 @@ sequenceDiagram
 
 ```go
 type Webhook struct {
-    ID         string    // UUID
-    URL        string    // Endpoint URL
-    Secret     string    // HMAC signing key
-    EventTypes []string  // Subscribed event types
-    IsActive   bool      // Enable/disable
+    ID         string         // UUID
+    Name       string         // Display name
+    URL        string         // Endpoint URL
+    Secret     string         // HMAC signing key
+    EventTypes []string       // Subscribed event types
+    Format     WebhookFormat  // raw, discord, slack
+    IsActive   bool           // Enable/disable
     CreatedAt  time.Time
     UpdatedAt  time.Time
 }
+
+type WebhookFormat string
+
+const (
+    WebhookFormatRaw     WebhookFormat = "raw"
+    WebhookFormatDiscord WebhookFormat = "discord"
+    WebhookFormatSlack   WebhookFormat = "slack"
+)
 ```
 
 ### Webhook Delivery

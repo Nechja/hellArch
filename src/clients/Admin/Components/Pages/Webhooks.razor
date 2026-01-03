@@ -171,6 +171,7 @@
 
 @* Create/Edit Modal *@
 <Modal @bind-IsOpen="_showForm" Title="@(_editingWebhook == null ? "Create Webhook" : "Edit Webhook")" Size="ModalSize.Large">
+    <ChildContent>
     <div class="space-y-4">
         <div class="grid grid-cols-2 gap-4">
             <div>
@@ -256,6 +257,7 @@
             <Label>Active</Label>
         </div>
     </div>
+    </ChildContent>
 
     <FooterTemplate>
         <Button Variant="ButtonVariant.Secondary" OnClick="CloseForm">Cancel</Button>
@@ -267,9 +269,11 @@
 
 @* Delete Confirmation *@
 <Modal @bind-IsOpen="_showDeleteConfirm" Title="Delete Webhook" Size="ModalSize.Small">
+    <ChildContent>
     <p class="text-text-secondary">
         Are you sure you want to delete <strong class="text-white">@_webhookToDelete?.Name</strong>? This cannot be undone.
     </p>
+    </ChildContent>
     <FooterTemplate>
         <Button Variant="ButtonVariant.Secondary" OnClick="() => _showDeleteConfirm = false">Cancel</Button>
         <Button Variant="ButtonVariant.Danger" OnClick="DeleteWebhook">Delete</Button>
@@ -278,6 +282,7 @@
 
 @* Delivery Details *@
 <Modal @bind-IsOpen="_showDeliveryDetails" Title="Delivery Details" Size="ModalSize.Large">
+    <ChildContent>
     @if (_selectedDelivery != null)
     {
         <div class="space-y-3 text-sm">
@@ -317,6 +322,7 @@
             }
         </div>
     }
+    </ChildContent>
 </Modal>
 
 @code {

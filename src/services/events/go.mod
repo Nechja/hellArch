@@ -9,7 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/nechja/hellarch/cloudevents v0.0.0
 	github.com/nechja/hellarch/golibs v0.0.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.58.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0
 )
 
 require (

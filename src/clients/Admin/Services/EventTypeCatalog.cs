@@ -62,6 +62,11 @@ public static class EventTypeCatalog
         new("hellarch.ops.webhook.failing.v1", "Operations", "Webhook", "Failing", "Webhook has consecutive delivery failures", EventSeverity.High),
         new("hellarch.ops.backup.completed.v1", "Operations", "Backup", "Completed", "Backup completed successfully", EventSeverity.Info),
         new("hellarch.ops.backup.failed.v1", "Operations", "Backup", "Failed", "Backup failed", EventSeverity.Critical),
+
+        // Files Events
+        new("hellarch.files.file.uploaded.v1", "Files", "File", "Uploaded", "File uploaded successfully", EventSeverity.Info),
+        new("hellarch.files.file.deleted.v1", "Files", "File", "Deleted", "File deleted", EventSeverity.Info),
+        new("hellarch.files.file.processed.v1", "Files", "File", "Processed", "File processing completed (thumbnail, etc.)", EventSeverity.Info),
     ];
 
     public static IReadOnlyList<string> Domains { get; } = All

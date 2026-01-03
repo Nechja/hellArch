@@ -9,13 +9,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// WebhookFormat defines how the payload should be formatted when delivering
 type WebhookFormat string
 
 const (
-	WebhookFormatRaw     WebhookFormat = "raw"     // Raw CloudEvent JSON
-	WebhookFormatDiscord WebhookFormat = "discord" // Discord webhook format with embeds
-	WebhookFormatSlack   WebhookFormat = "slack"   // Slack webhook format with blocks
+	WebhookFormatRaw     WebhookFormat = "raw"
+	WebhookFormatDiscord WebhookFormat = "discord"
+	WebhookFormatSlack   WebhookFormat = "slack"
 )
 
 type Webhook struct {
@@ -46,6 +45,21 @@ type UpdateWebhookParams struct {
 	Format     *WebhookFormat
 	IsActive   *bool
 }
+
+type webhookScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanWebhook(row webhookScanner) (*Webhook, error) {
+	var w Webhook
+	err := row.Scan(&w.ID, &w.Name, &w.URL, &w.Secret, &w.EventTypes, &w.Format, &w.IsActive, &w.CreatedAt, &w.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &w, nil
+}
+
+const webhookColumns = `id, name, url, secret, event_types, COALESCE(format, 'raw') as format, is_active, created_at, updated_at`
 
 func (s *Store) CreateWebhook(ctx context.Context, params CreateWebhookParams) (*Webhook, error) {
 	format := params.Format
@@ -78,19 +92,15 @@ func (s *Store) CreateWebhook(ctx context.Context, params CreateWebhookParams) (
 }
 
 func (s *Store) GetWebhook(ctx context.Context, id string) (*Webhook, error) {
-	var webhook Webhook
-	err := s.pool.QueryRow(ctx,
-		`SELECT id, name, url, secret, event_types, COALESCE(format, 'raw') as format, is_active, created_at, updated_at
-		 FROM webhooks WHERE id = $1`, id,
-	).Scan(&webhook.ID, &webhook.Name, &webhook.URL, &webhook.Secret,
-		&webhook.EventTypes, &webhook.Format, &webhook.IsActive, &webhook.CreatedAt, &webhook.UpdatedAt)
+	row := s.pool.QueryRow(ctx, `SELECT `+webhookColumns+` FROM webhooks WHERE id = $1`, id)
+	webhook, err := scanWebhook(row)
 	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get webhook: %w", err)
 	}
-	return &webhook, nil
+	return webhook, nil
 }
 
 func (s *Store) ListWebhooks(ctx context.Context, limit, offset int) ([]*Webhook, int, error) {
