@@ -1,7 +1,7 @@
 @page "/events"
 @using HellArch.CloudEvents
 @using Admin.Services
-@using System.Text.Json
+@using Admin.Components.Shared.Panels
 @implements IDisposable
 @inject RabbitMqAdapter RabbitMq
 @inject EventsAdminFacade EventsApi
@@ -12,213 +12,69 @@
 
 <PageTitle>Events - HellArch Admin</PageTitle>
 
-<PageHeader Title="Events" Subtitle="View CloudEvents published through RabbitMQ and queue statistics." />
+<PageHeader Title="Events" Subtitle="Real-time event monitoring, audit logs, webhooks, and infrastructure." />
 
-<div class="d-flex align-center gap-2 mb-4">
-    <MudText Typo="Typo.h6">Live Events</MudText>
-    <StatusChip Label="@_connectionStatus" Status="@GetConnectionStatus()" />
-</div>
-<MudPaper Class="pa-4 mb-6" Elevation="2" Style="border-left: 3px solid #39ff14;">
-    @if (_liveEvents.Count == 0)
-    {
-        <MudText Color="Color.Secondary" Class="text-center pa-4">
-            Waiting for events... Events will appear here in real-time.
-        </MudText>
-    }
-    else
-    {
-        <div style="max-height: 400px; overflow-y: auto;">
-            @foreach (var evt in _liveEvents)
-            {
-                <MudPaper Class="pa-3 mb-2" Elevation="1" Style="animation: fadeIn 0.3s ease-in;">
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <EventTypeChip EventType="@evt.Type" ChipColor="Color.Success" />
-                        <MonoText FontSize="0.75rem">@evt.Time.ToString("HH:mm:ss.fff")</MonoText>
-                    </div>
-                    <div class="d-flex gap-4">
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Source: @evt.Source</MudText>
-                        @if (evt.GetUserId() is { } userId)
-                        {
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">User: @userId</MudText>
-                        }
-                    </div>
-                    @if (evt.Data.HasValue)
-                    {
-                        <MudExpansionPanels Class="mt-2" Elevation="0">
-                            <MudExpansionPanel Text="Data" Dense="true" Style="background: transparent;">
-                                <JsonViewer Json="@evt.Data.Value" MaxHeight="200px" />
-                            </MudExpansionPanel>
-                        </MudExpansionPanels>
-                    }
-                </MudPaper>
-            }
+@* Persistent Live Events Header *@
+<EventsLiveHeader Events="@_liveEvents" ConnectionStatus="@_connectionStatus" />
+
+@* Tabbed Interface *@
+<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Class="mt-2" @bind-ActivePanelIndex="_activeTab">
+    <MudTabPanel Text="Audit Log" Icon="@Icons.Material.Filled.History">
+        <div class="pa-4">
+            <AuditPanel
+                AuditLogs="@_auditLogs"
+                TotalCount="@_auditTotalCount"
+                Page="@_auditPage"
+                PageSize="@AuditPageSize"
+                Loading="@_loadingAudit"
+                EventTypeFilter="@_eventTypeFilter"
+                EventTypeFilterChanged="@(v => _eventTypeFilter = v)"
+                ActorIdFilter="@_actorIdFilter"
+                ActorIdFilterChanged="@(v => _actorIdFilter = v)"
+                OnApplyFilters="ApplyAuditFilters"
+                OnClearFilters="ClearAuditFilters"
+                OnPrevious="PreviousAuditPage"
+                OnNext="NextAuditPage" />
         </div>
-    }
-</MudPaper>
+    </MudTabPanel>
 
-<SectionHeader Title="RabbitMQ Overview" />
-<MudGrid Class="mb-6">
-    <MudItem xs="6" md="3">
-        <MetricCard Value="@((_overview?.QueueTotals?.Messages ?? 0).ToString())" Label="Messages" />
-    </MudItem>
-    <MudItem xs="6" md="3">
-        <MetricCard Value="@((_overview?.ObjectTotals?.Queues ?? 0).ToString())" Label="Queues" />
-    </MudItem>
-    <MudItem xs="6" md="3">
-        <MetricCard Value="@((_overview?.ObjectTotals?.Consumers ?? 0).ToString())" Label="Consumers" />
-    </MudItem>
-    <MudItem xs="6" md="3">
-        <MetricCard Value="@((_overview?.ObjectTotals?.Connections ?? 0).ToString())" Label="Connections" />
-    </MudItem>
-</MudGrid>
+    <MudTabPanel Text="Webhooks" Icon="@Icons.Material.Filled.Webhook">
+        <div class="pa-4">
+            <WebhooksPanel
+                Webhooks="@_webhooks"
+                Loading="@_loadingWebhooks"
+                OnCreate="CreateWebhook"
+                OnUpdate="UpdateWebhook"
+                OnDelete="DeleteWebhook" />
+        </div>
+    </MudTabPanel>
 
-<SectionHeader Title="Queues" />
-<MudTable Items="@_queues" Hover="true" Striped="true" Dense="true" T="QueueInfo" Class="mb-6">
-    <HeaderContent>
-        <MudTh>Queue</MudTh>
-        <MudTh>Messages</MudTh>
-        <MudTh>Ready</MudTh>
-        <MudTh>Unacked</MudTh>
-        <MudTh>Consumers</MudTh>
-        <MudTh>State</MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd><MonoText>@context.Name</MonoText></MudTd>
-        <MudTd>@context.Messages</MudTd>
-        <MudTd>@context.MessagesReady</MudTd>
-        <MudTd>@context.MessagesUnacknowledged</MudTd>
-        <MudTd>@context.Consumers</MudTd>
-        <MudTd>
-            <StatusChip Label="@context.State" Status="@(context.State == "running" ? StatusChip.StatusType.Success : StatusChip.StatusType.Warning)" />
-        </MudTd>
-    </RowTemplate>
-</MudTable>
+    <MudTabPanel Text="Event Types" Icon="@Icons.Material.Filled.Category">
+        <div class="pa-4">
+            <EventTypesPanel />
+        </div>
+    </MudTabPanel>
 
-<SectionHeader Title="Audit Logs">
-    <ActionContent>
-        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="LoadAuditLogs" Disabled="@_loadingAudit">
-            @(_loadingAudit ? "Loading..." : "Refresh")
-        </MudButton>
-    </ActionContent>
-</SectionHeader>
-
-<MudGrid Class="mb-4">
-    <MudItem xs="12" md="4">
-        <MudTextField @bind-Value="_eventTypeFilter" Label="Event Type" Placeholder="e.g. hellarch.auth.user.created.v1" Variant="Variant.Outlined" Immediate="true" />
-    </MudItem>
-    <MudItem xs="12" md="4">
-        <MudTextField @bind-Value="_actorIdFilter" Label="Actor ID" Placeholder="User ID" Variant="Variant.Outlined" Immediate="true" />
-    </MudItem>
-    <MudItem xs="12" md="4" Class="d-flex align-end gap-2">
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters">Filter</MudButton>
-        <MudButton Variant="Variant.Outlined" OnClick="ClearFilters">Clear</MudButton>
-    </MudItem>
-</MudGrid>
-
-@if (_loadingAudit)
-{
-    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-}
-else
-{
-    <MudTable Items="@_auditLogs" Hover="true" Striped="true" Dense="true" T="AuditLog" Class="mb-4">
-        <HeaderContent>
-            <MudTh>Time</MudTh>
-            <MudTh>Event Type</MudTh>
-            <MudTh>Source</MudTh>
-            <MudTh>Actor</MudTh>
-            <MudTh>Target</MudTh>
-            <MudTh>Details</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd><MonoText FontSize="0.75rem">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</MonoText></MudTd>
-            <MudTd>
-                <EventTypeChip EventType="@context.EventType" OnClick="FilterByEventType" />
-            </MudTd>
-            <MudTd>@context.Source</MudTd>
-            <MudTd><MonoText FontSize="0.75rem">@(context.ActorId ?? "-")</MonoText></MudTd>
-            <MudTd><MonoText FontSize="0.75rem">@(context.TargetId ?? "-")</MonoText></MudTd>
-            <MudTd>
-                @if (context.Metadata.HasValue)
-                {
-                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="() => ShowAuditDetails(context)">
-                        View
-                    </MudButton>
-                }
-                else
-                {
-                    <MudText Color="Color.Secondary">-</MudText>
-                }
-            </MudTd>
-        </RowTemplate>
-    </MudTable>
-
-    <Pagination Page="_auditPage" PageSize="AuditPageSize" TotalCount="_auditTotalCount"
-                DisplayedCount="_auditLogs.Count" OnPrevious="PreviousAuditPage" OnNext="NextAuditPage" />
-}
-
-<MudDialog @bind-Visible="_showAuditDetails" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true }">
-    <TitleContent>
-        <MudText Typo="Typo.h6">Audit Log Details</MudText>
-    </TitleContent>
-    <DialogContent>
-        @if (_selectedAuditLog is not null)
-        {
-            <MudSimpleTable Dense="true" Hover="false" Class="mb-4">
-                <tbody>
-                    <tr>
-                        <td style="width: 120px;"><MudText Typo="Typo.caption">ID</MudText></td>
-                        <td><MonoText WordBreak="true">@_selectedAuditLog.Id</MonoText></td>
-                    </tr>
-                    <tr>
-                        <td><MudText Typo="Typo.caption">Event ID</MudText></td>
-                        <td><MonoText WordBreak="true">@_selectedAuditLog.EventId</MonoText></td>
-                    </tr>
-                    <tr>
-                        <td><MudText Typo="Typo.caption">Event Type</MudText></td>
-                        <td><EventTypeChip EventType="@_selectedAuditLog.EventType" UseShortForm="false" /></td>
-                    </tr>
-                    <tr>
-                        <td><MudText Typo="Typo.caption">Source</MudText></td>
-                        <td>@_selectedAuditLog.Source</td>
-                    </tr>
-                    <tr>
-                        <td><MudText Typo="Typo.caption">Actor ID</MudText></td>
-                        <td><MonoText>@(_selectedAuditLog.ActorId ?? "N/A")</MonoText></td>
-                    </tr>
-                    <tr>
-                        <td><MudText Typo="Typo.caption">Target ID</MudText></td>
-                        <td><MonoText>@(_selectedAuditLog.TargetId ?? "N/A")</MonoText></td>
-                    </tr>
-                    <tr>
-                        <td><MudText Typo="Typo.caption">Created</MudText></td>
-                        <td>@_selectedAuditLog.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss.fff")</td>
-                    </tr>
-                </tbody>
-            </MudSimpleTable>
-
-            @if (_selectedAuditLog.Metadata.HasValue)
-            {
-                <MudText Typo="Typo.subtitle2" Class="mb-2">Metadata</MudText>
-                <JsonViewer Json="@_selectedAuditLog.Metadata.Value" />
-            }
-        }
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="CloseAuditDetails">Close</MudButton>
-    </DialogActions>
-</MudDialog>
+    <MudTabPanel Text="Infrastructure" Icon="@Icons.Material.Filled.Storage">
+        <div class="pa-4">
+            <InfraPanel
+                Overview="@_overview"
+                Queues="@_queues"
+                Exchanges="@_exchanges"
+                Loading="@_loadingInfra" />
+        </div>
+    </MudTabPanel>
+</MudTabs>
 
 @code {
-    private RabbitMqOverview? _overview;
-    private IReadOnlyList<QueueInfo> _queues = [];
+    private int _activeTab;
     private readonly List<CloudEventDto> _liveEvents = [];
     private string _connectionStatus = "Connecting...";
     private const int MaxLiveEvents = 25;
     private DateTime _lastHealthRefresh = DateTime.MinValue;
     private static readonly TimeSpan HealthRefreshDebounce = TimeSpan.FromSeconds(5);
 
-    // Audit logs state
+    // Audit state
     private IReadOnlyList<AuditLog> _auditLogs = [];
     private int _auditTotalCount;
     private int _auditPage = 1;
@@ -226,14 +82,23 @@ else
     private bool _loadingAudit;
     private string? _eventTypeFilter;
     private string? _actorIdFilter;
-    private AuditLog? _selectedAuditLog;
-    private bool _showAuditDetails;
+
+    // Webhooks state
+    private IReadOnlyList<Webhook> _webhooks = [];
+    private bool _loadingWebhooks;
+
+    // Infrastructure state
+    private RabbitMqOverview? _overview;
+    private IReadOnlyList<QueueInfo> _queues = [];
+    private IReadOnlyList<ExchangeInfo> _exchanges = [];
+    private bool _loadingInfra;
 
     protected override async Task OnInitializedAsync()
     {
         RealtimeHub.OnEventReceived += HandleEventReceived;
         RealtimeHub.OnConnectionStateChanged += HandleConnectionStateChanged;
         LiveUpdate.OnHealthUpdate += HandleHealthUpdate;
+        LiveUpdate.OnWebhookUpdate += HandleWebhookUpdate;
         _connectionStatus = RealtimeHub.ConnectionStateText;
 
         var sessionToken = HttpContextAccessor.HttpContext?.Items["SessionToken"] as string;
@@ -248,22 +113,18 @@ else
             _connectionStatus = "No Auth";
         }
 
-        await LoadData();
+        await LoadAllData();
     }
 
-    private void HandleHealthUpdate(object? sender, EventArgs e)
+    private async Task LoadAllData()
     {
-        if (DateTime.UtcNow - _lastHealthRefresh < HealthRefreshDebounce) return;
-
-        InvokeAsync(async () =>
-        {
-            _lastHealthRefresh = DateTime.UtcNow;
-            _overview = await RabbitMq.GetOverview();
-            _queues = await RabbitMq.GetQueues();
-            StateHasChanged();
-        });
+        var auditTask = LoadAuditLogs();
+        var webhooksTask = LoadWebhooks();
+        var infraTask = LoadInfrastructure();
+        await Task.WhenAll(auditTask, webhooksTask, infraTask);
     }
 
+    // Live Events
     private void HandleEventReceived(object? sender, CloudEventReceivedEventArgs e)
     {
         InvokeAsync(() =>
@@ -286,13 +147,24 @@ else
         });
     }
 
-    private async Task LoadData()
+    private void HandleHealthUpdate(object? sender, EventArgs e)
     {
-        _overview = await RabbitMq.GetOverview();
-        _queues = await RabbitMq.GetQueues();
-        await LoadAuditLogs();
+        if (DateTime.UtcNow - _lastHealthRefresh < HealthRefreshDebounce) return;
+
+        InvokeAsync(async () =>
+        {
+            _lastHealthRefresh = DateTime.UtcNow;
+            await LoadInfrastructure();
+            StateHasChanged();
+        });
     }
 
+    private void HandleWebhookUpdate(object? sender, UpdateEventArgs e)
+    {
+        InvokeAsync(async () => await LoadWebhooks());
+    }
+
+    // Audit
     private async Task LoadAuditLogs()
     {
         _loadingAudit = true;
@@ -306,20 +178,13 @@ else
         StateHasChanged();
     }
 
-    private async Task FilterByEventType(string eventType)
-    {
-        _eventTypeFilter = eventType;
-        _auditPage = 1;
-        await LoadAuditLogs();
-    }
-
-    private async Task ApplyFilters()
+    private async Task ApplyAuditFilters()
     {
         _auditPage = 1;
         await LoadAuditLogs();
     }
 
-    private async Task ClearFilters()
+    private async Task ClearAuditFilters()
     {
         _eventTypeFilter = null;
         _actorIdFilter = null;
@@ -342,30 +207,58 @@ else
         }
     }
 
-    private void ShowAuditDetails(AuditLog log)
+    // Webhooks
+    private async Task LoadWebhooks()
     {
-        _selectedAuditLog = log;
-        _showAuditDetails = true;
+        _loadingWebhooks = true;
+        StateHasChanged();
+
+        var response = await EventsApi.GetWebhooks(1, 100);
+        _webhooks = response.Data;
+
+        _loadingWebhooks = false;
+        StateHasChanged();
     }
 
-    private void CloseAuditDetails()
+    private async Task CreateWebhook(Webhook webhook)
     {
-        _showAuditDetails = false;
-        _selectedAuditLog = null;
+        var request = new CreateWebhookRequest(webhook.Name, webhook.Url, webhook.Secret, webhook.EventTypes.ToList(), webhook.Format, webhook.IsActive);
+        await EventsApi.CreateWebhook(request);
+        await LoadWebhooks();
     }
 
-    private StatusChip.StatusType GetConnectionStatus() => _connectionStatus switch
+    private async Task UpdateWebhook(Webhook webhook)
     {
-        "Connected" => StatusChip.StatusType.Connected,
-        "Reconnecting" => StatusChip.StatusType.Warning,
-        "Disconnected" or "Failed" => StatusChip.StatusType.Disconnected,
-        _ => StatusChip.StatusType.Default
-    };
+        var request = new UpdateWebhookRequest(webhook.Name, webhook.Url, webhook.Secret, webhook.EventTypes.ToList(), webhook.Format, webhook.IsActive);
+        await EventsApi.UpdateWebhook(webhook.Id, request);
+        await LoadWebhooks();
+    }
+
+    private async Task DeleteWebhook(string id)
+    {
+        await EventsApi.DeleteWebhook(id);
+        await LoadWebhooks();
+    }
+
+    // Infrastructure
+    private async Task LoadInfrastructure()
+    {
+        _loadingInfra = true;
+        StateHasChanged();
+
+        _overview = await RabbitMq.GetOverview();
+        _queues = await RabbitMq.GetQueues();
+        _exchanges = await RabbitMq.GetExchanges();
+
+        _loadingInfra = false;
+        StateHasChanged();
+    }
 
     public void Dispose()
     {
         RealtimeHub.OnEventReceived -= HandleEventReceived;
         RealtimeHub.OnConnectionStateChanged -= HandleConnectionStateChanged;
         LiveUpdate.OnHealthUpdate -= HandleHealthUpdate;
+        LiveUpdate.OnWebhookUpdate -= HandleWebhookUpdate;
     }
 }

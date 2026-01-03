@@ -1,0 +1,43 @@
+@using HellArch.CloudEvents
+@using Admin.Services
+
+<MudPaper Class="pa-3 mb-4" Elevation="2" Style="border-left: 3px solid #39ff14;">
+    <div class="d-flex align-center justify-space-between mb-2">
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Bolt" Color="Color.Success" Size="Size.Small" />
+            <MudText Typo="Typo.subtitle2">Live Events</MudText>
+        </div>
+        <StatusChip Label="@ConnectionStatus" Status="@GetConnectionStatus()" />
+    </div>
+    @if (Events.Count == 0)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            Waiting for events...
+        </MudText>
+    }
+    else
+    {
+        <div class="d-flex gap-3 overflow-x-auto" style="white-space: nowrap;">
+            @foreach (var evt in Events.Take(8))
+            {
+                <div class="d-flex align-center gap-1" style="animation: fadeIn 0.3s ease-in;">
+                    <EventTypeChip EventType="@evt.Type" ChipColor="Color.Success" />
+                    <MonoText FontSize="0.7rem">@evt.Time.ToString("HH:mm:ss")</MonoText>
+                </div>
+            }
+        </div>
+    }
+</MudPaper>
+
+@code {
+    [Parameter] public IReadOnlyList<CloudEventDto> Events { get; set; } = [];
+    [Parameter] public string ConnectionStatus { get; set; } = "Connecting...";
+
+    private StatusChip.StatusType GetConnectionStatus() => ConnectionStatus switch
+    {
+        "Connected" => StatusChip.StatusType.Connected,
+        "Reconnecting" => StatusChip.StatusType.Warning,
+        "Disconnected" or "Failed" => StatusChip.StatusType.Disconnected,
+        _ => StatusChip.StatusType.Default
+    };
+}
