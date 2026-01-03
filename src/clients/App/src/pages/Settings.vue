@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import SectionHeader from '../components/atoms/SectionHeader.vue'
 import LinkedAccountItem from '../components/molecules/LinkedAccountItem.vue'
 import UserAvatar from '../components/atoms/UserAvatar.vue'
+import Badge from '../components/atoms/Badge.vue'
 import type { UserProfile } from '@hellarch/types'
 
 const props = defineProps<{
@@ -10,12 +11,25 @@ const props = defineProps<{
 }>()
 
 const displayName = ref(props.user?.display_name || '')
+const originalDisplayName = ref(props.user?.display_name || '')
 const saving = ref(false)
 const snackbar = ref(false)
 const snackbarColor = ref<'success' | 'error'>('success')
 const snackbarText = ref('')
+const deleteDialogOpen = ref(false)
+
+const hasChanges = computed(() => displayName.value !== originalDisplayName.value)
+
+watch(() => props.user, (newUser) => {
+  if (newUser) {
+    displayName.value = newUser.display_name || ''
+    originalDisplayName.value = newUser.display_name || ''
+  }
+})
 
 async function saveProfile() {
+  if (!hasChanges.value) return
+
   saving.value = true
 
   try {
@@ -26,6 +40,7 @@ async function saveProfile() {
     })
 
     if (res.ok) {
+      originalDisplayName.value = displayName.value
       snackbarColor.value = 'success'
       snackbarText.value = 'Profile updated successfully'
     } else {
@@ -90,12 +105,19 @@ async function saveProfile() {
                 </v-col>
               </v-row>
 
-              <div class="d-flex justify-end mt-4">
+              <div class="d-flex align-center justify-space-between mt-4">
+                <Badge
+                  v-if="hasChanges"
+                  label="Unsaved changes"
+                  variant="warning"
+                  dot
+                />
+                <div v-else />
                 <v-btn
                   type="submit"
                   color="primary"
                   :loading="saving"
-                  :disabled="saving"
+                  :disabled="saving || !hasChanges"
                   size="large"
                 >
                   <v-icon start>mdi-content-save</v-icon>
@@ -131,7 +153,7 @@ async function saveProfile() {
                   Permanently delete your account and all associated data
                 </p>
               </div>
-              <v-btn color="error" variant="outlined" class="flex-shrink-0">
+              <v-btn color="error" variant="outlined" class="flex-shrink-0" @click="deleteDialogOpen = true">
                 <v-icon start>mdi-delete-outline</v-icon>
                 Delete Account
               </v-btn>
@@ -148,6 +170,29 @@ async function saveProfile() {
         <v-btn variant="text" @click="snackbar = false">Close</v-btn>
       </template>
     </v-snackbar>
+
+    <!-- Delete Account Dialog -->
+    <v-dialog v-model="deleteDialogOpen" max-width="420">
+      <v-card class="delete-dialog">
+        <v-card-text class="pa-6 text-center">
+          <div class="delete-dialog__icon mb-4">
+            <v-icon size="48" color="error">mdi-alert-circle-outline</v-icon>
+          </div>
+          <h3 class="text-h6 font-weight-bold mb-2">Delete Account?</h3>
+          <p class="text-body-2 text-medium-emphasis mb-0">
+            This action cannot be undone. All your data will be permanently deleted.
+          </p>
+        </v-card-text>
+        <v-card-actions class="pa-6 pt-0">
+          <v-btn variant="text" class="flex-grow-1" @click="deleteDialogOpen = false">
+            Cancel
+          </v-btn>
+          <v-btn color="error" variant="flat" class="flex-grow-1">
+            Delete Forever
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -177,5 +222,21 @@ async function saveProfile() {
   .settings-header {
     padding: 16px;
   }
+}
+
+.delete-dialog {
+  background: #16161e !important;
+  border: 1px solid rgba(239, 83, 80, 0.2);
+}
+
+.delete-dialog__icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(239, 83, 80, 0.1);
 }
 </style>

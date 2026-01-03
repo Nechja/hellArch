@@ -147,7 +147,8 @@ else
     private string? _actorIdFilter;
     private Admin.Services.AuditLog? _selectedLog;
     private bool _showDetails;
-
+    private DateTime _lastRefresh = DateTime.MinValue;
+    private static readonly TimeSpan RefreshDebounce = TimeSpan.FromSeconds(2);
 
     private static readonly EventCategory[] EventCategories =
     [
@@ -181,7 +182,14 @@ else
 
     private void HandleAnyEvent(object? sender, CloudEventUpdateEventArgs e)
     {
-        InvokeAsync(async () => await LoadData());
+        // Debounce to prevent excessive API calls
+        if (DateTime.UtcNow - _lastRefresh < RefreshDebounce) return;
+
+        InvokeAsync(async () =>
+        {
+            _lastRefresh = DateTime.UtcNow;
+            await LoadData();
+        });
     }
 
     private async Task LoadData()

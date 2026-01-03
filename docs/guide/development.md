@@ -143,11 +143,17 @@ graph TB
 | User | 5002 | http://localhost:5002 |
 | Admin Console | 5003 | http://localhost:5003 |
 | Health | 5004 | http://localhost:5004 |
+| Events | 5005 | http://localhost:5005 |
+| Files | 5006 | http://localhost:5006 |
 | PostgreSQL (Auth) | 5434 | - |
 | PostgreSQL (User) | 5433 | - |
+| PostgreSQL (Events) | 5435 | - |
+| PostgreSQL (Files) | 5436 | - |
 | Redis | 6379 | - |
 | RabbitMQ | 5672 | - |
 | RabbitMQ UI | 15672 | http://localhost:15672 |
+| MinIO | 9000 | http://localhost:9000 |
+| MinIO Console | 9001 | http://localhost:9001 |
 | Jaeger | 16686 | http://localhost:16686 |
 
 ## Live Reload
@@ -192,8 +198,6 @@ mise run design:copy    # Copy to Gateway
 # Client builds
 mise run app:build      # Build Vue app
 mise run app:copy       # Copy to Gateway
-mise run login:build    # Build Login Blazor WASM
-mise run login:copy     # Copy to Gateway
 mise run clients:all    # Build and deploy all clients
 
 # Testing

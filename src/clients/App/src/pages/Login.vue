@@ -1,17 +1,31 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppLogo from '../components/atoms/AppLogo.vue'
 import OAuthProviderButton from '../components/molecules/OAuthProviderButton.vue'
 
 const route = useRoute()
+const loading = ref(false)
+const error = ref<string | null>(null)
 
 const returnUrl = computed(() => {
   const url = route.query.return_url as string
   return url || '/app'
 })
 
+onMounted(() => {
+  // Check for error from OAuth callback
+  const errorParam = route.query.error as string
+  if (errorParam) {
+    error.value = errorParam === 'access_denied'
+      ? 'Login was cancelled'
+      : 'Login failed. Please try again.'
+  }
+})
+
 function loginWithDiscord() {
+  loading.value = true
+  error.value = null
   const redirectParam = encodeURIComponent(returnUrl.value)
   window.location.href = `/api/auth/discord/login?redirect=${redirectParam}`
 }
@@ -36,8 +50,22 @@ function loginWithDiscord() {
                 Sign in to your account
               </h2>
 
+              <!-- Error alert -->
+              <v-alert
+                v-if="error"
+                type="error"
+                variant="tonal"
+                closable
+                class="mb-6"
+                @click:close="error = null"
+              >
+                {{ error }}
+              </v-alert>
+
               <OAuthProviderButton
                 provider="discord"
+                :loading="loading"
+                :disabled="loading"
                 @click="loginWithDiscord"
               />
 

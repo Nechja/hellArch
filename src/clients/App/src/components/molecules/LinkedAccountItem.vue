@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import Badge from '../atoms/Badge.vue'
 
 type Provider = 'discord' | 'github' | 'google'
 
@@ -37,7 +38,7 @@ const isDisabled = computed(() => props.comingSoon || false)
 </script>
 
 <template>
-  <div class="linked-account d-flex align-center py-3" :class="{ 'linked-account--disabled': isDisabled }">
+  <div class="linked-account d-flex align-center py-4 px-4" :class="{ 'linked-account--disabled': isDisabled }">
     <div
       class="linked-account__icon mr-4"
       :style="{ background: isDisabled ? 'rgba(255,255,255,0.05)' : config.color }"
@@ -52,19 +53,23 @@ const isDisabled = computed(() => props.comingSoon || false)
         {{ comingSoon ? 'Coming soon' : (connected ? 'Connected' : 'Not connected') }}
       </div>
     </div>
-    <v-chip
+    <Badge
       v-if="connected"
-      color="success"
-      size="small"
-      variant="tonal"
-    >
-      Connected
-    </v-chip>
+      label="Connected"
+      variant="success"
+      dot
+    />
+    <Badge
+      v-else-if="comingSoon"
+      label="Soon"
+      variant="default"
+      size="sm"
+    />
     <v-btn
       v-else
       variant="outlined"
       size="small"
-      :disabled="isDisabled"
+      color="primary"
       @click="emit('connect')"
     >
       Connect

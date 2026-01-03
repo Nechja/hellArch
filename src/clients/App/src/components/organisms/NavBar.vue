@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
-import AppLogo from './atoms/AppLogo.vue'
-import UserAvatar from './atoms/UserAvatar.vue'
+import AppLogo from '../atoms/AppLogo.vue'
+import UserAvatar from '../atoms/UserAvatar.vue'
 import type { UserProfile } from '@hellarch/types'
 
 defineProps<{

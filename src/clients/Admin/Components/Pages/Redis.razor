@@ -3,13 +3,11 @@
 
 <PageTitle>Redis Browser - HellArch Admin</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-6" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-    Redis Browser
-</MudText>
-
-<MudChip T="string" Color="@(_connectionInfo.IsConnected ? Color.Success : Color.Error)" Size="Size.Small" Class="mb-6">
-    @(_connectionInfo.IsConnected ? "Connected" : "Disconnected")
-</MudChip>
+<div class="d-flex align-center gap-2 mb-6">
+    <PageHeader Title="Redis Browser" />
+    <StatusChip Label="@(_connectionInfo.IsConnected ? "Connected" : "Disconnected")"
+               Status="@(_connectionInfo.IsConnected ? StatusChip.StatusType.Connected : StatusChip.StatusType.Disconnected)" />
+</div>
 
 <MudGrid Class="mb-6">
     <MudItem xs="12" md="8">
@@ -39,7 +37,7 @@
                         <MudListItem T="string" OnClick="() => SelectKey(key.Key)"
                                      Style="@(_selectedKey == key.Key ? "background-color: var(--mud-palette-primary-darken);" : "")">
                             <div class="d-flex justify-space-between align-center" style="width: 100%;">
-                                <MudText Style="font-family: 'JetBrains Mono', monospace; font-size: 0.875rem;" Class="text-truncate">@key.Key</MudText>
+                                                <MonoText>@key.Key</MonoText>
                                 <div class="d-flex align-center gap-2">
                                     <MudChip T="string" Size="Size.Small">@key.Type</MudChip>
                                     @if (key.Ttl.HasValue)
@@ -72,7 +70,7 @@
                     <tbody>
                         <tr>
                             <td><MudText Typo="Typo.caption">Key</MudText></td>
-                            <td><MudText Style="font-family: 'JetBrains Mono', monospace; word-break: break-all;">@_keyDetail.Key</MudText></td>
+                            <td><MonoText WordBreak="true">@_keyDetail.Key</MonoText></td>
                         </tr>
                         <tr>
                             <td><MudText Typo="Typo.caption">Type</MudText></td>
@@ -86,9 +84,7 @@
                 </MudSimpleTable>
 
                 <MudText Typo="Typo.subtitle2" Class="mb-2">Value</MudText>
-                <MudPaper Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-gray); max-height: 250px; overflow: auto;">
-                    <pre style="font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; margin: 0; white-space: pre-wrap;">@_keyDetail.Value</pre>
-                </MudPaper>
+                <JsonViewer RawJson="@_keyDetail.Value" MaxHeight="250px" />
 
                 <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="DeleteSelectedKey">Delete Key</MudButton>
             }

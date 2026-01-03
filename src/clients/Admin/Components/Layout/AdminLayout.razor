@@ -1,5 +1,5 @@
 @inherits LayoutComponentBase
-@implements IAsyncDisposable
+@implements IDisposable
 @inject Admin.Services.RealtimeHubService RealtimeHub
 @inject Admin.Services.LiveUpdateService LiveUpdate
 @inject IHttpContextAccessor HttpContextAccessor
@@ -21,9 +21,9 @@
                      Style="@GetConnectionStyle()" />
         </MudTooltip>
 
-        @if (Username is not null)
+        @if (_username is not null)
         {
-            <MudText Typo="Typo.body2" Class="ml-4" Color="Color.Primary">@Username</MudText>
+            <MudText Typo="Typo.body2" Class="ml-4" Color="Color.Primary">@_username</MudText>
             <MudButton Href="/api/auth/logout" Variant="Variant.Text" Color="Color.Default" Size="Size.Small" Class="ml-2">
                 Logout
             </MudButton>
@@ -44,22 +44,23 @@
     </MudMainContent>
 </MudLayout>
 
-<MudSnackbarProvider />
-
 @code {
-    [CascadingParameter]
-    public HttpContext? HttpContext { get; set; }
-
-    private string? Username => HttpContext?.Items["Username"]?.ToString();
-    private string? SessionToken => HttpContext?.Items["SessionToken"]?.ToString()
-        ?? HttpContextAccessor.HttpContext?.Items["SessionToken"]?.ToString();
-
     private bool _drawerOpen = true;
     private string _connectionStatus = "Connecting...";
+    private string? _username;
+    private string? _sessionToken;
     private bool _initialized;
 
     protected override void OnInitialized()
     {
+        // Capture HttpContext values during initial render (before SignalR takes over)
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext is not null)
+        {
+            _username = httpContext.Items["Username"]?.ToString();
+            _sessionToken = httpContext.Items["SessionToken"]?.ToString();
+        }
+
         RealtimeHub.OnConnectionStateChanged += HandleConnectionStateChanged;
         _connectionStatus = RealtimeHub.ConnectionStateText;
     }
@@ -70,12 +71,16 @@
         {
             _initialized = true;
 
-            if (!string.IsNullOrEmpty(SessionToken))
-            {
-                await RealtimeHub.Connect(SessionToken);
-            }
-
+            // Start live updates (idempotent - won't restart if already running)
             LiveUpdate.Start();
+
+            // Connect to realtime hub if we have a session token
+            if (!string.IsNullOrEmpty(_sessionToken))
+            {
+                await RealtimeHub.Connect(_sessionToken);
+                _connectionStatus = RealtimeHub.ConnectionStateText;
+                StateHasChanged();
+            }
         }
     }
 
@@ -98,9 +103,9 @@
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
-    public async ValueTask DisposeAsync()
+    public void Dispose()
     {
         RealtimeHub.OnConnectionStateChanged -= HandleConnectionStateChanged;
-        await LiveUpdate.DisposeAsync();
+        // Don't dispose LiveUpdate - it's a singleton shared across the app
     }
 }

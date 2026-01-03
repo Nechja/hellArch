@@ -37,7 +37,11 @@ builder.Logging.AddJsonConsole(options =>
 
 // Blazor Server
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents(options =>
+    {
+        // Enable detailed errors for debugging
+        options.DetailedErrors = true;
+    });
 
 builder.Services.AddMudServices();
 

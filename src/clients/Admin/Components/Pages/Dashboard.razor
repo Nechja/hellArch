@@ -7,38 +7,24 @@
 
 <PageTitle>Dashboard - HellArch Admin</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-6" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-    Dashboard
-</MudText>
+<PageHeader Title="Dashboard" />
 
 <MudGrid Class="mb-8">
     <MudItem xs="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.h4" Color="Color.Primary">@_stats.UserCount</MudText>
-            <MudText Typo="Typo.caption">Users</MudText>
-        </MudPaper>
+        <MetricCard Value="@_stats.UserCount.ToString()" Label="Users" />
     </MudItem>
     <MudItem xs="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.h4" Color="Color.Primary">@_stats.SessionCount</MudText>
-            <MudText Typo="Typo.caption">Active Sessions</MudText>
-        </MudPaper>
+        <MetricCard Value="@_stats.SessionCount.ToString()" Label="Active Sessions" />
     </MudItem>
     <MudItem xs="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.h4" Color="Color.Primary">@_stats.LinkedAccountCount</MudText>
-            <MudText Typo="Typo.caption">Linked Accounts</MudText>
-        </MudPaper>
+        <MetricCard Value="@_stats.LinkedAccountCount.ToString()" Label="Linked Accounts" />
     </MudItem>
     <MudItem xs="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.h4" Color="Color.Primary">@QueuedMessages</MudText>
-            <MudText Typo="Typo.caption">Queued Messages</MudText>
-        </MudPaper>
+        <MetricCard Value="@QueuedMessages.ToString()" Label="Queued Messages" />
     </MudItem>
 </MudGrid>
 
-<MudText Typo="Typo.h6" Class="mb-4">Service Health</MudText>
+<SectionHeader Title="Service Health" />
 @if (_healthStatus != null)
 {
     <MudAlert Severity="@GetOverallSeverity(_healthStatus.Overall)" Class="mb-4" Variant="Variant.Outlined">
@@ -80,7 +66,7 @@ else
     <MudAlert Severity="Severity.Warning" Class="mb-8">Health service unavailable</MudAlert>
 }
 
-<MudText Typo="Typo.h6" Class="mb-4">Worker Status</MudText>
+<SectionHeader Title="Worker Status" />
 @if (_workersStatus != null)
 {
     <MudAlert Severity="@GetOverallSeverity(_workersStatus.Overall)" Class="mb-4" Variant="Variant.Outlined">
@@ -131,7 +117,7 @@ else
     <MudAlert Severity="Severity.Warning" Class="mb-8">Worker status unavailable</MudAlert>
 }
 
-<MudText Typo="Typo.h6" Class="mb-4">Quick Links</MudText>
+<SectionHeader Title="Quick Links" />
 <MudGrid>
     <MudItem xs="12" md="4">
         <MudCard Elevation="2" Class="mud-theme-primary" Style="cursor: pointer;" @onclick="@(() => NavigateExternal("http://localhost:16686"))">

@@ -9,6 +9,7 @@ Background workers that consume events from RabbitMQ and perform asynchronous pr
 | [Audit](./audit.md) | Go | Records all events for audit trail | `audit-worker` |
 | [Webhooks](./webhooks.md) | Go | Dispatches events to registered endpoints | `webhooks-worker` |
 | [Realtime](./realtime.md) | C# | Broadcasts events to browsers via SignalR | `realtime-worker` |
+| [Images](./images.md) | Go | Generates thumbnails for uploaded images | `images-worker` |
 | [DLQ](./dlq.md) | C# | Logs failed events from dead letter queue | `hellarch.events.dlq` |
 | [Infra](./infra.md) | Go | Auto-restarts unhealthy services | `infra-events` |
 
@@ -19,6 +20,7 @@ graph LR
     subgraph Services
         AUTH[Auth]
         USER[User]
+        FILES[Files]
     end
 
     subgraph RabbitMQ
@@ -26,6 +28,7 @@ graph LR
         AQ[audit-worker]
         WQ[webhooks-worker]
         RQ[realtime-worker]
+        IMQ[images-worker]
         IQ[infra-events]
         DLX[DLQ Exchange]
         DLQ[DLQ]
@@ -35,6 +38,7 @@ graph LR
         AW[Audit Worker]
         WW[Webhooks Worker]
         RW[Realtime Worker]
+        IMW[Images Worker]
         IW[Infra Worker]
         DW[DLQ Worker]
     end
@@ -43,23 +47,28 @@ graph LR
         EDB[(Events DB)]
         EXT[External Endpoints]
         BR[Browsers]
+        MINIO[(MinIO)]
         ORCH[Docker/K8s]
     end
 
     AUTH -->|publish| EX
     USER -->|publish| EX
+    FILES -->|publish| EX
     EX -->|hellarch.#| AQ
     EX -->|hellarch.#| WQ
     EX -->|hellarch.#| RQ
+    EX -->|file.uploaded| IMQ
     EX -->|hellarch.infra.#| IQ
     AQ --> AW
     WQ --> WW
     RQ --> RW
+    IMQ --> IMW
     IQ --> IW
     AW --> EDB
     WW --> EDB
     WW --> EXT
     RW -->|WebSocket| BR
+    IMW --> MINIO
     IW --> ORCH
     AQ -.->|nack| DLX
     WQ -.->|nack| DLX
@@ -70,7 +79,7 @@ graph LR
 
 ## Project Structure
 
-### Go Workers (Audit, Webhooks)
+### Go Workers (Audit, Webhooks, Images, Infra)
 
 ```
 src/workers/{name}/

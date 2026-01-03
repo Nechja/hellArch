@@ -14,9 +14,15 @@ The Admin Console is a Blazor Server application that provides a unified managem
 
 - **Dashboard**: Real-time service health from [Health Service](/guide/services/health), user/session statistics, quick links to Jaeger and RabbitMQ
 - **Users**: Browse users, view linked OAuth accounts, manage sessions, permissions management
-- **Permissions**: Grant/revoke user permissions, activate/deactivate users
+- **Sessions**: View and manage active user sessions
+- **Audit**: Browse audit logs with filtering by event type
+- **Events**: Dead letter queue management, worker status overview
+- **Event Types**: Catalog of all CloudEvent types in the system
+- **Webhooks**: Manage webhook endpoints, view delivery history
 - **Redis Browser**: Explore Redis keys (sessions, OAuth state, revoked tokens)
-- **Events**: Overview of CloudEvents flowing through the system
+- **Settings**: System configuration and preferences
+
+All pages use MudBlazor components with a custom neon cyberpunk theme.
 
 ## Architecture
 
@@ -75,19 +81,34 @@ src/clients/Admin/
 │   ├── Layout/
 │   │   ├── AdminLayout.razor
 │   │   └── NavMenu.razor
-│   └── Pages/
-│       ├── Dashboard.razor
-│       ├── Users.razor
-│       ├── Sessions.razor
-│       ├── Redis.razor
-│       └── Events.razor
-├── Middleware/
-│   └── AdminAuthMiddleware.cs
+│   ├── Pages/
+│   │   ├── Audit.razor          # Audit log browser
+│   │   ├── Dashboard.razor      # Health + stats overview
+│   │   ├── Events.razor         # Dead letters + worker status
+│   │   ├── EventTypes.razor     # CloudEvent type catalog
+│   │   ├── Redis.razor          # Redis key browser
+│   │   ├── Sessions.razor       # Session management
+│   │   ├── Settings.razor       # System settings
+│   │   ├── Users.razor          # User management
+│   │   └── Webhooks.razor       # Webhook management
+│   └── Shared/
+│       ├── EventTypeChip.razor  # Event type badge
+│       ├── JsonViewer.razor     # JSON display
+│       ├── MetricCard.razor     # Stats card
+│       ├── PageHeader.razor     # Page title
+│       └── StatusChip.razor     # Status badge
 ├── Services/
-│   ├── AuthAdminFacade.cs
-│   ├── HealthAdapter.cs
-│   ├── RabbitMqAdapter.cs
-│   └── RedisBrowserAdapter.cs
+│   ├── AuthAdminFacade.cs       # Auth service client
+│   ├── EventsAdminFacade.cs     # Events service client
+│   ├── EventTypeCatalog.cs      # Event type definitions
+│   ├── HealthAdapter.cs         # Health service client
+│   ├── LiveUpdateService.cs     # Real-time updates
+│   ├── RabbitMqAdapter.cs       # RabbitMQ management API
+│   ├── RealtimeHubService.cs    # SignalR connection
+│   ├── RedisBrowserAdapter.cs   # Redis browser
+│   └── ToastService.cs          # Notifications
+├── Theme/
+│   └── HellArchTheme.cs         # MudBlazor theme
 └── wwwroot/
     └── css/
         └── admin.css

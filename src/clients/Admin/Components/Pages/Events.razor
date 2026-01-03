@@ -166,6 +166,8 @@ else
     private bool _loadingEvents;
     private string _connectionStatus = "Connecting...";
     private const int MaxLiveEvents = 25;
+    private DateTime _lastHealthRefresh = DateTime.MinValue;
+    private static readonly TimeSpan HealthRefreshDebounce = TimeSpan.FromSeconds(5);
 
     protected override async Task OnInitializedAsync()
     {
@@ -191,8 +193,12 @@ else
 
     private void HandleHealthUpdate(object? sender, EventArgs e)
     {
+        // Debounce health updates
+        if (DateTime.UtcNow - _lastHealthRefresh < HealthRefreshDebounce) return;
+
         InvokeAsync(async () =>
         {
+            _lastHealthRefresh = DateTime.UtcNow;
             _overview = await RabbitMq.GetOverview();
             _queues = await RabbitMq.GetQueues();
             StateHasChanged();
