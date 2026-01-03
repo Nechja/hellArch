@@ -79,9 +79,9 @@ func (h *Handler) deleteFile(w http.ResponseWriter, r *http.Request) {
 	// Publish event
 	if h.publisher != nil {
 		event := files.FileDeleted{
-			FileId:    file.ID,
+			FileID:    file.ID,
 			Filename:  file.Filename,
-			OwnerId:   file.OwnerID,
+			OwnerID:   file.OwnerID,
 			DeletedAt: file.UpdatedAt,
 		}
 		if err := h.publisher.Publish(ctx, cloudevents.EventTypeFileDeleted, event); err != nil {

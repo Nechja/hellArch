@@ -58,6 +58,7 @@
   /* Surfaces - where content lives */
   --color-surface: var(--palette-black);
   --color-surface-raised: var(--palette-black-light);
+  --color-surface-tertiary: var(--palette-black-lighter);
   --color-surface-overlay: var(--palette-black-lighter);
   --color-surface-elevated: var(--palette-black-lightest);
   --color-surface-backdrop: rgba(0, 0, 0, 0.8);
@@ -117,6 +118,7 @@
      ============================================================================ */
   --color-bg-primary: var(--color-surface);
   --color-bg-secondary: var(--color-surface-raised);
+  --color-bg-tertiary: var(--color-surface-tertiary);
   --color-bg-card: var(--color-surface-overlay);
   --color-bg-elevated: var(--color-surface-elevated);
   --color-bg-overlay: var(--color-surface-backdrop);

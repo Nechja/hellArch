@@ -106,11 +106,11 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 	// Publish event
 	if h.publisher != nil {
 		event := files.FileUploaded{
-			FileId:         storedFile.ID,
+			FileID:         storedFile.ID,
 			Filename:       storedFile.Filename,
 			MimeType:       storedFile.MimeType,
 			SizeBytes:      storedFile.SizeBytes,
-			OwnerId:        storedFile.OwnerID,
+			OwnerID:        storedFile.OwnerID,
 			ChecksumSha256: storedFile.ChecksumSha256,
 			UploadedAt:     storedFile.CreatedAt,
 		}
@@ -204,11 +204,11 @@ func (h *Handler) confirmUpload(w http.ResponseWriter, r *http.Request) {
 	// Publish event
 	if h.publisher != nil {
 		event := files.FileUploaded{
-			FileId:     storedFile.ID,
+			FileID:     storedFile.ID,
 			Filename:   storedFile.Filename,
 			MimeType:   storedFile.MimeType,
 			SizeBytes:  storedFile.SizeBytes,
-			OwnerId:    storedFile.OwnerID,
+			OwnerID:    storedFile.OwnerID,
 			UploadedAt: storedFile.CreatedAt,
 		}
 		if err := h.publisher.Publish(ctx, cloudevents.EventTypeFileUploaded, event); err != nil {

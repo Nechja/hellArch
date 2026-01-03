@@ -19,6 +19,7 @@ export default defineConfig({
       surface: {
         DEFAULT: 'var(--color-surface)',
         raised: 'var(--color-surface-raised)',
+        tertiary: 'var(--color-surface-tertiary)',
         overlay: 'var(--color-surface-overlay)',
         elevated: 'var(--color-surface-elevated)',
         backdrop: 'var(--color-surface-backdrop)',
@@ -105,6 +106,7 @@ export default defineConfig({
       bg: {
         primary: 'var(--color-surface)',
         secondary: 'var(--color-surface-raised)',
+        tertiary: 'var(--color-surface-tertiary)',
         card: 'var(--color-surface-overlay)',
         elevated: 'var(--color-surface-elevated)',
         overlay: 'var(--color-surface-backdrop)',
@@ -816,7 +818,7 @@ export default defineConfig({
     'sparkline', 'inline-stat', 'inline-stat-value', 'inline-stat-label', 'inline-stat-unit',
 
     // Colors - semantic surfaces
-    'bg-surface', 'bg-surface-raised', 'bg-surface-overlay', 'bg-surface-elevated', 'bg-surface-backdrop',
+    'bg-surface', 'bg-surface-raised', 'bg-surface-tertiary', 'bg-surface-overlay', 'bg-surface-elevated', 'bg-surface-backdrop',
 
     // Colors - semantic brand
     'bg-primary', 'bg-primary-hover', 'bg-primary-active',
@@ -825,7 +827,7 @@ export default defineConfig({
     'bg-success/10', 'bg-warning/10', 'bg-danger/10', 'bg-info/10',
 
     // Colors - legacy backgrounds (for migration)
-    'bg-bg-primary', 'bg-bg-secondary', 'bg-bg-card', 'bg-bg-elevated',
+    'bg-bg-primary', 'bg-bg-secondary', 'bg-bg-tertiary', 'bg-bg-card', 'bg-bg-elevated',
 
     // Colors - primitive neon (for brand moments)
     'bg-neon-pink', 'bg-neon-rose', 'bg-neon-dusty', 'bg-neon-peach', 'bg-neon-orange', 'bg-neon-coral',
@@ -921,8 +923,11 @@ export default defineConfig({
     'origin-center',
 
     // Responsive
-    'md:flex', 'md:hidden', 'md:block', 'lg:flex', 'lg:hidden',
+    'sm:flex', 'sm:hidden', 'sm:block', 'sm:p-4', 'sm:px-4', 'sm:py-3',
+    'md:flex', 'md:hidden', 'md:block', 'md:p-6', 'md:px-6', 'md:py-4',
     'md:flex-row', 'md:grid-cols-2', 'md:grid-cols-3',
+    'lg:flex', 'lg:hidden', 'lg:block',
+    'xl:flex', 'xl:hidden', 'xl:block',
 
     // Hover states - semantic
     'hover:bg-surface-elevated', 'hover:bg-surface-elevated/50',

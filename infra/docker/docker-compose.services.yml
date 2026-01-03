@@ -276,6 +276,64 @@ services:
       - hellarch
     restart: unless-stopped
 
+  files:
+    build:
+      context: ../../src/services/files
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hellarch-files
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "5006:5006"
+    environment:
+      - FILES_HTTP_ADDRESS=:5006
+      - FILES_DATABASE_URL=postgres://hellarch:hellarch@files-db:5432/files_db
+      - FILES_RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - FILES_MINIO_ENDPOINT=minio:9000
+      - FILES_MINIO_ACCESS_KEY=hellarch
+      - FILES_MINIO_SECRET_KEY=${MINIO_PASSWORD:-hellarch}
+      - FILES_MINIO_BUCKET=hellarch-files
+      - FILES_MINIO_USE_SSL=false
+      - FILES_MAX_UPLOAD_SIZE=1073741824
+      - OTEL_SERVICE_NAME=files
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - LOG_LEVEL=debug
+    volumes:
+      - ../../src/services/files:/app
+      - ../../libs:/libs
+      - files-go-cache:/go/pkg/mod
+    networks:
+      - hellarch
+    restart: unless-stopped
+
+  images-worker:
+    build:
+      context: ../../src/workers/images
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hellarch-images-worker
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      - IMAGES_RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - IMAGES_MINIO_ENDPOINT=minio:9000
+      - IMAGES_MINIO_ACCESS_KEY=hellarch
+      - IMAGES_MINIO_SECRET_KEY=${MINIO_PASSWORD:-hellarch}
+      - IMAGES_MINIO_BUCKET=hellarch-files
+      - IMAGES_MINIO_USE_SSL=false
+      - IMAGES_FILES_API_URL=http://hellarch-files:5006
+      - IMAGES_THUMBNAIL_SIZE=256
+      - IMAGES_HEALTH_ADDRESS=:8081
+      - OTEL_SERVICE_NAME=images-worker
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - LOG_LEVEL=debug
+    volumes:
+      - ../../src/workers/images:/app
+      - ../../libs:/libs
+      - images-go-cache:/go/pkg/mod
+    networks:
+      - hellarch
+    restart: unless-stopped
+
 volumes:
   gateway-nuget:
   auth-go-cache:
@@ -287,6 +345,8 @@ volumes:
   realtime-nuget:
   infra-go-cache:
   dlq-nuget:
+  files-go-cache:
+  images-go-cache:
 
 networks:
   hellarch:
