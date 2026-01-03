@@ -10,9 +10,7 @@
 
 @if (UserId is null)
 {
-    <MudText Typo="Typo.h4" Class="mb-6" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-        Users
-    </MudText>
+    <PageHeader Title="Users" />
 
     <MudTable Items="@_users" Hover="true" Striped="true" Dense="true" OnRowClick="@(args => ViewUser(args.Item?.Id ?? ""))" T="UserSummary" Class="mb-4">
         <HeaderContent>
@@ -23,13 +21,12 @@
             <MudTh>Created</MudTh>
         </HeaderContent>
         <RowTemplate>
-            <MudTd DataLabel="ID" Style="font-family: 'JetBrains Mono', monospace; font-size: 0.875rem;">@context.Id[..8]...</MudTd>
+            <MudTd DataLabel="ID"><MonoText>@context.Id[..8]...</MonoText></MudTd>
             <MudTd DataLabel="Email">@context.Email</MudTd>
             <MudTd DataLabel="Username">@context.Username</MudTd>
             <MudTd DataLabel="Status">
-                <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Error)">
-                    @(context.IsActive ? "Active" : "Inactive")
-                </MudChip>
+                <StatusChip Label="@(context.IsActive ? "Active" : "Inactive")"
+                           Status="@(context.IsActive ? StatusChip.StatusType.Active : StatusChip.StatusType.Inactive)" />
             </MudTd>
             <MudTd DataLabel="Created">@context.CreatedAt.ToString("g")</MudTd>
         </RowTemplate>
@@ -45,9 +42,7 @@ else
 {
     <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
 
-    <MudText Typo="Typo.h4" Class="mb-6" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-        User Details
-    </MudText>
+    <PageHeader Title="User Details" />
 
     @if (_userDetail is not null)
     {
@@ -57,7 +52,7 @@ else
                 <tbody>
                     <tr>
                         <td style="width: 150px;"><MudText Typo="Typo.caption">ID</MudText></td>
-                        <td><MudText Style="font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; word-break: break-all;">@_userDetail.Id</MudText></td>
+                        <td><MonoText WordBreak="true">@_userDetail.Id</MonoText></td>
                     </tr>
                     <tr>
                         <td><MudText Typo="Typo.caption">Email</MudText></td>
@@ -71,9 +66,8 @@ else
                         <td><MudText Typo="Typo.caption">Status</MudText></td>
                         <td>
                             <div class="d-flex align-center gap-2">
-                                <MudChip T="string" Size="Size.Small" Color="@(_userDetail.IsActive ? Color.Success : Color.Error)">
-                                    @(_userDetail.IsActive ? "Active" : "Inactive")
-                                </MudChip>
+                                <StatusChip Label="@(_userDetail.IsActive ? "Active" : "Inactive")"
+                                           Status="@(_userDetail.IsActive ? StatusChip.StatusType.Active : StatusChip.StatusType.Inactive)" />
                                 @if (_userDetail.IsActive)
                                 {
                                     <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="DeactivateUser">Deactivate</MudButton>
@@ -137,7 +131,7 @@ else
                                 <tbody>
                                     <tr>
                                         <td><MudText Typo="Typo.caption">Provider ID</MudText></td>
-                                        <td><MudText Style="font-family: 'JetBrains Mono', monospace;">@account.ProviderUserId</MudText></td>
+                                        <td><MonoText>@account.ProviderUserId</MonoText></td>
                                     </tr>
                                     @if (account.Email is not null)
                                     {
@@ -177,7 +171,7 @@ else
                     <MudTh>Actions</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd Style="font-family: 'JetBrains Mono', monospace; font-size: 0.875rem;">@context.Id[..8]...</MudTd>
+                    <MudTd><MonoText>@context.Id[..8]...</MonoText></MudTd>
                     <MudTd>@(context.IpAddress ?? "Unknown")</MudTd>
                     <MudTd Style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(context.UserAgent ?? "Unknown")</MudTd>
                     <MudTd>@context.ExpiresAt.ToString("g")</MudTd>

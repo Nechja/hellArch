@@ -3,42 +3,7 @@
 
 <PageTitle>Settings - HellArch Admin</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-6" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-    System Configuration
-</MudText>
-
-@*
-TODO: Rebuild this page with MudBlazor
-Original functionality:
-- 4 configuration sections in 2x2 grid:
-
-1. Sessions:
-   - Session Timeout (minutes): number input, 5-1440
-   - Max Concurrent Sessions: number input, 1-10
-   - Revoke on Password Change: toggle
-
-2. Webhooks:
-   - Max Retry Attempts: number input, 0-10
-   - Retry Interval (seconds): number input, 5-3600
-   - Request Timeout (seconds): number input, 5-60
-
-3. Rate Limiting:
-   - Requests per Minute: number input, 10-1000
-   - Burst Limit: number input, 5-100
-   - Enable Rate Limiting: toggle
-
-4. Events:
-   - Retention Period (days): number input, 1-365
-   - Max Payload Size (KB): number input, 1-1024
-   - Archive on Delete: toggle
-
-- Footer buttons: Reset to Defaults, Save Changes
-- Note: SaveSettings() and ResetToDefaults() were stubbed (TODO: Persist to configuration store)
-*@
-
-<MudAlert Severity="Severity.Info" Class="mb-6">
-    This page is being rebuilt with MudBlazor. See source comments for original functionality.
-</MudAlert>
+<PageHeader Title="System Configuration" />
 
 <MudGrid>
     <MudItem xs="12" md="6">

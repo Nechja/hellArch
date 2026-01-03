@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import PageTitle from '../components/atoms/PageTitle.vue'
+import SectionHeader from '../components/atoms/SectionHeader.vue'
 import LinkedAccountItem from '../components/molecules/LinkedAccountItem.vue'
+import UserAvatar from '../components/atoms/UserAvatar.vue'
 import type { UserProfile } from '@hellarch/types'
 
 const props = defineProps<{
@@ -43,73 +44,105 @@ async function saveProfile() {
 </script>
 
 <template>
-  <div style="max-width: 720px;">
-    <PageTitle
-      title="Settings"
-      subtitle="Manage your account settings and preferences."
-    />
-
-    <!-- Profile Section -->
-    <v-card class="mb-6">
-      <v-card-title class="text-h6 font-weight-bold">Profile</v-card-title>
-      <v-card-text>
-        <v-form @submit.prevent="saveProfile">
-          <v-text-field
-            :model-value="user?.email"
-            label="Email"
-            disabled
-            hint="Email cannot be changed"
-            persistent-hint
-            class="mb-4"
-          />
-
-          <v-text-field
-            v-model="displayName"
-            label="Display Name"
-            placeholder="Enter your display name"
-            class="mb-4"
-          />
-
-          <div class="d-flex justify-end">
-            <v-btn
-              type="submit"
-              color="primary"
-              :loading="saving"
-              :disabled="saving"
-            >
-              Save Changes
-            </v-btn>
+  <div class="settings-page">
+    <v-row justify="center">
+      <v-col cols="12" md="10" lg="8" xl="6">
+        <!-- Header with Avatar -->
+        <div class="settings-header mb-8">
+          <div class="d-flex align-center ga-4">
+            <UserAvatar
+              v-if="user"
+              :avatar-url="user.avatar_url"
+              :display-name="user.display_name"
+              :email="user.email"
+              :size="64"
+            />
+            <div>
+              <h1 class="text-h5 font-weight-bold mb-1">Account Settings</h1>
+              <p class="text-body-2 text-medium-emphasis mb-0">
+                Manage your profile and preferences
+              </p>
+            </div>
           </div>
-        </v-form>
-      </v-card-text>
-    </v-card>
+        </div>
 
-    <!-- Linked Accounts -->
-    <v-card class="mb-6">
-      <v-card-title class="text-h6 font-weight-bold">Linked Accounts</v-card-title>
-      <v-card-text>
-        <v-list>
-          <LinkedAccountItem provider="discord" connected />
-          <v-divider class="my-2" />
-          <LinkedAccountItem provider="github" coming-soon />
-        </v-list>
-      </v-card-text>
-    </v-card>
+        <!-- Profile Section -->
+        <SectionHeader title="Profile Information" />
+        <v-card class="settings-card mb-8">
+          <v-card-text class="pa-6">
+            <v-form @submit.prevent="saveProfile">
+              <v-row>
+                <v-col cols="12" sm="6">
+                  <v-text-field
+                    :model-value="user?.email"
+                    label="Email"
+                    disabled
+                    prepend-inner-icon="mdi-email-outline"
+                  />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field
+                    v-model="displayName"
+                    label="Display Name"
+                    placeholder="Enter your display name"
+                    prepend-inner-icon="mdi-account-outline"
+                  />
+                </v-col>
+              </v-row>
 
-    <!-- Danger Zone -->
-    <v-card color="error" variant="outlined">
-      <v-card-title class="text-h6 font-weight-bold text-error">Danger Zone</v-card-title>
-      <v-card-text>
-        <p class="text-body-2 text-medium-emphasis mb-4">
-          Once you delete your account, there is no going back. Please be certain.
-        </p>
-        <v-btn color="error" variant="flat">
-          Delete Account
-        </v-btn>
-      </v-card-text>
-    </v-card>
+              <div class="d-flex justify-end mt-4">
+                <v-btn
+                  type="submit"
+                  color="primary"
+                  :loading="saving"
+                  :disabled="saving"
+                  size="large"
+                >
+                  <v-icon start>mdi-content-save</v-icon>
+                  Save Changes
+                </v-btn>
+              </div>
+            </v-form>
+          </v-card-text>
+        </v-card>
 
-    <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000">
+        <!-- Linked Accounts -->
+        <SectionHeader title="Linked Accounts" />
+        <v-card class="settings-card mb-8">
+          <v-card-text class="pa-2">
+            <LinkedAccountItem provider="discord" connected />
+            <v-divider class="mx-4" />
+            <LinkedAccountItem provider="github" coming-soon />
+            <v-divider class="mx-4" />
+            <LinkedAccountItem provider="google" coming-soon />
+          </v-card-text>
+        </v-card>
+
+        <!-- Danger Zone -->
+        <SectionHeader title="Danger Zone" />
+        <v-card class="danger-card">
+          <v-card-text class="pa-6">
+            <div class="d-flex flex-column flex-sm-row align-sm-center justify-space-between ga-4">
+              <div>
+                <h3 class="text-body-1 font-weight-medium text-error mb-1">
+                  Delete Account
+                </h3>
+                <p class="text-body-2 text-medium-emphasis mb-0">
+                  Permanently delete your account and all associated data
+                </p>
+              </div>
+              <v-btn color="error" variant="outlined" class="flex-shrink-0">
+                <v-icon start>mdi-delete-outline</v-icon>
+                Delete Account
+              </v-btn>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000" location="bottom right">
+      <v-icon start>{{ snackbarColor === 'success' ? 'mdi-check-circle' : 'mdi-alert-circle' }}</v-icon>
       {{ snackbarText }}
       <template #actions>
         <v-btn variant="text" @click="snackbar = false">Close</v-btn>
@@ -117,3 +150,32 @@ async function saveProfile() {
     </v-snackbar>
   </div>
 </template>
+
+<style scoped>
+.settings-page {
+  max-width: 100%;
+}
+
+.settings-header {
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(255, 77, 141, 0.08) 0%, rgba(255, 138, 101, 0.04) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 77, 141, 0.12);
+}
+
+.settings-card {
+  background: rgba(22, 22, 30, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.danger-card {
+  background: rgba(239, 83, 80, 0.05) !important;
+  border: 1px solid rgba(239, 83, 80, 0.2);
+}
+
+@media (max-width: 600px) {
+  .settings-header {
+    padding: 16px;
+  }
+}
+</style>

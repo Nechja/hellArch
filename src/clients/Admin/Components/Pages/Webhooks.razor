@@ -9,62 +9,11 @@
 <PageTitle>Webhooks - HellArch Admin</PageTitle>
 
 <div class="d-flex justify-space-between align-center mb-6">
-    <div>
-        <MudText Typo="Typo.h4" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-            Webhooks
-        </MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">Manage webhook endpoints for event notifications.</MudText>
-    </div>
+    <PageHeader Title="Webhooks" Subtitle="Manage webhook endpoints for event notifications." />
     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ShowCreateForm" StartIcon="@Icons.Material.Filled.Add">
         New Webhook
     </MudButton>
 </div>
-
-@*
-TODO: Rebuild this page with MudBlazor
-Original functionality:
-- Webhook list: Each webhook card shows:
-  - Name, Active/Inactive badge, Format badge (Discord/Slack/Raw)
-  - Truncated URL
-  - Event type badges (first 3 + "N more")
-  - Last delivery status (green check/red X, time ago, status code)
-  - "View deliveries" link opens side panel
-  - Edit/Delete buttons
-
-- Deliveries Side Panel (slides in from right):
-  - Filter dropdown: All/Success/Failed
-  - List of deliveries: event type badge, status badge, timestamp, attempt number
-  - Click delivery to see details in modal
-  - Pagination
-
-- Create/Edit Modal (ModalSize.Large):
-  - Name input, Format selection (3 buttons: Discord/Slack/Raw)
-  - URL input, Secret input (optional)
-  - Event types: Select all/Clear buttons
-    - Domain filter buttons (auth/infra) with counts
-    - Scrollable checklist grouped by domain
-    - Shows count selected
-  - Active toggle
-  - Cancel/Save buttons
-
-- Delete Confirmation Modal
-
-- Delivery Details Modal:
-  - Event Type, Status badge, Event ID, Attempt number
-  - Response body (if present)
-
-Key services used:
-- EventsApi.GetWebhooks(page, limit)
-- EventsApi.GetDeliveries(page, limit, webhookId, success)
-- EventsApi.CreateWebhook(request)
-- EventsApi.UpdateWebhook(id, request)
-- EventsApi.DeleteWebhook(id)
-- EventTypeCatalog.Domains, GetByDomain(domain), All
-*@
-
-<MudAlert Severity="Severity.Info" Class="mb-6">
-    This page is being rebuilt with MudBlazor. See source comments for original functionality.
-</MudAlert>
 
 @if (_loadingWebhooks)
 {
@@ -88,18 +37,15 @@ else
                         <div>
                             <div class="d-flex align-center gap-2 mb-2">
                                 <MudText Typo="Typo.h6">@webhook.Name</MudText>
-                                <MudChip T="string" Size="Size.Small" Color="@(webhook.IsActive ? Color.Success : Color.Warning)">
-                                    @(webhook.IsActive ? "Active" : "Inactive")
-                                </MudChip>
+                                <StatusChip Label="@(webhook.IsActive ? "Active" : "Inactive")"
+                                           Status="@(webhook.IsActive ? StatusChip.StatusType.Active : StatusChip.StatusType.Inactive)" />
                                 <MudChip T="string" Size="Size.Small" Color="Color.Info">@GetFormatLabel(webhook.Format)</MudChip>
                             </div>
-                            <MudText Typo="Typo.body2" Style="font-family: 'JetBrains Mono', monospace;" Color="Color.Secondary" Class="mb-2">
-                                @TruncateUrl(webhook.Url)
-                            </MudText>
-                            <div class="d-flex flex-wrap gap-1">
+                            <MonoText FontSize="0.875rem">@TruncateUrl(webhook.Url)</MonoText>
+                            <div class="d-flex flex-wrap gap-1 mt-2">
                                 @foreach (var eventType in webhook.EventTypes.Take(3))
                                 {
-                                    <MudChip T="string" Size="Size.Small">@GetShortEventType(eventType)</MudChip>
+                                    <EventTypeChip EventType="@eventType" />
                                 }
                                 @if (webhook.EventTypes.Count > 3)
                                 {
@@ -119,20 +65,69 @@ else
 }
 
 @* Create/Edit Dialog *@
-<MudDialog @bind-Visible="_showForm">
+<MudDialog @bind-Visible="_showForm" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true }">
     <TitleContent>
         <MudText Typo="Typo.h6">@(_editingWebhook == null ? "Create Webhook" : "Edit Webhook")</MudText>
     </TitleContent>
     <DialogContent>
-        <MudTextField @bind-Value="_formName" Label="Name" Variant="Variant.Outlined" Class="mb-4" />
-        <MudTextField @bind-Value="_formUrl" Label="URL" Variant="Variant.Outlined" Class="mb-4" />
-        <MudTextField @bind-Value="_formSecret" Label="Secret (optional)" Variant="Variant.Outlined" Class="mb-4" />
-        <MudSelect @bind-Value="_formFormat" Label="Format" Variant="Variant.Outlined" Class="mb-4">
-            <MudSelectItem Value="WebhookFormat.Raw">Raw JSON</MudSelectItem>
-            <MudSelectItem Value="WebhookFormat.Discord">Discord</MudSelectItem>
-            <MudSelectItem Value="WebhookFormat.Slack">Slack</MudSelectItem>
-        </MudSelect>
-        <MudSwitch @bind-Value="_formIsActive" Label="Active" Color="Color.Primary" />
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_formName" Label="Name" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect @bind-Value="_formFormat" Label="Format" Variant="Variant.Outlined">
+                    <MudSelectItem Value="WebhookFormat.Raw">Raw JSON</MudSelectItem>
+                    <MudSelectItem Value="WebhookFormat.Discord">Discord</MudSelectItem>
+                    <MudSelectItem Value="WebhookFormat.Slack">Slack</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_formUrl" Label="URL" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="8">
+                <MudTextField @bind-Value="_formSecret" Label="Secret (optional)" Variant="Variant.Outlined" InputType="InputType.Password" />
+            </MudItem>
+            <MudItem xs="12" md="4" Class="d-flex align-end">
+                <MudSwitch @bind-Value="_formIsActive" Label="Active" Color="Color.Primary" />
+            </MudItem>
+        </MudGrid>
+
+        <MudDivider Class="my-4" />
+
+        <div class="d-flex justify-space-between align-center mb-3">
+            <MudText Typo="Typo.subtitle1">Event Types (@_selectedEventTypes.Count selected)</MudText>
+            <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                <MudButton OnClick="SelectAllEvents">Select All</MudButton>
+                <MudButton OnClick="ClearEvents">Clear</MudButton>
+            </MudButtonGroup>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            @foreach (var domain in EventTypeCatalog.Domains)
+            {
+                var count = EventTypeCatalog.GetByDomain(domain).Count;
+                var selectedCount = _selectedEventTypes.Count(t => EventTypeCatalog.All.Any(e => e.Type == t && e.Domain == domain));
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(_activeDomain == domain ? Color.Primary : Color.Default)"
+                         OnClick="() => _activeDomain = domain">
+                    @domain (@selectedCount/@count)
+                </MudChip>
+            }
+        </div>
+
+        <MudPaper Class="pa-3" Style="max-height: 250px; overflow-y: auto;" Elevation="0" Outlined="true">
+            @foreach (var evt in EventTypeCatalog.GetByDomain(_activeDomain))
+            {
+                <div class="d-flex align-center gap-2 py-1">
+                    <MudCheckBox T="bool" Value="@_selectedEventTypes.Contains(evt.Type)"
+                                 ValueChanged="@(v => ToggleEventType(evt.Type, v))" Dense="true" />
+                    <div>
+                        <MudText Typo="Typo.body2">@evt.Entity.@evt.Action</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@evt.Description</MudText>
+                    </div>
+                </div>
+            }
+        </MudPaper>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="CloseForm">Cancel</MudButton>
@@ -168,8 +163,12 @@ else
     private WebhookFormat _formFormat = WebhookFormat.Discord;
     private bool _formIsActive = true;
     private bool _saving;
+    private HashSet<string> _selectedEventTypes = [];
+    private string _activeDomain = "Auth";
 
-    private bool IsFormValid => !string.IsNullOrWhiteSpace(_formName) && !string.IsNullOrWhiteSpace(_formUrl);
+    private bool IsFormValid => !string.IsNullOrWhiteSpace(_formName)
+                             && !string.IsNullOrWhiteSpace(_formUrl)
+                             && _selectedEventTypes.Count > 0;
 
     private bool _showDeleteConfirm;
     private Webhook? _webhookToDelete;
@@ -205,6 +204,8 @@ else
         _formSecret = "";
         _formFormat = WebhookFormat.Discord;
         _formIsActive = true;
+        _selectedEventTypes = [];
+        _activeDomain = EventTypeCatalog.Domains.FirstOrDefault() ?? "Auth";
         _showForm = true;
     }
 
@@ -216,7 +217,34 @@ else
         _formSecret = webhook.Secret;
         _formFormat = webhook.Format;
         _formIsActive = webhook.IsActive;
+        _selectedEventTypes = [..webhook.EventTypes];
+        _activeDomain = EventTypeCatalog.Domains.FirstOrDefault() ?? "Auth";
         _showForm = true;
+    }
+
+    private void SelectAllEvents()
+    {
+        foreach (var evt in EventTypeCatalog.All)
+        {
+            _selectedEventTypes.Add(evt.Type);
+        }
+    }
+
+    private void ClearEvents()
+    {
+        _selectedEventTypes.Clear();
+    }
+
+    private void ToggleEventType(string eventType, bool selected)
+    {
+        if (selected)
+        {
+            _selectedEventTypes.Add(eventType);
+        }
+        else
+        {
+            _selectedEventTypes.Remove(eventType);
+        }
     }
 
     private void CloseForm()
@@ -232,8 +260,7 @@ else
         _saving = true;
         StateHasChanged();
 
-        // TODO: Add event type selection
-        var eventTypes = _editingWebhook?.EventTypes.ToList() ?? ["hellarch.auth.user.created.v1"];
+        var eventTypes = _selectedEventTypes.ToList();
 
         if (_editingWebhook == null)
         {
@@ -269,12 +296,6 @@ else
             _showDeleteConfirm = false;
             await LoadWebhooks();
         }
-    }
-
-    private static string GetShortEventType(string eventType)
-    {
-        var parts = eventType.Split('.');
-        return parts.Length >= 4 ? $"{parts[^3]}.{parts[^2]}" : eventType;
     }
 
     private static string GetFormatLabel(WebhookFormat format) => format switch

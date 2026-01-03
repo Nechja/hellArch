@@ -1,49 +1,12 @@
 @page "/event-types"
+@using Admin.Services
+@inject EventsAdminFacade EventsApi
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 
 <PageTitle>Event Types - HellArch Admin</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-6" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-    Event Types
-</MudText>
-
-<MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
-    Subscribe to events to get webhook notifications. Click any event to create a webhook.
-</MudText>
-
-@*
-TODO: Rebuild this page with MudBlazor
-Original functionality:
-- Domain filter buttons at top: All (count), auth (count), infra (count)
-  - Clicking filters to show only that domain's events
-
-- Event cards for each event type showing:
-  - Event type code (e.g. hellarch.auth.user.created.v1) in pink
-  - Severity badge (Critical=red, High=yellow, Medium=blue, Low=default)
-  - Description text
-  - "+ Subscribe" button opens QuickSubscribe modal
-  - Copy button copies event type to clipboard
-
-- Toast notifications:
-  - "Copied: {eventType}" on copy
-  - "Subscribed to {shortType}" on successful subscription
-
-- QuickSubscribe modal (separate component):
-  - Shows event type and severity badge
-  - Two modes: New webhook / Add to existing
-  - New: URL input, Format selection (Discord/Slack/Raw), Name input
-  - Existing: Dropdown of existing webhooks (disabled if already subscribed)
-  - Cancel/Subscribe buttons
-
-Key services:
-- EventTypeCatalog.All, Domains, GetByDomain(domain)
-- EventSeverity enum: Critical, High, Medium, Low
-*@
-
-<MudAlert Severity="Severity.Info" Class="mb-6">
-    This page is being rebuilt with MudBlazor. See source comments for original functionality.
-</MudAlert>
+<PageHeader Title="Event Types" Subtitle="Subscribe to events to get webhook notifications. Click any event to create a webhook." />
 
 <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small" Class="mb-6">
     <MudButton Color="@(_selectedDomain == null ? Color.Primary : Color.Default)" OnClick="() => _selectedDomain = null">
@@ -69,9 +32,9 @@ Key services:
                     <div class="d-flex justify-space-between align-start">
                         <div class="flex-grow-1">
                             <div class="d-flex align-center gap-2 mb-2">
-                                <MudText Style="font-family: 'JetBrains Mono', monospace; color: #D162A4; font-size: 0.875rem; word-break: break-all;">
-                                    @eventType.Type
-                                </MudText>
+                                <MonoText FontSize="0.875rem" WordBreak="true">
+                                    <span style="color: #D162A4;">@eventType.Type</span>
+                                </MonoText>
                                 <MudChip T="string" Size="Size.Small" Color="@GetSeverityColor(eventType.Severity)">
                                     @eventType.Severity
                                 </MudChip>
@@ -79,7 +42,7 @@ Key services:
                             <MudText Typo="Typo.body2" Color="Color.Secondary">@eventType.Description</MudText>
                         </div>
                         <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
-                            <MudButton Color="Color.Primary" OnClick="() => Subscribe(eventType.Type)">Subscribe</MudButton>
+                            <MudButton Color="Color.Primary" OnClick="() => OpenSubscribeDialog(eventType)">Subscribe</MudButton>
                             <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" OnClick="() => CopyEventType(eventType.Type)" />
                         </MudButtonGroup>
                     </div>
@@ -89,12 +52,79 @@ Key services:
     </MudGrid>
 }
 
+@* Subscribe Dialog *@
+<MudDialog @bind-Visible="_showSubscribeDialog" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Subscribe to Event</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_subscribeEventType is not null)
+        {
+            <div class="d-flex align-center gap-2 mb-4">
+                <MonoText FontSize="0.875rem">@_subscribeEventType.Type</MonoText>
+                <MudChip T="string" Size="Size.Small" Color="@GetSeverityColor(_subscribeEventType.Severity)">
+                    @_subscribeEventType.Severity
+                </MudChip>
+            </div>
+
+            <MudRadioGroup @bind-Value="_subscribeMode">
+                <MudRadio Value="@("new")" Color="Color.Primary">Create new webhook</MudRadio>
+                <MudRadio Value="@("existing")" Color="Color.Primary" Disabled="@(_existingWebhooks.Count == 0)">
+                    Add to existing webhook @(_existingWebhooks.Count == 0 ? "(none available)" : "")
+                </MudRadio>
+            </MudRadioGroup>
+
+            @if (_subscribeMode == "new")
+            {
+                <MudTextField @bind-Value="_newWebhookName" Label="Webhook Name" Variant="Variant.Outlined" Class="mt-4 mb-4" />
+                <MudTextField @bind-Value="_newWebhookUrl" Label="Webhook URL" Variant="Variant.Outlined" Class="mb-4" />
+                <MudSelect @bind-Value="_newWebhookFormat" Label="Format" Variant="Variant.Outlined">
+                    <MudSelectItem Value="WebhookFormat.Discord">Discord</MudSelectItem>
+                    <MudSelectItem Value="WebhookFormat.Slack">Slack</MudSelectItem>
+                    <MudSelectItem Value="WebhookFormat.Raw">Raw JSON</MudSelectItem>
+                </MudSelect>
+            }
+            else
+            {
+                <MudSelect @bind-Value="_selectedWebhookId" Label="Select Webhook" Variant="Variant.Outlined" Class="mt-4">
+                    @foreach (var webhook in _existingWebhooks)
+                    {
+                        var alreadySubscribed = webhook.EventTypes.Contains(_subscribeEventType.Type);
+                        <MudSelectItem Value="@webhook.Id" Disabled="@alreadySubscribed">
+                            @webhook.Name @(alreadySubscribed ? "(already subscribed)" : "")
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseSubscribeDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ConfirmSubscribe" Disabled="@(!CanSubscribe || _subscribing)">
+            @(_subscribing ? "Subscribing..." : "Subscribe")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
     private string? _selectedDomain;
+    private bool _showSubscribeDialog;
+    private EventTypeInfo? _subscribeEventType;
+    private string _subscribeMode = "new";
+    private IReadOnlyList<Webhook> _existingWebhooks = [];
+    private string _selectedWebhookId = "";
+    private string _newWebhookName = "";
+    private string _newWebhookUrl = "";
+    private WebhookFormat _newWebhookFormat = WebhookFormat.Discord;
+    private bool _subscribing;
+
+    private bool CanSubscribe => _subscribeMode == "new"
+        ? !string.IsNullOrWhiteSpace(_newWebhookName) && !string.IsNullOrWhiteSpace(_newWebhookUrl)
+        : !string.IsNullOrWhiteSpace(_selectedWebhookId);
 
     private IEnumerable<string> GetDisplayedDomains()
     {
-        return _selectedDomain != null ? [_selectedDomain] : Admin.Services.EventTypeCatalog.Domains;
+        return _selectedDomain != null ? [_selectedDomain] : EventTypeCatalog.Domains;
     }
 
     private async Task CopyEventType(string eventType)
@@ -103,17 +133,75 @@ Key services:
         Snackbar.Add($"Copied: {eventType}", Severity.Success);
     }
 
-    private void Subscribe(string eventType)
+    private async Task OpenSubscribeDialog(EventTypeInfo eventType)
     {
-        // TODO: Open subscribe dialog
-        Snackbar.Add($"Subscribe dialog not yet implemented for: {eventType}", Severity.Info);
+        _subscribeEventType = eventType;
+        _subscribeMode = "new";
+        _newWebhookName = $"{eventType.Entity} {eventType.Action} Webhook";
+        _newWebhookUrl = "";
+        _newWebhookFormat = WebhookFormat.Discord;
+        _selectedWebhookId = "";
+
+        var response = await EventsApi.GetWebhooks(1, 100);
+        _existingWebhooks = response.Data;
+
+        _showSubscribeDialog = true;
     }
 
-    private static Color GetSeverityColor(Admin.Services.EventSeverity severity) => severity switch
+    private void CloseSubscribeDialog()
     {
-        Admin.Services.EventSeverity.Critical => Color.Error,
-        Admin.Services.EventSeverity.High => Color.Warning,
-        Admin.Services.EventSeverity.Medium => Color.Info,
+        _showSubscribeDialog = false;
+        _subscribeEventType = null;
+    }
+
+    private async Task ConfirmSubscribe()
+    {
+        if (_subscribeEventType is null || !CanSubscribe) return;
+
+        _subscribing = true;
+        StateHasChanged();
+
+        if (_subscribeMode == "new")
+        {
+            var request = new CreateWebhookRequest(
+                _newWebhookName,
+                _newWebhookUrl,
+                "",
+                [_subscribeEventType.Type],
+                _newWebhookFormat,
+                true);
+            await EventsApi.CreateWebhook(request);
+            Snackbar.Add($"Created webhook and subscribed to {_subscribeEventType.Entity}.{_subscribeEventType.Action}", Severity.Success);
+        }
+        else
+        {
+            var webhook = _existingWebhooks.FirstOrDefault(w => w.Id == _selectedWebhookId);
+            if (webhook is not null)
+            {
+                var updatedEventTypes = webhook.EventTypes.ToList();
+                updatedEventTypes.Add(_subscribeEventType.Type);
+
+                var request = new UpdateWebhookRequest(
+                    webhook.Name,
+                    webhook.Url,
+                    webhook.Secret,
+                    updatedEventTypes,
+                    webhook.Format,
+                    webhook.IsActive);
+                await EventsApi.UpdateWebhook(webhook.Id, request);
+                Snackbar.Add($"Added {_subscribeEventType.Entity}.{_subscribeEventType.Action} to {webhook.Name}", Severity.Success);
+            }
+        }
+
+        _subscribing = false;
+        CloseSubscribeDialog();
+    }
+
+    private static Color GetSeverityColor(EventSeverity severity) => severity switch
+    {
+        EventSeverity.Critical => Color.Error,
+        EventSeverity.High => Color.Warning,
+        EventSeverity.Medium => Color.Info,
         _ => Color.Default
     };
 }
