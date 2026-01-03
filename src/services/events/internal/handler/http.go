@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/nechja/hellarch/golibs/rabbitmq"
+	"github.com/nechja/hellarch/golibs/status"
 	"github.com/nechja/hellarch/services/events/internal/store"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -61,5 +62,5 @@ func writeError(w http.ResponseWriter, status int, message string) {
 }
 
 func (h *Handler) health(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "healthy"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": status.Healthy})
 }

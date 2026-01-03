@@ -9,6 +9,7 @@ import (
 
 	"github.com/nechja/hellarch/auth/internal/config"
 	"github.com/nechja/hellarch/auth/internal/oauth"
+	"github.com/nechja/hellarch/golibs/status"
 )
 
 // HTTPHandler handles HTTP endpoints for OAuth flows
@@ -282,7 +283,7 @@ func (h *HTTPHandler) handleValidate(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
-		"status": "healthy",
+		"status": status.Healthy,
 	}); err != nil {
 		slog.Error("failed to encode response", "error", err)
 	}

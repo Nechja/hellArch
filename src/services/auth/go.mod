@@ -6,6 +6,8 @@ replace github.com/nechja/hellarch/datatypes => ../../../libs/data_types/go
 
 replace github.com/nechja/hellarch/cloudevents => ../../../libs/cloud_events/go
 
+replace github.com/nechja/hellarch/golibs => ../../../libs/go
+
 toolchain go1.24.11
 
 require (
@@ -13,8 +15,9 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
-	github.com/nechja/hellarch/cloudevents v0.0.0-00010101000000-000000000000
+	github.com/nechja/hellarch/cloudevents v0.0.0
 	github.com/nechja/hellarch/datatypes v0.0.0-00010101000000-000000000000
+	github.com/nechja/hellarch/golibs v0.0.0-00010101000000-000000000000
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/redis/go-redis/extra/redisotel/v9 v9.17.2
 	github.com/redis/go-redis/v9 v9.17.2

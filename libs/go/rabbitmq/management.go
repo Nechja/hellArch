@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/nechja/hellarch/golibs/status"
 )
 
 // ManagementClient provides access to RabbitMQ Management API
@@ -112,7 +114,7 @@ func (m *ManagementClient) GetWorkersStatus(ctx context.Context) []WorkerStatus 
 	}
 
 	for _, q := range queues {
-		status := WorkerStatus{
+		ws := WorkerStatus{
 			Name:      q.Name,
 			Queue:     q.Name,
 			Consumers: q.Consumers,
@@ -120,12 +122,12 @@ func (m *ManagementClient) GetWorkersStatus(ctx context.Context) []WorkerStatus 
 		}
 
 		if q.Consumers > 0 {
-			status.Status = "healthy"
+			ws.Status = status.Healthy
 		} else {
-			status.Status = "unhealthy"
+			ws.Status = status.Unhealthy
 		}
 
-		statuses = append(statuses, status)
+		statuses = append(statuses, ws)
 	}
 
 	return statuses
