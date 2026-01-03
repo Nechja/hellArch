@@ -71,6 +71,50 @@ services:
     networks:
       - hellarch
 
+  files-db:
+    image: hellarch-files-db
+    build:
+      context: ../..
+      dockerfile: infra/dbs/files-db/Dockerfile
+    container_name: hellarch-files-db
+    environment:
+      POSTGRES_USER: hellarch
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hellarch}
+      POSTGRES_DB: files_db
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      HELLARCH_ENV: development
+    ports:
+      - "5436:5432"
+    volumes:
+      - files-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hellarch -d files_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hellarch
+
+  minio:
+    image: minio/minio:latest
+    container_name: hellarch-minio
+    environment:
+      MINIO_ROOT_USER: hellarch
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-hellarch}
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hellarch
+
   redis:
     image: redis:7-alpine
     container_name: hellarch-redis
@@ -105,6 +149,8 @@ volumes:
   auth-db-data:
   user-db-data:
   events-db-data:
+  files-db-data:
+  minio-data:
   redis-data:
   rabbitmq-data:
 
