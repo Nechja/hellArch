@@ -6,18 +6,25 @@ import (
 	"github.com/nechja/hellarch/golibs/rabbitmq"
 )
 
+const (
+	statusHealthy   = "healthy"
+	statusUnhealthy = "unhealthy"
+	statusDegraded  = "degraded"
+	statusUnknown   = "unknown"
+)
+
 func (h *Handler) workersStatus(w http.ResponseWriter, r *http.Request) {
 	statuses := h.mgmt.GetWorkersStatus(r.Context())
 
 	// Calculate overall status
-	overall := "healthy"
+	overall := statusHealthy
 	for _, s := range statuses {
-		if s.Status == "unhealthy" {
-			overall = "unhealthy"
+		if s.Status == statusUnhealthy {
+			overall = statusUnhealthy
 			break
 		}
-		if s.Status == "unknown" && overall == "healthy" {
-			overall = "degraded"
+		if s.Status == statusUnknown && overall == statusHealthy {
+			overall = statusDegraded
 		}
 	}
 

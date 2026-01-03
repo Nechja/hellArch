@@ -7,7 +7,11 @@ import (
 	"time"
 
 	"github.com/nechja/hellarch/workers/webhooks/internal/client"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
+
+var titleCaser = cases.Title(language.English)
 
 // CloudEvent represents the incoming CloudEvents format
 type CloudEvent struct {
@@ -195,7 +199,7 @@ func formatEventTitle(eventType string) string {
 	if len(parts) >= 4 {
 		// Get the action parts (e.g., "user", "created")
 		action := parts[len(parts)-3] + " " + parts[len(parts)-2]
-		return strings.Title(action)
+		return titleCaser.String(action)
 	}
 	return eventType
 }
@@ -271,7 +275,7 @@ func extractSlackFields(data json.RawMessage) []SlackText {
 func formatFieldName(name string) string {
 	// Convert snake_case to Title Case
 	name = strings.ReplaceAll(name, "_", " ")
-	return strings.Title(name)
+	return titleCaser.String(name)
 }
 
 func formatValue(value any) string {
