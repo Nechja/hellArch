@@ -2,8 +2,9 @@ package config
 
 import (
 	"errors"
-	"os"
 	"time"
+
+	sharedconfig "github.com/nechja/hellarch/golibs/config"
 )
 
 type Config struct {
@@ -16,23 +17,15 @@ type Config struct {
 
 func Load() (*Config, error) {
 	cfg := &Config{
-		EventsAPIURL:   os.Getenv("EVENTS_API_URL"),
-		RabbitMQURL:    os.Getenv("RABBITMQ_URL"),
-		OTLPEndpoint:   os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
-		RequestTimeout: 30 * time.Second,
-		MaxRetries:     3,
+		EventsAPIURL:   sharedconfig.GetEnv("EVENTS_API_URL", ""),
+		RabbitMQURL:    sharedconfig.GetEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672"),
+		OTLPEndpoint:   sharedconfig.GetEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4318"),
+		RequestTimeout: sharedconfig.GetEnvDuration("REQUEST_TIMEOUT", 30*time.Second),
+		MaxRetries:     sharedconfig.GetEnvInt("MAX_RETRIES", 3),
 	}
 
 	if cfg.EventsAPIURL == "" {
 		return nil, errors.New("EVENTS_API_URL is required")
-	}
-
-	if cfg.RabbitMQURL == "" {
-		cfg.RabbitMQURL = "amqp://guest:guest@localhost:5672"
-	}
-
-	if cfg.OTLPEndpoint == "" {
-		cfg.OTLPEndpoint = "localhost:4318"
 	}
 
 	return cfg, nil

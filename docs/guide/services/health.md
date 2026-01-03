@@ -27,12 +27,14 @@ graph TB
         AUTH[Auth :5001]
         USER[User :5002]
         ADMIN[Admin :5003]
+        EVENTS[Events :5005]
     end
 
     subgraph Infrastructure
         REDIS[(Redis :6379)]
         AUTHDB[(Auth DB :5432)]
         USERDB[(User DB :5432)]
+        EVENTSDB[(Events DB :5432)]
         RMQ[(RabbitMQ :5672)]
     end
 
@@ -45,9 +47,11 @@ graph TB
     POLLER -->|HTTP GET| AUTH
     POLLER -->|HTTP GET| USER
     POLLER -->|HTTP GET| ADMIN
+    POLLER -->|HTTP GET| EVENTS
     POLLER -->|TCP Connect| REDIS
     POLLER -->|TCP Connect| AUTHDB
     POLLER -->|TCP Connect| USERDB
+    POLLER -->|TCP Connect| EVENTSDB
     POLLER -->|TCP Connect| RMQ
     ROUTER --> POLLER
     DASHBOARD --> ROUTER
@@ -106,9 +110,11 @@ flowchart TD
 | auth | HTTP GET | `/auth/health` | Yes |
 | user | HTTP GET | `/user/health` | Yes |
 | admin | HTTP GET | `/health` | No |
+| events | HTTP GET | `/health` | Yes |
 | redis | TCP Connect | `:6379` | Yes |
 | auth-db | TCP Connect | `:5432` | Yes |
 | user-db | TCP Connect | `:5432` | Yes |
+| events-db | TCP Connect | `:5432` | Yes |
 | rabbitmq | TCP Connect | `:5672` | Yes |
 
 ## API Endpoints

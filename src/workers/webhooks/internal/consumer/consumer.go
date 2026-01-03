@@ -8,18 +8,18 @@ import (
 	"log/slog"
 
 	cloudevents "github.com/nechja/hellarch/cloudevents"
+	"github.com/nechja/hellarch/golibs/events"
 	"github.com/nechja/hellarch/golibs/rabbitmq"
-	"github.com/nechja/hellarch/workers/webhooks/internal/client"
 	"github.com/nechja/hellarch/workers/webhooks/internal/dispatcher"
 )
 
 type Consumer struct {
 	consumer     *rabbitmq.Consumer
-	eventsClient *client.EventsClient
+	eventsClient *events.Client
 	dispatcher   *dispatcher.Dispatcher
 }
 
-func New(ctx context.Context, rabbitURL string, eventsClient *client.EventsClient, disp *dispatcher.Dispatcher) (*Consumer, error) {
+func New(ctx context.Context, rabbitURL string, eventsClient *events.Client, disp *dispatcher.Dispatcher) (*Consumer, error) {
 	consumer, err := rabbitmq.NewConsumer(ctx, rabbitmq.ConsumerConfig{
 		URL:        rabbitURL,
 		QueueName:  "webhooks-worker",

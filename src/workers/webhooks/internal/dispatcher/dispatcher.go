@@ -13,8 +13,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/nechja/hellarch/workers/webhooks/internal/client"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"github.com/nechja/hellarch/golibs/events"
+	"github.com/nechja/hellarch/golibs/httpclient"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -25,23 +25,20 @@ var tracer = otel.Tracer("webhooks-dispatcher")
 
 type Dispatcher struct {
 	httpClient   *http.Client
-	eventsClient *client.EventsClient
+	eventsClient *events.Client
 	timeout      time.Duration
 }
 
-func New(eventsClient *client.EventsClient, timeout time.Duration) *Dispatcher {
+func New(eventsClient *events.Client, timeout time.Duration) *Dispatcher {
 	return &Dispatcher{
-		httpClient: &http.Client{
-			Transport: otelhttp.NewTransport(http.DefaultTransport),
-			Timeout:   timeout,
-		},
+		httpClient:   httpclient.New(timeout),
 		eventsClient: eventsClient,
 		timeout:      timeout,
 	}
 }
 
 type DeliveryRequest struct {
-	Webhook   *client.Webhook
+	Webhook   *events.Webhook
 	EventID   string
 	EventType string
 	Payload   []byte
@@ -77,8 +74,7 @@ func (d *Dispatcher) Deliver(ctx context.Context, req DeliveryRequest) error {
 	}
 
 	httpReq.Header.Set("Content-Type", contentType)
-	// Only set custom headers for raw format (Discord/Slack don't need them)
-	if req.Webhook.Format == client.WebhookFormatRaw {
+	if req.Webhook.Format == events.WebhookFormatRaw {
 		httpReq.Header.Set("X-Webhook-Signature", signature)
 		httpReq.Header.Set("X-Event-ID", req.EventID)
 		httpReq.Header.Set("X-Event-Type", req.EventType)
@@ -116,7 +112,7 @@ func (d *Dispatcher) recordDelivery(ctx context.Context, req DeliveryRequest, st
 		respBody = &responseBody
 	}
 
-	deliveryReq := client.CreateDeliveryRequest{
+	deliveryReq := events.CreateDeliveryRequest{
 		WebhookID:    req.Webhook.ID,
 		EventID:      req.EventID,
 		EventType:    req.EventType,

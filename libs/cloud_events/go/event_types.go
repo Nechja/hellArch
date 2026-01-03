@@ -49,3 +49,10 @@ const (
 	EventTypeBackupCompleted      = "hellarch.ops.backup.completed.v1"
 	EventTypeBackupFailed         = "hellarch.ops.backup.failed.v1"
 )
+
+// Files events
+const (
+	EventTypeFileUploaded  = "hellarch.files.file.uploaded.v1"
+	EventTypeFileDeleted   = "hellarch.files.file.deleted.v1"
+	EventTypeFileProcessed = "hellarch.files.file.processed.v1"
+)

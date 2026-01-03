@@ -3,9 +3,9 @@ package config
 import (
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"time"
+
+	sharedconfig "github.com/nechja/hellarch/golibs/config"
 )
 
 type Config struct {
@@ -20,9 +20,8 @@ type Config struct {
 	OAuth               OAuthConfig
 	AllowedRedirectURIs []string
 	SecureCookies       bool
-	// Session configuration
-	MaxSessionsPerUser int
-	SessionDuration    time.Duration
+	MaxSessionsPerUser  int
+	SessionDuration     time.Duration
 }
 
 type OAuthConfig struct {
@@ -39,33 +38,33 @@ type ProviderConfig struct {
 
 func Load() (*Config, error) {
 	cfg := &Config{
-		Environment:         getEnv("HELLARCH_ENV", "development"),
-		GRPCAddress:         getEnv("GRPC_ADDRESS", ":50051"),
-		HTTPAddress:         getEnv("HTTP_ADDRESS", ":5001"),
-		DatabaseURL:         getEnv("AUTH_DATABASE_URL", "postgres://hellarch:hellarch@localhost:5432/auth_db"),
-		RedisURL:            getEnv("REDIS_URL", "redis://localhost:6379"),
-		RabbitMQURL:         getEnv("RABBITMQ_URL", "amqp://hellarch:hellarch@localhost:5672"),
-		JWTPrivateKeyPath:   getEnv("JWT_PRIVATE_KEY_PATH", "./infra/keys/dev-private.pem"),
-		JWTPublicKeyPath:    getEnv("JWT_PUBLIC_KEY_PATH", "./infra/keys/dev-public.pem"),
-		AllowedRedirectURIs: parseCommaSeparated(getEnv("ALLOWED_REDIRECT_URIS", "http://localhost:5000,http://localhost:5003")),
-		SecureCookies:       getEnv("SECURE_COOKIES", "false") == "true",
-		MaxSessionsPerUser:  getEnvInt("MAX_SESSIONS_PER_USER", 5),
-		SessionDuration:     time.Duration(getEnvInt("SESSION_DURATION_HOURS", 24)) * time.Hour,
+		Environment:         sharedconfig.GetEnv("HELLARCH_ENV", "development"),
+		GRPCAddress:         sharedconfig.GetEnv("GRPC_ADDRESS", ":50051"),
+		HTTPAddress:         sharedconfig.GetEnv("HTTP_ADDRESS", ":5001"),
+		DatabaseURL:         sharedconfig.GetEnv("AUTH_DATABASE_URL", "postgres://hellarch:hellarch@localhost:5432/auth_db"),
+		RedisURL:            sharedconfig.GetEnv("REDIS_URL", "redis://localhost:6379"),
+		RabbitMQURL:         sharedconfig.GetEnv("RABBITMQ_URL", "amqp://hellarch:hellarch@localhost:5672"),
+		JWTPrivateKeyPath:   sharedconfig.GetEnv("JWT_PRIVATE_KEY_PATH", "./infra/keys/dev-private.pem"),
+		JWTPublicKeyPath:    sharedconfig.GetEnv("JWT_PUBLIC_KEY_PATH", "./infra/keys/dev-public.pem"),
+		AllowedRedirectURIs: sharedconfig.GetEnvList("ALLOWED_REDIRECT_URIS", "http://localhost:5000,http://localhost:5003"),
+		SecureCookies:       sharedconfig.GetEnvBool("SECURE_COOKIES", false),
+		MaxSessionsPerUser:  sharedconfig.GetEnvInt("MAX_SESSIONS_PER_USER", 5),
+		SessionDuration:     time.Duration(sharedconfig.GetEnvInt("SESSION_DURATION_HOURS", 24)) * time.Hour,
 		OAuth: OAuthConfig{
 			Discord: ProviderConfig{
 				ClientID:     os.Getenv("DISCORD_CLIENT_ID"),
 				ClientSecret: os.Getenv("DISCORD_CLIENT_SECRET"),
-				RedirectURI:  getEnv("DISCORD_REDIRECT_URI", "http://localhost:5000/api/auth/discord/callback"),
+				RedirectURI:  sharedconfig.GetEnv("DISCORD_REDIRECT_URI", "http://localhost:5000/api/auth/discord/callback"),
 			},
 			Google: ProviderConfig{
 				ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 				ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-				RedirectURI:  getEnv("GOOGLE_REDIRECT_URI", "http://localhost:5000/api/auth/google/callback"),
+				RedirectURI:  sharedconfig.GetEnv("GOOGLE_REDIRECT_URI", "http://localhost:5000/api/auth/google/callback"),
 			},
 			GitHub: ProviderConfig{
 				ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
 				ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
-				RedirectURI:  getEnv("GITHUB_REDIRECT_URI", "http://localhost:5000/api/auth/github/callback"),
+				RedirectURI:  sharedconfig.GetEnv("GITHUB_REDIRECT_URI", "http://localhost:5000/api/auth/github/callback"),
 			},
 		},
 	}
@@ -85,33 +84,4 @@ func (c *Config) validate() error {
 		return fmt.Errorf("DISCORD_CLIENT_SECRET is required")
 	}
 	return nil
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-func getEnvInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		if i, err := strconv.Atoi(value); err == nil {
-			return i
-		}
-	}
-	return defaultValue
-}
-
-func parseCommaSeparated(value string) []string {
-	if value == "" {
-		return nil
-	}
-	var result []string
-	for _, v := range strings.Split(value, ",") {
-		if trimmed := strings.TrimSpace(v); trimmed != "" {
-			result = append(result, trimmed)
-		}
-	}
-	return result
 }

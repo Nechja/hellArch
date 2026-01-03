@@ -1,134 +1,130 @@
 @page "/settings"
-@using Admin.Services
-@implements IDisposable
-@inject LiveUpdateService LiveUpdate
-@inject RealtimeHubService RealtimeHub
-@inject IHttpContextAccessor HttpContextAccessor
 
 <PageTitle>Settings - HellArch Admin</PageTitle>
 
-<h1 class="text-display text-gradient mb-8">Settings</h1>
+<h1 class="text-display text-gradient mb-8">System Configuration</h1>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Account -->
+    <!-- Session Configuration -->
     <div class="card">
-        <h2 class="text-heading mb-4">Account</h2>
-        <div class="flex items-center gap-4 mb-6">
-            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-neon-pink to-neon-orange flex-center text-2xl font-bold text-white">
-                @_initials
+        <h2 class="text-heading mb-4">Sessions</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="text-sm text-text-muted mb-1 block">Session Timeout (minutes)</label>
+                <input type="number" class="input w-full" @bind="_sessionTimeout" min="5" max="1440" />
             </div>
             <div>
-                <p class="text-lg font-semibold">@_username</p>
-                <p class="text-text-muted text-sm">Administrator</p>
+                <label class="text-sm text-text-muted mb-1 block">Max Concurrent Sessions</label>
+                <input type="number" class="input w-full" @bind="_maxConcurrentSessions" min="1" max="10" />
             </div>
+            <label class="flex items-center justify-between p-3 rounded-sm bg-surface-raised">
+                <span class="text-sm">Revoke on Password Change</span>
+                <Toggle @bind-Value="_revokeOnPasswordChange" />
+            </label>
         </div>
-        <a href="/api/auth/logout" class="btn-danger w-full text-center">Sign Out</a>
     </div>
 
-    <!-- Connection Status -->
+    <!-- Webhook Configuration -->
     <div class="card">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-heading">Live Connection</h2>
-            <Badge Variant="@GetConnectionBadge()">@RealtimeHub.ConnectionStateText</Badge>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-            <div class="p-4 rounded-sm bg-surface-raised text-center">
-                <p class="text-3xl font-bold text-primary tabular-nums">@_eventsReceived</p>
-                <p class="text-xs text-text-muted uppercase tracking-wide mt-1">Events Received</p>
+        <h2 class="text-heading mb-4">Webhooks</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="text-sm text-text-muted mb-1 block">Max Retry Attempts</label>
+                <input type="number" class="input w-full" @bind="_webhookMaxRetries" min="0" max="10" />
             </div>
-            <div class="p-4 rounded-sm bg-surface-raised text-center">
-                <p class="text-3xl font-bold text-text tabular-nums">@_lastEventTime</p>
-                <p class="text-xs text-text-muted uppercase tracking-wide mt-1">Last Event</p>
+            <div>
+                <label class="text-sm text-text-muted mb-1 block">Retry Interval (seconds)</label>
+                <input type="number" class="input w-full" @bind="_webhookRetryInterval" min="5" max="3600" />
+            </div>
+            <div>
+                <label class="text-sm text-text-muted mb-1 block">Request Timeout (seconds)</label>
+                <input type="number" class="input w-full" @bind="_webhookTimeout" min="5" max="60" />
             </div>
         </div>
     </div>
 
-    <!-- Notifications -->
-    <div class="card lg:col-span-2">
-        <h2 class="text-heading mb-4">Notifications</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <label class="flex items-center justify-between p-4 rounded-sm bg-surface-raised cursor-pointer hover:bg-surface-elevated transition-colors">
-                <div>
-                    <p class="font-medium">User Events</p>
-                    <p class="text-xs text-text-muted">Created, updated, deleted</p>
-                </div>
-                <Toggle @bind-Value="_notifyUsers" />
+    <!-- Rate Limiting -->
+    <div class="card">
+        <h2 class="text-heading mb-4">Rate Limiting</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="text-sm text-text-muted mb-1 block">Requests per Minute</label>
+                <input type="number" class="input w-full" @bind="_rateLimit" min="10" max="1000" />
+            </div>
+            <div>
+                <label class="text-sm text-text-muted mb-1 block">Burst Limit</label>
+                <input type="number" class="input w-full" @bind="_burstLimit" min="5" max="100" />
+            </div>
+            <label class="flex items-center justify-between p-3 rounded-sm bg-surface-raised">
+                <span class="text-sm">Enable Rate Limiting</span>
+                <Toggle @bind-Value="_rateLimitEnabled" />
             </label>
-            <label class="flex items-center justify-between p-4 rounded-sm bg-surface-raised cursor-pointer hover:bg-surface-elevated transition-colors">
-                <div>
-                    <p class="font-medium">Sessions</p>
-                    <p class="text-xs text-text-muted">Login, logout</p>
-                </div>
-                <Toggle @bind-Value="_notifySessions" />
-            </label>
-            <label class="flex items-center justify-between p-4 rounded-sm bg-surface-raised cursor-pointer hover:bg-surface-elevated transition-colors">
-                <div>
-                    <p class="font-medium">Health</p>
-                    <p class="text-xs text-text-muted">Service status changes</p>
-                </div>
-                <Toggle @bind-Value="_notifyHealth" />
-            </label>
-            <label class="flex items-center justify-between p-4 rounded-sm bg-surface-raised cursor-pointer hover:bg-surface-elevated transition-colors">
-                <div>
-                    <p class="font-medium">Webhooks</p>
-                    <p class="text-xs text-text-muted">Delivery failures</p>
-                </div>
-                <Toggle @bind-Value="_notifyWebhooks" />
+        </div>
+    </div>
+
+    <!-- Event Retention -->
+    <div class="card">
+        <h2 class="text-heading mb-4">Events</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="text-sm text-text-muted mb-1 block">Retention Period (days)</label>
+                <input type="number" class="input w-full" @bind="_eventRetentionDays" min="1" max="365" />
+            </div>
+            <div>
+                <label class="text-sm text-text-muted mb-1 block">Max Payload Size (KB)</label>
+                <input type="number" class="input w-full" @bind="_maxPayloadSize" min="1" max="1024" />
+            </div>
+            <label class="flex items-center justify-between p-3 rounded-sm bg-surface-raised">
+                <span class="text-sm">Archive on Delete</span>
+                <Toggle @bind-Value="_archiveOnDelete" />
             </label>
         </div>
     </div>
 </div>
 
-<div class="mt-8 text-center text-text-muted text-sm">
-    <p>HellArch Admin &bull; Blazor Server &bull; .NET @Environment.Version.ToString(2)</p>
+<div class="mt-6 flex justify-end gap-3">
+    <button class="btn-ghost" @onclick="ResetToDefaults">Reset to Defaults</button>
+    <button class="btn-primary" @onclick="SaveSettings">Save Changes</button>
 </div>
 
 @code {
-    private string _username = "";
-    private string _initials = "";
-    private int _eventsReceived;
-    private string _lastEventTime = "--:--";
+    private int _sessionTimeout = 30;
+    private int _maxConcurrentSessions = 3;
+    private bool _revokeOnPasswordChange = true;
 
-    private bool _notifyUsers = true;
-    private bool _notifySessions = true;
-    private bool _notifyHealth = true;
-    private bool _notifyWebhooks = true;
+    private int _webhookMaxRetries = 3;
+    private int _webhookRetryInterval = 60;
+    private int _webhookTimeout = 30;
 
-    protected override void OnInitialized()
+    private int _rateLimit = 100;
+    private int _burstLimit = 20;
+    private bool _rateLimitEnabled = true;
+
+    private int _eventRetentionDays = 30;
+    private int _maxPayloadSize = 256;
+    private bool _archiveOnDelete;
+
+    private void SaveSettings()
     {
-        _username = HttpContextAccessor.HttpContext?.Items["Username"]?.ToString() ?? "Admin";
-        _initials = GetInitials(_username);
-
-        LiveUpdate.OnAnyEvent += HandleEvent;
+        // TODO: Persist to configuration store
     }
 
-    private void HandleEvent(object? sender, CloudEventUpdateEventArgs e)
+    private void ResetToDefaults()
     {
-        _eventsReceived++;
-        _lastEventTime = DateTime.Now.ToString("HH:mm:ss");
-        InvokeAsync(StateHasChanged);
-    }
+        _sessionTimeout = 30;
+        _maxConcurrentSessions = 3;
+        _revokeOnPasswordChange = true;
 
-    private static string GetInitials(string name)
-    {
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2)
-        {
-            return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
-        }
+        _webhookMaxRetries = 3;
+        _webhookRetryInterval = 60;
+        _webhookTimeout = 30;
 
-        return name.Length >= 2 ? name[..2].ToUpperInvariant() : name.ToUpperInvariant();
-    }
+        _rateLimit = 100;
+        _burstLimit = 20;
+        _rateLimitEnabled = true;
 
-    private BadgeVariant GetConnectionBadge() => RealtimeHub.ConnectionStateText switch
-    {
-        "Connected" => BadgeVariant.Success,
-        "Reconnecting" => BadgeVariant.Warning,
-        _ => BadgeVariant.Danger
-    };
-
-    public void Dispose()
-    {
-        LiveUpdate.OnAnyEvent -= HandleEvent;
+        _eventRetentionDays = 30;
+        _maxPayloadSize = 256;
+        _archiveOnDelete = false;
     }
 }

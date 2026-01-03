@@ -7,322 +7,329 @@
 
 <PageTitle>Webhooks - HellArch Admin</PageTitle>
 
-<h1 class="text-display text-gradient mb-6">Webhooks</h1>
-
-<p class="text-text-secondary mb-6">
-    Manage webhook endpoints for event notifications.
-</p>
-
-<section class="mb-6">
-    <div class="flex items-center justify-between">
-        <div class="flex gap-2">
-            <Button Variant="@(_activeTab == Tab.Webhooks ? ButtonVariant.Primary : ButtonVariant.Secondary)" Size="ButtonSize.Small" OnClick="() => SwitchTab(Tab.Webhooks)">
-                Webhooks
-            </Button>
-            <Button Variant="@(_activeTab == Tab.Deliveries ? ButtonVariant.Primary : ButtonVariant.Secondary)" Size="ButtonSize.Small" OnClick="() => SwitchTab(Tab.Deliveries)">
-                Deliveries
-            </Button>
-        </div>
-        @if (_activeTab == Tab.Webhooks)
-        {
-            <Button Variant="ButtonVariant.Primary" OnClick="ShowCreateForm">+ New Webhook</Button>
-        }
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-display text-gradient">Webhooks</h1>
+        <p class="text-text-secondary mt-1">Manage webhook endpoints for event notifications.</p>
     </div>
-</section>
+    <Button Variant="ButtonVariant.Primary" OnClick="ShowCreateForm">+ New Webhook</Button>
+</div>
 
-@if (_activeTab == Tab.Webhooks)
-{
-    <section class="mb-8">
-        @if (_loadingWebhooks)
-        {
-            <div class="flex-center py-12">
-                <div class="spinner-lg"></div>
-            </div>
-        }
-        else if (_webhooks.Count == 0)
-        {
-            <div class="text-center py-8">
-                <p class="text-text-muted italic mb-4">No webhooks configured</p>
-                <Button Variant="ButtonVariant.Primary" OnClick="ShowCreateForm">Create your first webhook</Button>
-            </div>
-        }
-        else
-        {
-            <div class="grid gap-4">
-                @foreach (var webhook in _webhooks)
-                {
-                    <div class="card">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
-                                <div class="flex items-center gap-3 mb-2">
-                                    <h3 class="text-subheading">@webhook.Name</h3>
-                                    <Badge Variant="@(webhook.IsActive ? BadgeVariant.Success : BadgeVariant.Warning)">
-                                        @(webhook.IsActive ? "Active" : "Inactive")
-                                    </Badge>
-                                    <Badge Variant="BadgeVariant.Info" Size="BadgeSize.Small">@GetFormatLabel(webhook.Format)</Badge>
-                                </div>
-                                <p class="font-mono text-sm text-text-secondary mb-2">@webhook.Url</p>
-                                <div class="flex flex-wrap gap-2 mb-2">
-                                    @foreach (var eventType in webhook.EventTypes)
-                                    {
-                                        <Badge Size="BadgeSize.Small">@eventType</Badge>
-                                    }
-                                </div>
-                                <p class="text-xs text-text-muted">
-                                    Created: @webhook.CreatedAt.ToString("yyyy-MM-dd HH:mm")
-                                </p>
+<section>
+    @if (_loadingWebhooks)
+    {
+        <div class="flex-center py-12">
+            <div class="spinner-lg"></div>
+        </div>
+    }
+    else if (_webhooks.Count == 0)
+    {
+        <div class="card text-center py-12">
+            <p class="text-text-muted mb-4">No webhooks configured yet.</p>
+            <Button Variant="ButtonVariant.Primary" OnClick="ShowCreateForm">Create your first webhook</Button>
+        </div>
+    }
+    else
+    {
+        <div class="grid gap-4">
+            @foreach (var webhook in _webhooks)
+            {
+                var lastDelivery = _lastDeliveries.GetValueOrDefault(webhook.Id);
+                <div class="card">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-3 mb-2">
+                                <h3 class="text-subheading">@webhook.Name</h3>
+                                <Badge Variant="@(webhook.IsActive ? BadgeVariant.Success : BadgeVariant.Warning)" Size="BadgeSize.Small">
+                                    @(webhook.IsActive ? "Active" : "Inactive")
+                                </Badge>
+                                <Badge Variant="BadgeVariant.Info" Size="BadgeSize.Small">@GetFormatLabel(webhook.Format)</Badge>
                             </div>
-                            <div class="flex gap-2">
-                                <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" OnClick="() => EditWebhook(webhook)">Edit</Button>
-                                <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Class="text-red-400 hover:text-red-300" OnClick="() => ConfirmDelete(webhook)">Delete</Button>
+
+                            <p class="font-mono text-sm text-text-muted truncate mb-3" title="@webhook.Url">@TruncateUrl(webhook.Url)</p>
+
+                            <div class="flex flex-wrap gap-1.5 mb-3">
+                                @{
+                                    var displayEvents = webhook.EventTypes.Take(3).ToList();
+                                    var remaining = webhook.EventTypes.Count - 3;
+                                }
+                                @foreach (var eventType in displayEvents)
+                                {
+                                    <Badge Size="BadgeSize.Small">@GetShortEventType(eventType)</Badge>
+                                }
+                                @if (remaining > 0)
+                                {
+                                    <Badge Size="BadgeSize.Small" Variant="BadgeVariant.Default">+@remaining more</Badge>
+                                }
+                            </div>
+
+                            <div class="flex items-center gap-4 text-xs">
+                                @if (lastDelivery != null)
+                                {
+                                    var timeAgo = GetTimeAgo(lastDelivery.CreatedAt);
+                                    <span class="flex items-center gap-1">
+                                        @if (lastDelivery.Success)
+                                        {
+                                            <span class="text-green-400">✓</span>
+                                            <span class="text-text-muted">@timeAgo</span>
+                                            <span class="text-text-muted">(@lastDelivery.StatusCode)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-red-400">✕</span>
+                                            <span class="text-text-muted">@timeAgo</span>
+                                            <span class="text-red-400">(@lastDelivery.StatusCode)</span>
+                                        }
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-text-muted">No deliveries yet</span>
+                                }
+                                <button class="text-neon-pink hover:underline" @onclick="() => ViewDeliveries(webhook.Id)">
+                                    View deliveries
+                                </button>
                             </div>
                         </div>
+
+                        <div class="flex gap-2 shrink-0">
+                            <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" OnClick="() => EditWebhook(webhook)">Edit</Button>
+                            <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Class="text-red-400 hover:text-red-300" OnClick="() => ConfirmDelete(webhook)">Delete</Button>
+                        </div>
                     </div>
-                }
-            </div>
-        }
-    </section>
-}
-else
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@* Deliveries Panel *@
+@if (_showDeliveries)
 {
-    <section class="mb-6">
-        <div class="flex flex-wrap gap-4 items-end">
-            <div class="flex flex-col gap-1">
-                <Label>Webhook</Label>
-                <select @bind="_deliveryWebhookFilter" class="input w-48">
-                    <option value="">All</option>
-                    @foreach (var webhook in _webhooks)
-                    {
-                        <option value="@webhook.Id">@webhook.Name</option>
-                    }
-                </select>
+    <div class="fixed inset-0 bg-black/50 z-40" @onclick="() => _showDeliveries = false"></div>
+    <aside class="fixed right-0 top-0 h-full w-full max-w-xl bg-bg-elevated border-l border-border z-50 overflow-y-auto enter-slide-left">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-heading">Deliveries</h2>
+                <button class="text-text-muted hover:text-white" @onclick="() => _showDeliveries = false">✕</button>
             </div>
-            <div class="flex flex-col gap-1">
-                <Label>Status</Label>
-                <select @bind="_deliverySuccessFilter" class="input w-32">
-                    <option value="">All</option>
+
+            <div class="flex gap-2 mb-4">
+                <select @bind="_deliverySuccessFilter" class="input flex-1">
+                    <option value="">All status</option>
                     <option value="true">Success</option>
                     <option value="false">Failed</option>
                 </select>
-            </div>
-            <Button Variant="ButtonVariant.Primary" OnClick="LoadDeliveries">Filter</Button>
-        </div>
-    </section>
-
-    <section class="mb-8">
-        @if (_loadingDeliveries)
-        {
-            <div class="flex-center py-12">
-                <div class="spinner-lg"></div>
-            </div>
-        }
-        else if (_deliveries.Count == 0)
-        {
-            <p class="text-text-muted text-center py-8 italic">No deliveries found</p>
-        }
-        else
-        {
-            <div class="overflow-x-auto">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th class="data-th">Time</th>
-                            <th class="data-th">Webhook</th>
-                            <th class="data-th">Event Type</th>
-                            <th class="data-th">Status</th>
-                            <th class="data-th">Attempt</th>
-                            <th class="data-th">Response</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var delivery in _deliveries)
-                        {
-                            <tr class="data-row">
-                                <td class="data-td text-xs font-mono">@delivery.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                                <td class="data-td text-sm">@GetWebhookName(delivery.WebhookId)</td>
-                                <td class="data-td">
-                                    <Badge Variant="BadgeVariant.Info" Size="BadgeSize.Small">@GetShortEventType(delivery.EventType)</Badge>
-                                </td>
-                                <td class="data-td">
-                                    @if (delivery.Success)
-                                    {
-                                        <Badge Variant="BadgeVariant.Success">@(delivery.StatusCode ?? 0)</Badge>
-                                    }
-                                    else
-                                    {
-                                        <Badge Variant="BadgeVariant.Warning">@(delivery.StatusCode ?? 0)</Badge>
-                                    }
-                                </td>
-                                <td class="data-td">@delivery.Attempt</td>
-                                <td class="data-td">
-                                    @if (!string.IsNullOrEmpty(delivery.ResponseBody))
-                                    {
-                                        <button class="text-neon-pink text-xs hover:underline" @onclick="() => ShowDeliveryDetails(delivery)">
-                                            View
-                                        </button>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-text-muted">-</span>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                <Button Variant="ButtonVariant.Primary" Size="ButtonSize.Small" OnClick="LoadDeliveries">Filter</Button>
             </div>
 
-            <div class="flex items-center justify-between mt-4">
-                <span class="text-sm text-text-secondary">
-                    Showing @_deliveries.Count of @_deliveryTotalCount deliveries
-                </span>
-                <div class="flex gap-2">
-                    <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Disabled="@(_deliveryPage <= 1)" OnClick="PreviousDeliveryPage">
-                        Previous
-                    </Button>
-                    <span class="px-3 py-1 text-sm">Page @_deliveryPage</span>
-                    <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Disabled="@(!HasMoreDeliveryPages)" OnClick="NextDeliveryPage">
-                        Next
-                    </Button>
+            @if (_loadingDeliveries)
+            {
+                <div class="flex-center py-8">
+                    <div class="spinner"></div>
                 </div>
-            </div>
-        }
-    </section>
-}
-
-@if (_showForm)
-{
-    <div class="modal-overlay enter-fade" @onclick="CloseForm">
-        <div class="modal-panel max-w-lg enter-scale" @onclick:stopPropagation="true">
-            <h2 class="text-heading mb-4">@(_editingWebhook == null ? "Create Webhook" : "Edit Webhook")</h2>
-            <div class="space-y-4">
-                <div>
-                    <Label>Name</Label>
-                    <Input @bind-Value="_formName" Placeholder="My Webhook" Class="w-full" />
-                </div>
-                <div>
-                    <Label>URL</Label>
-                    <Input Type="url" @bind-Value="_formUrl" Placeholder="https://example.com/webhook" Class="w-full" />
-                </div>
-                <div>
-                    <Label>Secret</Label>
-                    <Input @bind-Value="_formSecret" Placeholder="webhook-secret-key" Class="w-full" />
-                </div>
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <Label>Event Types</Label>
-                        <div class="flex gap-2">
-                            <button type="button" class="text-xs text-neon-pink hover:underline" @onclick="SelectAllEvents">Select All</button>
-                            <button type="button" class="text-xs text-text-muted hover:underline" @onclick="ClearAllEvents">Clear</button>
-                        </div>
-                    </div>
-                    <div class="border border-border rounded-lg max-h-48 overflow-y-auto bg-bg-secondary">
-                        @foreach (var domain in Admin.Services.EventTypeCatalog.Domains)
-                        {
-                            <div class="border-b border-border last:border-b-0">
-                                <div class="px-3 py-2 bg-bg-tertiary text-xs font-semibold text-text-secondary">@domain</div>
-                                @foreach (var eventType in Admin.Services.EventTypeCatalog.GetByDomain(domain))
+            }
+            else if (_deliveries.Count == 0)
+            {
+                <p class="text-text-muted text-center py-8">No deliveries found</p>
+            }
+            else
+            {
+                <div class="space-y-3">
+                    @foreach (var delivery in _deliveries)
+                    {
+                        <div class="p-3 rounded-lg bg-bg-secondary border border-border hover:border-border-hover cursor-pointer" @onclick="() => _selectedDelivery = delivery">
+                            <div class="flex items-center justify-between mb-1">
+                                <Badge Size="BadgeSize.Small">@GetShortEventType(delivery.EventType)</Badge>
+                                @if (delivery.Success)
                                 {
-                                    <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-bg-tertiary cursor-pointer">
-                                        <input type="checkbox"
-                                               checked="@_selectedEventTypes.Contains(eventType.Type)"
-                                               @onchange="() => ToggleEventType(eventType.Type)"
-                                               class="w-3.5 h-3.5" />
-                                        <span class="text-sm truncate flex-1">@eventType.Action</span>
-                                        <span class="text-xs text-text-muted">@eventType.Entity</span>
-                                    </label>
+                                    <Badge Variant="BadgeVariant.Success" Size="BadgeSize.Small">@delivery.StatusCode</Badge>
+                                }
+                                else
+                                {
+                                    <Badge Variant="BadgeVariant.Warning" Size="BadgeSize.Small">@delivery.StatusCode</Badge>
                                 }
                             </div>
-                        }
+                            <div class="text-xs text-text-muted">
+                                @delivery.CreatedAt.ToString("MMM d, HH:mm:ss") · Attempt @delivery.Attempt
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                    <span class="text-xs text-text-muted">@_deliveries.Count of @_deliveryTotalCount</span>
+                    <div class="flex gap-2">
+                        <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Disabled="@(_deliveryPage <= 1)" OnClick="PreviousDeliveryPage">←</Button>
+                        <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Disabled="@(!HasMoreDeliveryPages)" OnClick="NextDeliveryPage">→</Button>
                     </div>
-                    <div class="mt-2 flex flex-wrap gap-1">
-                        @foreach (var type in _selectedEventTypes)
-                        {
-                            <Badge Size="BadgeSize.Small" Class="cursor-pointer" @onclick="() => ToggleEventType(type)">
-                                @GetShortEventType(type) ✕
-                            </Badge>
-                        }
-                    </div>
-                    <Input @bind-Value="_formEventTypes" Placeholder="Or enter custom pattern: hellarch.auth.*" Class="w-full mt-2" />
                 </div>
-                <div>
-                    <Label>Format</Label>
-                    <select @bind="_formFormat" class="input w-full">
-                        <option value="@WebhookFormat.Raw">Raw (CloudEvents JSON)</option>
-                        <option value="@WebhookFormat.Discord">Discord (Webhook with Embeds)</option>
-                        <option value="@WebhookFormat.Slack">Slack (Blocks)</option>
-                    </select>
-                </div>
-                <div class="flex items-center gap-2">
-                    <input type="checkbox" id="isActive" @bind="_formIsActive" class="w-4 h-4" />
-                    <Label For="isActive">Active</Label>
-                </div>
-                <div class="flex gap-2 justify-end mt-6">
-                    <Button Variant="ButtonVariant.Secondary" OnClick="CloseForm">Cancel</Button>
-                    <Button Variant="ButtonVariant.Primary" OnClick="SaveWebhook" Disabled="@_saving">
-                        @(_saving ? "Saving..." : "Save")
-                    </Button>
+            }
+        </div>
+    </aside>
+}
+
+@* Create/Edit Modal *@
+<Modal @bind-IsOpen="_showForm" Title="@(_editingWebhook == null ? "Create Webhook" : "Edit Webhook")" Size="ModalSize.Large">
+    <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <Label>Name</Label>
+                <Input @bind-Value="_formName" Placeholder="My Webhook" Class="w-full" />
+            </div>
+            <div>
+                <Label>Format</Label>
+                <div class="grid grid-cols-3 gap-2 mt-1">
+                    @foreach (var format in Enum.GetValues<WebhookFormat>())
+                    {
+                        <button type="button"
+                                class="p-2 rounded-lg border text-center text-sm transition-colors @(_formFormat == format ? "border-neon-pink bg-bg-tertiary" : "border-border hover:border-border-hover")"
+                                @onclick="() => _formFormat = format">
+                            @GetFormatLabel(format)
+                        </button>
+                    }
                 </div>
             </div>
         </div>
-    </div>
-}
 
-@if (_webhookToDelete != null)
-{
-    <div class="modal-overlay enter-fade" @onclick="() => _webhookToDelete = null">
-        <div class="modal-panel max-w-md enter-scale" @onclick:stopPropagation="true">
-            <h2 class="text-heading mb-4">Delete Webhook</h2>
-            <p class="text-text-secondary mb-6">
-                Are you sure you want to delete <strong>@_webhookToDelete.Name</strong>? This action cannot be undone.
-            </p>
-            <div class="flex gap-2 justify-end">
-                <Button Variant="ButtonVariant.Secondary" OnClick="() => _webhookToDelete = null">Cancel</Button>
-                <Button Variant="ButtonVariant.Danger" OnClick="DeleteWebhook">Delete</Button>
-            </div>
+        <div>
+            <Label>URL</Label>
+            <Input Type="url" @bind-Value="_formUrl" Placeholder="https://discord.com/api/webhooks/..." Class="w-full" />
         </div>
-    </div>
-}
 
-@if (_selectedDelivery != null)
-{
-    <div class="modal-overlay enter-fade" @onclick="() => _selectedDelivery = null">
-        <div class="modal-panel max-w-2xl enter-scale" @onclick:stopPropagation="true">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-heading">Delivery Details</h2>
-                <button class="text-text-muted hover:text-white" @onclick="() => _selectedDelivery = null">&#10005;</button>
+        <div>
+            <Label>Secret <span class="text-text-muted font-normal">(optional)</span></Label>
+            <Input @bind-Value="_formSecret" Placeholder="webhook-secret-key" Class="w-full" />
+        </div>
+
+        <div>
+            <div class="flex items-center justify-between mb-2">
+                <Label>Event Types</Label>
+                <div class="flex gap-3 text-xs">
+                    <button type="button" class="text-neon-pink hover:underline" @onclick="SelectAllEvents">Select all</button>
+                    <button type="button" class="text-text-muted hover:underline" @onclick="ClearAllEvents">Clear</button>
+                </div>
             </div>
-            <div class="space-y-3 text-sm">
-                <div><span class="text-text-secondary">Webhook:</span> @GetWebhookName(_selectedDelivery.WebhookId)</div>
-                <div><span class="text-text-secondary">Event ID:</span> <span class="font-mono">@_selectedDelivery.EventId</span></div>
-                <div><span class="text-text-secondary">Event Type:</span> <Badge Variant="BadgeVariant.Info">@_selectedDelivery.EventType</Badge></div>
-                <div><span class="text-text-secondary">Status Code:</span> @(_selectedDelivery.StatusCode ?? 0)</div>
-                <div><span class="text-text-secondary">Attempt:</span> @_selectedDelivery.Attempt</div>
-                <div><span class="text-text-secondary">Success:</span> @(_selectedDelivery.Success ? "Yes" : "No")</div>
-                @if (!string.IsNullOrEmpty(_selectedDelivery.ResponseBody))
+
+            <div class="flex gap-2 mb-2">
+                @foreach (var domain in Admin.Services.EventTypeCatalog.Domains)
                 {
-                    <div>
-                        <span class="text-text-secondary">Response:</span>
-                        <pre class="mt-2 p-3 rounded-sm bg-bg-secondary border border-border font-mono text-xs overflow-x-auto">@_selectedDelivery.ResponseBody</pre>
+                    var domainEvents = Admin.Services.EventTypeCatalog.GetByDomain(domain);
+                    var selected = domainEvents.Count(e => _selectedEventTypes.Contains(e.Type));
+                    <button type="button"
+                            class="text-xs px-2 py-1 rounded border transition-colors @(selected > 0 ? "border-neon-pink/50 bg-neon-pink/10 text-neon-pink" : "border-border text-text-muted hover:border-border-hover")"
+                            @onclick="() => ToggleDomain(domain)">
+                        @domain (@selected/@domainEvents.Count)
+                    </button>
+                }
+            </div>
+
+            <div class="border border-border rounded-lg max-h-40 overflow-y-auto bg-bg-secondary">
+                @foreach (var domain in Admin.Services.EventTypeCatalog.Domains)
+                {
+                    <div class="border-b border-border last:border-b-0">
+                        <div class="px-3 py-1.5 bg-bg-tertiary text-xs font-medium text-text-muted sticky top-0">@domain</div>
+                        <div class="grid grid-cols-2 gap-x-2">
+                            @foreach (var eventType in Admin.Services.EventTypeCatalog.GetByDomain(domain))
+                            {
+                                <label class="flex items-center gap-2 px-3 py-1 hover:bg-bg-tertiary cursor-pointer">
+                                    <input type="checkbox"
+                                           checked="@_selectedEventTypes.Contains(eventType.Type)"
+                                           @onchange="() => ToggleEventType(eventType.Type)"
+                                           class="w-3 h-3" />
+                                    <span class="text-xs truncate">@eventType.Entity @eventType.Action</span>
+                                </label>
+                            }
+                        </div>
                     </div>
                 }
             </div>
+
+            @if (_selectedEventTypes.Count > 0)
+            {
+                <div class="mt-2 text-xs text-text-muted">@_selectedEventTypes.Count event(s) selected</div>
+            }
+        </div>
+
+        <div class="flex items-center gap-2">
+            <Toggle @bind-Value="_formIsActive" />
+            <Label>Active</Label>
         </div>
     </div>
-}
+
+    <FooterTemplate>
+        <Button Variant="ButtonVariant.Secondary" OnClick="CloseForm">Cancel</Button>
+        <Button Variant="ButtonVariant.Primary" OnClick="SaveWebhook" Disabled="@(_saving || !IsFormValid)">
+            @(_saving ? "Saving..." : "Save")
+        </Button>
+    </FooterTemplate>
+</Modal>
+
+@* Delete Confirmation *@
+<Modal @bind-IsOpen="_showDeleteConfirm" Title="Delete Webhook" Size="ModalSize.Small">
+    <p class="text-text-secondary">
+        Are you sure you want to delete <strong class="text-white">@_webhookToDelete?.Name</strong>? This cannot be undone.
+    </p>
+    <FooterTemplate>
+        <Button Variant="ButtonVariant.Secondary" OnClick="() => _showDeleteConfirm = false">Cancel</Button>
+        <Button Variant="ButtonVariant.Danger" OnClick="DeleteWebhook">Delete</Button>
+    </FooterTemplate>
+</Modal>
+
+@* Delivery Details *@
+<Modal @bind-IsOpen="_showDeliveryDetails" Title="Delivery Details" Size="ModalSize.Large">
+    @if (_selectedDelivery != null)
+    {
+        <div class="space-y-3 text-sm">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <span class="text-text-muted">Event Type</span>
+                    <div><Badge Variant="BadgeVariant.Info">@_selectedDelivery.EventType</Badge></div>
+                </div>
+                <div>
+                    <span class="text-text-muted">Status</span>
+                    <div>
+                        @if (_selectedDelivery.Success)
+                        {
+                            <Badge Variant="BadgeVariant.Success">@_selectedDelivery.StatusCode</Badge>
+                        }
+                        else
+                        {
+                            <Badge Variant="BadgeVariant.Warning">@_selectedDelivery.StatusCode</Badge>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="text-text-muted">Event ID</span>
+                <div class="font-mono text-xs">@_selectedDelivery.EventId</div>
+            </div>
+            <div>
+                <span class="text-text-muted">Attempt</span>
+                <div>@_selectedDelivery.Attempt</div>
+            </div>
+            @if (!string.IsNullOrEmpty(_selectedDelivery.ResponseBody))
+            {
+                <div>
+                    <span class="text-text-muted">Response</span>
+                    <pre class="mt-1 p-3 rounded bg-bg-secondary border border-border font-mono text-xs overflow-x-auto max-h-48">@_selectedDelivery.ResponseBody</pre>
+                </div>
+            }
+        </div>
+    }
+</Modal>
 
 @code {
-    private enum Tab { Webhooks, Deliveries }
-    private Tab _activeTab = Tab.Webhooks;
-
     private IReadOnlyList<Webhook> _webhooks = [];
+    private Dictionary<string, WebhookDelivery> _lastDeliveries = [];
     private bool _loadingWebhooks = true;
 
+    private bool _showDeliveries;
+    private string? _deliveryWebhookId;
     private IReadOnlyList<WebhookDelivery> _deliveries = [];
     private int _deliveryTotalCount;
     private int _deliveryPage = 1;
     private bool _loadingDeliveries;
-    private string? _deliveryWebhookFilter;
     private string? _deliverySuccessFilter;
 
     private bool HasMoreDeliveryPages => _deliveryPage * 20 < _deliveryTotalCount;
@@ -332,14 +339,27 @@ else
     private string _formName = "";
     private string _formUrl = "";
     private string _formSecret = "";
-    private string _formEventTypes = "";
     private HashSet<string> _selectedEventTypes = [];
-    private WebhookFormat _formFormat = WebhookFormat.Raw;
+    private WebhookFormat _formFormat = WebhookFormat.Discord;
     private bool _formIsActive = true;
     private bool _saving;
 
+    private bool IsFormValid => !string.IsNullOrWhiteSpace(_formName) && !string.IsNullOrWhiteSpace(_formUrl) && _selectedEventTypes.Count > 0;
+
+    private bool _showDeleteConfirm;
     private Webhook? _webhookToDelete;
-    private WebhookDelivery? _selectedDelivery;
+
+    private bool _showDeliveryDetails;
+    private WebhookDelivery? _selectedDelivery
+    {
+        get => _deliveryDetails;
+        set
+        {
+            _deliveryDetails = value;
+            _showDeliveryDetails = value != null;
+        }
+    }
+    private WebhookDelivery? _deliveryDetails;
 
     protected override async Task OnInitializedAsync()
     {
@@ -352,7 +372,7 @@ else
         InvokeAsync(async () =>
         {
             await LoadWebhooks();
-            if (_activeTab == Tab.Deliveries)
+            if (_showDeliveries)
             {
                 await LoadDeliveries();
             }
@@ -366,6 +386,17 @@ else
 
         var response = await EventsApi.GetWebhooks(1, 100);
         _webhooks = response.Data;
+
+        // Load last delivery for each webhook
+        _lastDeliveries.Clear();
+        foreach (var webhook in _webhooks)
+        {
+            var deliveries = await EventsApi.GetDeliveries(1, 1, webhook.Id);
+            if (deliveries.Data.Count > 0)
+            {
+                _lastDeliveries[webhook.Id] = deliveries.Data[0];
+            }
+        }
 
         _loadingWebhooks = false;
         StateHasChanged();
@@ -383,7 +414,7 @@ else
             _ => null
         };
 
-        var response = await EventsApi.GetDeliveries(_deliveryPage, 20, _deliveryWebhookFilter, success);
+        var response = await EventsApi.GetDeliveries(_deliveryPage, 20, _deliveryWebhookId, success);
         _deliveries = response.Data;
         _deliveryTotalCount = response.TotalCount;
 
@@ -391,13 +422,13 @@ else
         StateHasChanged();
     }
 
-    private async Task SwitchTab(Tab tab)
+    private async Task ViewDeliveries(string webhookId)
     {
-        _activeTab = tab;
-        if (tab == Tab.Deliveries && _deliveries.Count == 0)
-        {
-            await LoadDeliveries();
-        }
+        _deliveryWebhookId = webhookId;
+        _deliveryPage = 1;
+        _deliverySuccessFilter = null;
+        _showDeliveries = true;
+        await LoadDeliveries();
     }
 
     private void ShowCreateForm()
@@ -406,9 +437,8 @@ else
         _formName = "";
         _formUrl = "";
         _formSecret = "";
-        _formEventTypes = "";
         _selectedEventTypes = [];
-        _formFormat = WebhookFormat.Raw;
+        _formFormat = WebhookFormat.Discord;
         _formIsActive = true;
         _showForm = true;
     }
@@ -420,10 +450,8 @@ else
         _formUrl = webhook.Url;
         _formSecret = webhook.Secret;
 
-        // Separate known event types from custom patterns
         var knownTypes = Admin.Services.EventTypeCatalog.All.Select(e => e.Type).ToHashSet();
         _selectedEventTypes = webhook.EventTypes.Where(t => knownTypes.Contains(t)).ToHashSet();
-        _formEventTypes = string.Join(", ", webhook.EventTypes.Where(t => !knownTypes.Contains(t)));
 
         _formFormat = webhook.Format;
         _formIsActive = webhook.IsActive;
@@ -435,6 +463,27 @@ else
         if (!_selectedEventTypes.Remove(eventType))
         {
             _selectedEventTypes.Add(eventType);
+        }
+    }
+
+    private void ToggleDomain(string domain)
+    {
+        var domainEvents = Admin.Services.EventTypeCatalog.GetByDomain(domain);
+        var allSelected = domainEvents.All(e => _selectedEventTypes.Contains(e.Type));
+
+        if (allSelected)
+        {
+            foreach (var e in domainEvents)
+            {
+                _selectedEventTypes.Remove(e.Type);
+            }
+        }
+        else
+        {
+            foreach (var e in domainEvents)
+            {
+                _selectedEventTypes.Add(e.Type);
+            }
         }
     }
 
@@ -456,39 +505,21 @@ else
 
     private async Task SaveWebhook()
     {
-        if (string.IsNullOrWhiteSpace(_formName) || string.IsNullOrWhiteSpace(_formUrl))
-        {
-            return;
-        }
+        if (!IsFormValid) return;
 
         _saving = true;
         StateHasChanged();
 
-        // Combine selected event types with custom patterns from text input
-        var customTypes = _formEventTypes
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var eventTypes = _selectedEventTypes.Concat(customTypes).Distinct().ToList();
+        var eventTypes = _selectedEventTypes.ToList();
 
         if (_editingWebhook == null)
         {
-            var request = new CreateWebhookRequest(
-                _formName,
-                _formUrl,
-                _formSecret,
-                eventTypes,
-                _formFormat,
-                _formIsActive);
+            var request = new CreateWebhookRequest(_formName, _formUrl, _formSecret, eventTypes, _formFormat, _formIsActive);
             await EventsApi.CreateWebhook(request);
         }
         else
         {
-            var request = new UpdateWebhookRequest(
-                _formName,
-                _formUrl,
-                _formSecret,
-                eventTypes,
-                _formFormat,
-                _formIsActive);
+            var request = new UpdateWebhookRequest(_formName, _formUrl, _formSecret, eventTypes, _formFormat, _formIsActive);
             await EventsApi.UpdateWebhook(_editingWebhook.Id, request);
         }
 
@@ -500,6 +531,7 @@ else
     private void ConfirmDelete(Webhook webhook)
     {
         _webhookToDelete = webhook;
+        _showDeleteConfirm = true;
     }
 
     private async Task DeleteWebhook()
@@ -508,6 +540,7 @@ else
         {
             await EventsApi.DeleteWebhook(_webhookToDelete.Id);
             _webhookToDelete = null;
+            _showDeleteConfirm = false;
             await LoadWebhooks();
         }
     }
@@ -527,20 +560,10 @@ else
         }
     }
 
-    private void ShowDeliveryDetails(WebhookDelivery delivery)
-    {
-        _selectedDelivery = delivery;
-    }
-
-    private string GetWebhookName(string webhookId)
-    {
-        return _webhooks.FirstOrDefault(w => w.Id == webhookId)?.Name ?? webhookId;
-    }
-
     private static string GetShortEventType(string eventType)
     {
         var parts = eventType.Split('.');
-        return parts.Length >= 4 ? string.Join(".", parts[^3..]) : eventType;
+        return parts.Length >= 4 ? $"{parts[^3]}.{parts[^2]}" : eventType;
     }
 
     private static string GetFormatLabel(WebhookFormat format) => format switch
@@ -549,6 +572,22 @@ else
         WebhookFormat.Slack => "Slack",
         _ => "Raw"
     };
+
+    private static string TruncateUrl(string url)
+    {
+        const int maxLen = 50;
+        if (url.Length <= maxLen) return url;
+        return url[..(maxLen - 3)] + "...";
+    }
+
+    private static string GetTimeAgo(DateTime time)
+    {
+        var diff = DateTime.UtcNow - time;
+        if (diff.TotalMinutes < 1) return "just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        return $"{(int)diff.TotalDays}d ago";
+    }
 
     public void Dispose()
     {

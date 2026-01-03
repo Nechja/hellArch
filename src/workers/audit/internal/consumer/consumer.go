@@ -7,16 +7,16 @@ import (
 	"log/slog"
 
 	cloudevents "github.com/nechja/hellarch/cloudevents"
+	"github.com/nechja/hellarch/golibs/events"
 	"github.com/nechja/hellarch/golibs/rabbitmq"
-	"github.com/nechja/hellarch/workers/audit/internal/client"
 )
 
 type Consumer struct {
 	consumer     *rabbitmq.Consumer
-	eventsClient *client.EventsClient
+	eventsClient *events.Client
 }
 
-func New(ctx context.Context, rabbitURL string, eventsClient *client.EventsClient) (*Consumer, error) {
+func New(ctx context.Context, rabbitURL string, eventsClient *events.Client) (*Consumer, error) {
 	consumer, err := rabbitmq.NewConsumer(ctx, rabbitmq.ConsumerConfig{
 		URL:        rabbitURL,
 		QueueName:  "audit-worker",
@@ -49,7 +49,7 @@ func (c *Consumer) processEvent(ctx context.Context, event cloudevents.CloudEven
 	actorID := extractActorID(event.Data)
 	targetID := extractTargetID(event.Data)
 
-	req := client.CreateAuditLogRequest{
+	req := events.CreateAuditLogRequest{
 		EventType: event.Type,
 		EventID:   event.ID,
 		Source:    event.Source,

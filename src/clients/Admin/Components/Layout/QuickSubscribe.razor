@@ -1,0 +1,237 @@
+@using Admin.Services
+@inject EventsAdminFacade EventsApi
+
+<Modal @bind-IsOpen="IsOpen" Title="Subscribe to Event" Size="ModalSize.Default">
+    <ChildContent>
+    <div class="space-y-4">
+        <div>
+            <Label>Event</Label>
+            <div class="flex items-center gap-2 mt-1">
+                <code class="text-sm text-neon-pink">@EventType</code>
+                <Badge Variant="GetBadgeVariant()" Size="BadgeSize.Small">@GetSeverity()</Badge>
+            </div>
+            <p class="text-xs text-text-muted mt-1">@GetDescription()</p>
+        </div>
+
+        <Divider />
+
+        <div class="flex gap-2">
+            <button type="button"
+                    class="flex-1 p-3 rounded-lg border transition-colors @(_mode == Mode.New ? "border-neon-pink bg-bg-tertiary" : "border-border hover:border-border-hover")"
+                    @onclick="() => _mode = Mode.New">
+                <div class="text-sm font-medium">New webhook</div>
+                <div class="text-xs text-text-muted">Create a new endpoint</div>
+            </button>
+            <button type="button"
+                    class="flex-1 p-3 rounded-lg border transition-colors @(_mode == Mode.Existing ? "border-neon-pink bg-bg-tertiary" : "border-border hover:border-border-hover") @(_webhooks.Count == 0 ? "opacity-50 cursor-not-allowed" : "")"
+                    @onclick="() => { if (_webhooks.Count > 0) _mode = Mode.Existing; }"
+                    disabled="@(_webhooks.Count == 0)">
+                <div class="text-sm font-medium">Add to existing</div>
+                <div class="text-xs text-text-muted">@(_webhooks.Count) webhook@(_webhooks.Count != 1 ? "s" : "") available</div>
+            </button>
+        </div>
+
+        @if (_mode == Mode.New)
+        {
+            <div>
+                <Label>Webhook URL</Label>
+                <Input @bind-Value="_url" Placeholder="https://discord.com/api/webhooks/..." Class="w-full" />
+            </div>
+
+            <div>
+                <Label>Format</Label>
+                <div class="grid grid-cols-3 gap-2 mt-1">
+                    @foreach (var format in Enum.GetValues<WebhookFormat>())
+                    {
+                        <button type="button"
+                                class="p-2 rounded-lg border text-center transition-colors @(_format == format ? "border-neon-pink bg-bg-tertiary" : "border-border hover:border-border-hover")"
+                                @onclick="() => _format = format">
+                            <div class="text-sm">@GetFormatLabel(format)</div>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div>
+                <Label>Name <span class="text-text-muted font-normal">(optional)</span></Label>
+                <Input @bind-Value="_name" Placeholder="@GetAutoName()" Class="w-full" />
+            </div>
+        }
+        else
+        {
+            <div>
+                <Label>Select webhook</Label>
+                <select @bind="_selectedWebhookId" class="input w-full mt-1">
+                    <option value="">Choose a webhook...</option>
+                    @foreach (var webhook in _webhooks)
+                    {
+                        var hasEvent = webhook.EventTypes.Contains(EventType);
+                        <option value="@webhook.Id" disabled="@hasEvent">
+                            @webhook.Name @(hasEvent ? "(already subscribed)" : "")
+                        </option>
+                    }
+                </select>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="text-sm text-red-400">@_error</div>
+        }
+    </div>
+    </ChildContent>
+
+    <FooterTemplate>
+        <Button Variant="ButtonVariant.Secondary" OnClick="Cancel">Cancel</Button>
+        <Button Variant="ButtonVariant.Primary" OnClick="Submit" Disabled="@(_saving || !IsValid)">
+            @(_saving ? "Saving..." : "Subscribe")
+        </Button>
+    </FooterTemplate>
+</Modal>
+
+@code {
+    private enum Mode { New, Existing }
+
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public string EventType { get; set; } = "";
+    [Parameter] public EventCallback<Webhook> OnSubscribed { get; set; }
+
+    private Mode _mode = Mode.New;
+    private string _url = "";
+    private string _name = "";
+    private WebhookFormat _format = WebhookFormat.Discord;
+    private string _selectedWebhookId = "";
+    private bool _saving;
+    private string? _error;
+    private IReadOnlyList<Webhook> _webhooks = [];
+
+    private bool IsValid => _mode == Mode.New
+        ? !string.IsNullOrWhiteSpace(_url)
+        : !string.IsNullOrEmpty(_selectedWebhookId);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && _webhooks.Count == 0)
+        {
+            await LoadWebhooks();
+            DetectFormat();
+        }
+    }
+
+    private async Task LoadWebhooks()
+    {
+        var response = await EventsApi.GetWebhooks(1, 100);
+        _webhooks = response.Data;
+    }
+
+    private void DetectFormat()
+    {
+        if (_url.Contains("discord.com"))
+            _format = WebhookFormat.Discord;
+        else if (_url.Contains("slack.com") || _url.Contains("hooks.slack"))
+            _format = WebhookFormat.Slack;
+    }
+
+    private async Task Submit()
+    {
+        _error = null;
+        _saving = true;
+        StateHasChanged();
+
+        Webhook? result = null;
+
+        if (_mode == Mode.New)
+        {
+            var name = string.IsNullOrWhiteSpace(_name) ? GetAutoName() : _name;
+            var request = new CreateWebhookRequest(
+                name,
+                _url,
+                "",
+                [EventType],
+                _format,
+                true);
+            result = await EventsApi.CreateWebhook(request);
+        }
+        else
+        {
+            var webhook = _webhooks.FirstOrDefault(w => w.Id == _selectedWebhookId);
+            if (webhook != null)
+            {
+                var newEvents = webhook.EventTypes.Append(EventType).Distinct().ToList();
+                var request = new UpdateWebhookRequest(EventTypes: newEvents);
+                result = await EventsApi.UpdateWebhook(webhook.Id, request);
+            }
+        }
+
+        _saving = false;
+
+        if (result != null)
+        {
+            await OnSubscribed.InvokeAsync(result);
+            await Close();
+        }
+        else
+        {
+            _error = "Failed to save. Check your webhook URL and try again.";
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task Cancel()
+    {
+        await Close();
+    }
+
+    private async Task Close()
+    {
+        _url = "";
+        _name = "";
+        _selectedWebhookId = "";
+        _error = null;
+        _mode = Mode.New;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private string GetAutoName()
+    {
+        var parts = EventType.Split('.');
+        if (parts.Length >= 4)
+        {
+            return $"{parts[^3]} {parts[^2]} alerts".Replace("_", " ");
+        }
+        return "Event alerts";
+    }
+
+    private static string GetFormatLabel(WebhookFormat format) => format switch
+    {
+        WebhookFormat.Discord => "Discord",
+        WebhookFormat.Slack => "Slack",
+        _ => "Raw JSON"
+    };
+
+    private BadgeVariant GetBadgeVariant()
+    {
+        var info = EventTypeCatalog.All.FirstOrDefault(e => e.Type == EventType);
+        return info?.Severity switch
+        {
+            EventSeverity.Critical => BadgeVariant.Danger,
+            EventSeverity.High => BadgeVariant.Warning,
+            EventSeverity.Medium => BadgeVariant.Info,
+            _ => BadgeVariant.Default
+        };
+    }
+
+    private string GetSeverity()
+    {
+        var info = EventTypeCatalog.All.FirstOrDefault(e => e.Type == EventType);
+        return info?.Severity.ToString() ?? "Info";
+    }
+
+    private string GetDescription()
+    {
+        var info = EventTypeCatalog.All.FirstOrDefault(e => e.Type == EventType);
+        return info?.Description ?? "";
+    }
+}
