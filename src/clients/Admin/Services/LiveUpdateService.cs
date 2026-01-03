@@ -26,7 +26,7 @@ public sealed class CloudEventUpdateEventArgs(CloudEventDto cloudEvent) : EventA
 public sealed class LiveUpdateService : IAsyncDisposable
 {
     private readonly RealtimeHubService _realtimeHub;
-    private readonly ToastService _toastService;
+    private readonly IToastService _toastService;
     private readonly ILogger<LiveUpdateService> _logger;
     private readonly PeriodicTimer _healthTimer;
     private readonly PeriodicTimer _statsTimer;
@@ -46,7 +46,7 @@ public sealed class LiveUpdateService : IAsyncDisposable
 
     public LiveUpdateService(
         RealtimeHubService realtimeHub,
-        ToastService toastService,
+        IToastService toastService,
         ILogger<LiveUpdateService> logger)
     {
         _realtimeHub = realtimeHub;
