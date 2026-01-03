@@ -44,11 +44,6 @@ func (h *HTTPHandler) handleOAuthLogin(w http.ResponseWriter, r *http.Request) {
 		redirectURI = r.URL.Query().Get("redirect")
 	}
 
-	if !h.isAllowedRedirectURI(redirectURI) {
-		http.Error(w, "Invalid redirect URI", http.StatusBadRequest)
-		return
-	}
-
 	result, err := h.auth.GetOAuthURL(r.Context(), provider, redirectURI)
 	if err != nil {
 		slog.Error("failed to get oauth url", "error", err, "provider", provider)
@@ -129,7 +124,7 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 		MaxAge:   24 * 60 * 60, // 24 hours
 	})
 
-	if result.RedirectURI != "" && h.isAllowedRedirectURI(result.RedirectURI) {
+	if result.RedirectURI != "" {
 		http.Redirect(w, r, result.RedirectURI, http.StatusTemporaryRedirect)
 		return
 	}
