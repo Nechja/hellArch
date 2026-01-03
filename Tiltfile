@@ -81,7 +81,7 @@ dc_resource('rabbitmq', labels=['infra'])
 docker_compose('./infra/docker/docker-compose.services.yml')
 
 # Label service resources (DBs now run migrations on startup)
-dc_resource('gateway', labels=['services'], resource_deps=['auth-db', 'redis', 'clients'], links=['http://localhost:5000', 'http://localhost:5000/login', 'http://localhost:5000/app'])
+dc_resource('gateway', labels=['services'], resource_deps=['auth-db', 'redis', 'clients'], links=['http://localhost:5000', 'http://localhost:5000/app'])
 dc_resource('auth', labels=['services'], resource_deps=['auth-db', 'redis', 'rabbitmq'], links=['http://localhost:5001'])
 dc_resource('user', labels=['services'], resource_deps=['user-db', 'redis', 'rabbitmq'], links=['http://localhost:5002'])
 dc_resource('admin', labels=['clients'], resource_deps=['auth', 'user', 'redis'], links=['http://localhost:5003'])
@@ -99,7 +99,7 @@ dc_resource('images-worker', labels=['workers'], resource_deps=['rabbitmq', 'min
 # Files service
 dc_resource('files', labels=['services'], resource_deps=['files-db', 'minio', 'rabbitmq'], links=['http://localhost:5006'])
 
-# Frontend clients (design system + login + app)
+# Frontend clients (design system for Admin + Vue app with Vuetify)
 # Built to src/gateway/Gateway/wwwroot/ - volume mount picks up changes immediately
 local_resource(
     'clients',
@@ -107,10 +107,9 @@ local_resource(
     deps=[
         'libs/design/tokens.css',
         'libs/design/uno.config.ts',
-        'src/clients/Login/Pages',
-        'src/clients/Login/wwwroot',
         'src/clients/App/src',
         'src/clients/App/index.html',
+        'src/clients/App/package.json',
     ],
     ignore=[
         '**/bin', '**/obj', '**/node_modules', '**/dist',

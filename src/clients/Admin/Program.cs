@@ -2,6 +2,7 @@ using System.Text.Json;
 using Admin.Components;
 using Admin.Middleware;
 using Admin.Services;
+using MudBlazor.Services;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 using OpenTelemetry.Resources;
@@ -37,6 +38,8 @@ builder.Logging.AddJsonConsole(options =>
 // Blazor Server
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddMudServices();
 
 // HTTP client for Gateway (routes to backend services via YARP)
 var gatewayUrl = Environment.GetEnvironmentVariable("GATEWAY_URL") ?? "http://localhost:5000";

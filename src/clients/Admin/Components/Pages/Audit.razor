@@ -8,146 +8,92 @@
 
 <PageTitle>Audit Logs - HellArch Admin</PageTitle>
 
-<h1 class="text-display text-gradient mb-6">Audit Logs</h1>
+<MudText Typo="Typo.h4" Class="mb-6" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+    Audit Logs
+</MudText>
 
-<p class="text-text-secondary mb-6">
+<MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
     View system audit logs for all events processed by the platform.
-</p>
+</MudText>
 
-<section class="mb-6">
-    <h2 class="text-subheading mb-3">Available Event Types</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        @foreach (var category in EventCategories)
-        {
-            <div class="card">
-                <h3 class="text-sm font-bold text-neon-pink mb-2">@category.Name</h3>
-                <div class="flex flex-wrap gap-2">
-                    @foreach (var eventType in category.Events)
-                    {
-                        <button class="@GetEventTypeButtonClass(eventType.Type)"
-                                @onclick="() => FilterByEventType(eventType.Type)">
-                            @eventType.Label
-                        </button>
-                    }
-                </div>
-            </div>
-        }
-    </div>
-</section>
+@*
+TODO: Rebuild this page with MudBlazor
+Original functionality:
+- Event Type Categories grid: Clickable buttons organized by category
+  - Auth - Users: Created, Updated, Deleted
+  - Auth - Sessions: Created, Ended
+  - Auth - Accounts: Linked, Unlinked
+  - Infrastructure: Unhealthy, Recovered
+  - Clicking a button filters the table by that event type
 
-<section class="mb-6">
-    <div class="flex flex-wrap gap-4 items-end">
-        <div class="flex flex-col gap-1">
-            <Label>Event Type</Label>
-            <Input @bind-Value="_eventTypeFilter" Placeholder="e.g. hellarch.auth.user.created.v1" Class="w-64" />
-        </div>
-        <div class="flex flex-col gap-1">
-            <Label>Actor ID</Label>
-            <Input @bind-Value="_actorIdFilter" Placeholder="User ID" Class="w-48" />
-        </div>
-        <Button Variant="ButtonVariant.Primary" OnClick="ApplyFilters">Filter</Button>
-        <Button Variant="ButtonVariant.Secondary" OnClick="ClearFilters">Clear</Button>
-    </div>
-</section>
+- Filters section:
+  - Event Type text input (e.g. hellarch.auth.user.created.v1)
+  - Actor ID text input (User ID)
+  - Filter/Clear buttons
 
-<section class="mb-8">
-    @if (_loading)
-    {
-        <div class="flex-center py-12">
-            <div class="spinner-lg"></div>
-        </div>
-    }
-    else if (_auditLogs.Count == 0)
-    {
-        <p class="empty-state">No audit logs found</p>
-    }
-    else
-    {
-        <div class="overflow-x-auto">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th class="data-th">Time</th>
-                        <th class="data-th">Event Type</th>
-                        <th class="data-th">Source</th>
-                        <th class="data-th">Actor</th>
-                        <th class="data-th">Target</th>
-                        <th class="data-th">Details</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var log in _auditLogs)
-                    {
-                        <tr class="data-row">
-                            <td class="data-td text-xs font-mono">@log.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                            <td class="data-td">
-                                <Badge Variant="BadgeVariant.Info" Class="cursor-pointer hover:opacity-80" @onclick="() => FilterByEventType(log.EventType)">
-                                    @GetShortEventType(log.EventType)
-                                </Badge>
-                            </td>
-                            <td class="data-td text-sm">@log.Source</td>
-                            <td class="data-td font-mono text-xs">@(log.ActorId ?? "-")</td>
-                            <td class="data-td font-mono text-xs">@(log.TargetId ?? "-")</td>
-                            <td class="data-td">
-                                @if (log.Metadata.HasValue)
-                                {
-                                    <button class="text-neon-pink text-xs hover:underline" @onclick="() => ShowDetails(log)">
-                                        View
-                                    </button>
-                                }
-                                else
-                                {
-                                    <span class="text-text-muted">-</span>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+- Audit Logs table: Time, Event Type (clickable badge), Source, Actor, Target, Details
+  - Details column has "View" link that opens modal with full log info
+  - Pagination: Previous/Next buttons, page number, total count
 
-        <div class="flex items-center justify-between mt-4">
-            <span class="text-sm text-text-secondary">
-                Showing @_auditLogs.Count of @_totalCount logs
-            </span>
-            <div class="flex gap-2">
-                <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Disabled="@(_page <= 1)" OnClick="PreviousPage">
-                    Previous
-                </Button>
-                <span class="px-3 py-1 text-sm">Page @_page</span>
-                <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Disabled="@(!HasMorePages)" OnClick="NextPage">
-                    Next
-                </Button>
-            </div>
-        </div>
-    }
-</section>
+- Detail Modal shows:
+  - ID, Event ID, Event Type badge, Source
+  - Actor ID, Target ID, Created timestamp
+  - Formatted JSON metadata
+*@
 
-@if (_selectedLog != null)
+<MudAlert Severity="Severity.Info" Class="mb-6">
+    This page is being rebuilt with MudBlazor. See source comments for original functionality.
+</MudAlert>
+
+<MudGrid Class="mb-6">
+    <MudItem xs="12" md="4">
+        <MudTextField @bind-Value="_eventTypeFilter" Label="Event Type" Placeholder="e.g. hellarch.auth.user.created.v1" Variant="Variant.Outlined" />
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudTextField @bind-Value="_actorIdFilter" Label="Actor ID" Placeholder="User ID" Variant="Variant.Outlined" />
+    </MudItem>
+    <MudItem xs="12" md="4" Class="d-flex align-end gap-2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters">Filter</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="ClearFilters">Clear</MudButton>
+    </MudItem>
+</MudGrid>
+
+@if (_loading)
 {
-    <div class="modal-overlay enter-fade" @onclick="CloseDetails">
-        <div class="modal-panel enter-scale" @onclick:stopPropagation="true">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-heading">Audit Log Details</h2>
-                <button class="text-text-muted hover:text-white" @onclick="CloseDetails">&#10005;</button>
-            </div>
-            <div class="space-y-3 text-sm">
-                <div><span class="text-text-secondary">ID:</span> <span class="font-mono">@_selectedLog.Id</span></div>
-                <div><span class="text-text-secondary">Event ID:</span> <span class="font-mono">@_selectedLog.EventId</span></div>
-                <div><span class="text-text-secondary">Event Type:</span> <Badge Variant="BadgeVariant.Info">@_selectedLog.EventType</Badge></div>
-                <div><span class="text-text-secondary">Source:</span> @_selectedLog.Source</div>
-                <div><span class="text-text-secondary">Actor ID:</span> <span class="font-mono">@(_selectedLog.ActorId ?? "N/A")</span></div>
-                <div><span class="text-text-secondary">Target ID:</span> <span class="font-mono">@(_selectedLog.TargetId ?? "N/A")</span></div>
-                <div><span class="text-text-secondary">Created:</span> @_selectedLog.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss.fff")</div>
-                @if (_selectedLog.Metadata.HasValue)
-                {
-                    <div>
-                        <span class="text-text-secondary">Metadata:</span>
-                        <pre class="mt-2 code-block">@FormatJson(_selectedLog.Metadata.Value)</pre>
-                    </div>
-                }
-            </div>
-        </div>
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudTable Items="@_auditLogs" Hover="true" Striped="true" Dense="true" T="Admin.Services.AuditLog" Class="mb-4">
+        <HeaderContent>
+            <MudTh>Time</MudTh>
+            <MudTh>Event Type</MudTh>
+            <MudTh>Source</MudTh>
+            <MudTh>Actor</MudTh>
+            <MudTh>Target</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd Style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="Color.Info" OnClick="() => FilterByEventType(context.EventType)">
+                    @GetShortEventType(context.EventType)
+                </MudChip>
+            </MudTd>
+            <MudTd>@context.Source</MudTd>
+            <MudTd Style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;">@(context.ActorId ?? "-")</MudTd>
+            <MudTd Style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;">@(context.TargetId ?? "-")</MudTd>
+        </RowTemplate>
+    </MudTable>
+
+    <div class="d-flex justify-space-between align-center">
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Showing @_auditLogs.Count of @_totalCount logs
+        </MudText>
+        <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+            <MudButton Disabled="@(_page <= 1)" OnClick="PreviousPage">Previous</MudButton>
+            <MudButton Disabled="true">Page @_page</MudButton>
+            <MudButton Disabled="@(!HasMorePages)" OnClick="NextPage">Next</MudButton>
+        </MudButtonGroup>
     </div>
 }
 
@@ -159,33 +105,8 @@
     private bool _loading = true;
     private string? _eventTypeFilter;
     private string? _actorIdFilter;
-    private Admin.Services.AuditLog? _selectedLog;
 
     private bool HasMorePages => _page * PageSize < _totalCount;
-
-    private static readonly EventCategory[] EventCategories =
-    [
-        new("Auth - Users", [
-            new("hellarch.auth.user.created.v1", "Created"),
-            new("hellarch.auth.user.updated.v1", "Updated"),
-            new("hellarch.auth.user.deleted.v1", "Deleted")
-        ]),
-        new("Auth - Sessions", [
-            new("hellarch.auth.session.created.v1", "Created"),
-            new("hellarch.auth.session.ended.v1", "Ended")
-        ]),
-        new("Auth - Accounts", [
-            new("hellarch.auth.account.linked.v1", "Linked"),
-            new("hellarch.auth.account.unlinked.v1", "Unlinked")
-        ]),
-        new("Infrastructure", [
-            new("hellarch.infra.service.unhealthy.v1", "Unhealthy"),
-            new("hellarch.infra.service.recovered.v1", "Recovered")
-        ])
-    ];
-
-    private record EventCategory(string Name, EventTypeInfo[] Events);
-    private record EventTypeInfo(string Type, string Label);
 
     protected override async Task OnInitializedAsync()
     {
@@ -195,11 +116,7 @@
 
     private void HandleAnyEvent(object? sender, CloudEventUpdateEventArgs e)
     {
-        // Refresh audit logs when new events are received
-        InvokeAsync(async () =>
-        {
-            await LoadData();
-        });
+        InvokeAsync(async () => await LoadData());
     }
 
     private async Task LoadData()
@@ -251,33 +168,10 @@
         }
     }
 
-    private void ShowDetails(Admin.Services.AuditLog log)
-    {
-        _selectedLog = log;
-    }
-
-    private void CloseDetails()
-    {
-        _selectedLog = null;
-    }
-
-    private string GetEventTypeButtonClass(string eventType)
-    {
-        var isActive = _eventTypeFilter == eventType;
-        return isActive
-            ? "badge-info text-xs cursor-pointer"
-            : "badge text-xs cursor-pointer hover:bg-neon-pink/20";
-    }
-
     private static string GetShortEventType(string eventType)
     {
         var parts = eventType.Split('.');
         return parts.Length >= 4 ? string.Join(".", parts[^3..]) : eventType;
-    }
-
-    private static string FormatJson(System.Text.Json.JsonElement element)
-    {
-        return System.Text.Json.JsonSerializer.Serialize(element, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
     }
 
     public void Dispose()

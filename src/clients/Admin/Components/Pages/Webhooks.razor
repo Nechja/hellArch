@@ -3,369 +3,176 @@
 @implements IDisposable
 @inject EventsAdminFacade EventsApi
 @inject LiveUpdateService LiveUpdate
+@inject ISnackbar Snackbar
 @inject ILogger<Webhooks> Logger
 
 <PageTitle>Webhooks - HellArch Admin</PageTitle>
 
-<div class="flex items-center justify-between mb-6">
+<div class="d-flex justify-space-between align-center mb-6">
     <div>
-        <h1 class="text-display text-gradient">Webhooks</h1>
-        <p class="text-text-secondary mt-1">Manage webhook endpoints for event notifications.</p>
+        <MudText Typo="Typo.h4" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+            Webhooks
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Manage webhook endpoints for event notifications.</MudText>
     </div>
-    <Button Variant="ButtonVariant.Primary" OnClick="ShowCreateForm">+ New Webhook</Button>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ShowCreateForm" StartIcon="@Icons.Material.Filled.Add">
+        New Webhook
+    </MudButton>
 </div>
 
-<section>
-    @if (_loadingWebhooks)
-    {
-        <div class="flex-center py-12">
-            <div class="spinner-lg"></div>
-        </div>
-    }
-    else if (_webhooks.Count == 0)
-    {
-        <div class="card text-center py-12">
-            <p class="text-text-muted mb-4">No webhooks configured yet.</p>
-            <Button Variant="ButtonVariant.Primary" OnClick="ShowCreateForm">Create your first webhook</Button>
-        </div>
-    }
-    else
-    {
-        <div class="grid gap-4">
-            @foreach (var webhook in _webhooks)
-            {
-                var lastDelivery = _lastDeliveries.GetValueOrDefault(webhook.Id);
-                <div class="card">
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-3 mb-2">
-                                <h3 class="text-subheading">@webhook.Name</h3>
-                                <Badge Variant="@(webhook.IsActive ? BadgeVariant.Success : BadgeVariant.Warning)" Size="BadgeSize.Small">
-                                    @(webhook.IsActive ? "Active" : "Inactive")
-                                </Badge>
-                                <Badge Variant="BadgeVariant.Info" Size="BadgeSize.Small">@GetFormatLabel(webhook.Format)</Badge>
-                            </div>
+@*
+TODO: Rebuild this page with MudBlazor
+Original functionality:
+- Webhook list: Each webhook card shows:
+  - Name, Active/Inactive badge, Format badge (Discord/Slack/Raw)
+  - Truncated URL
+  - Event type badges (first 3 + "N more")
+  - Last delivery status (green check/red X, time ago, status code)
+  - "View deliveries" link opens side panel
+  - Edit/Delete buttons
 
-                            <p class="font-mono text-sm text-text-muted truncate mb-3" title="@webhook.Url">@TruncateUrl(webhook.Url)</p>
+- Deliveries Side Panel (slides in from right):
+  - Filter dropdown: All/Success/Failed
+  - List of deliveries: event type badge, status badge, timestamp, attempt number
+  - Click delivery to see details in modal
+  - Pagination
 
-                            <div class="flex flex-wrap gap-1.5 mb-3">
-                                @{
-                                    var displayEvents = webhook.EventTypes.Take(3).ToList();
-                                    var remaining = webhook.EventTypes.Count - 3;
-                                }
-                                @foreach (var eventType in displayEvents)
-                                {
-                                    <Badge Size="BadgeSize.Small">@GetShortEventType(eventType)</Badge>
-                                }
-                                @if (remaining > 0)
-                                {
-                                    <Badge Size="BadgeSize.Small" Variant="BadgeVariant.Default">+@remaining more</Badge>
-                                }
-                            </div>
+- Create/Edit Modal (ModalSize.Large):
+  - Name input, Format selection (3 buttons: Discord/Slack/Raw)
+  - URL input, Secret input (optional)
+  - Event types: Select all/Clear buttons
+    - Domain filter buttons (auth/infra) with counts
+    - Scrollable checklist grouped by domain
+    - Shows count selected
+  - Active toggle
+  - Cancel/Save buttons
 
-                            <div class="flex items-center gap-4 text-xs">
-                                @if (lastDelivery != null)
-                                {
-                                    var timeAgo = GetTimeAgo(lastDelivery.CreatedAt);
-                                    <span class="flex items-center gap-1">
-                                        @if (lastDelivery.Success)
-                                        {
-                                            <span class="text-green-400">✓</span>
-                                            <span class="text-text-muted">@timeAgo</span>
-                                            <span class="text-text-muted">(@lastDelivery.StatusCode)</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-red-400">✕</span>
-                                            <span class="text-text-muted">@timeAgo</span>
-                                            <span class="text-red-400">(@lastDelivery.StatusCode)</span>
-                                        }
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="text-text-muted">No deliveries yet</span>
-                                }
-                                <button class="text-neon-pink hover:underline" @onclick="() => ViewDeliveries(webhook.Id)">
-                                    View deliveries
-                                </button>
-                            </div>
-                        </div>
+- Delete Confirmation Modal
 
-                        <div class="flex gap-2 shrink-0">
-                            <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" OnClick="() => EditWebhook(webhook)">Edit</Button>
-                            <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Class="text-red-400 hover:text-red-300" OnClick="() => ConfirmDelete(webhook)">Delete</Button>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
-    }
-</section>
+- Delivery Details Modal:
+  - Event Type, Status badge, Event ID, Attempt number
+  - Response body (if present)
 
-@* Deliveries Panel *@
-@if (_showDeliveries)
+Key services used:
+- EventsApi.GetWebhooks(page, limit)
+- EventsApi.GetDeliveries(page, limit, webhookId, success)
+- EventsApi.CreateWebhook(request)
+- EventsApi.UpdateWebhook(id, request)
+- EventsApi.DeleteWebhook(id)
+- EventTypeCatalog.Domains, GetByDomain(domain), All
+*@
+
+<MudAlert Severity="Severity.Info" Class="mb-6">
+    This page is being rebuilt with MudBlazor. See source comments for original functionality.
+</MudAlert>
+
+@if (_loadingWebhooks)
 {
-    <div class="fixed inset-0 bg-black/50 z-40" @onclick="() => _showDeliveries = false"></div>
-    <aside class="fixed right-0 top-0 h-full w-full max-w-xl bg-bg-elevated border-l border-border z-50 overflow-y-auto enter-slide-left">
-        <div class="p-6">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-heading">Deliveries</h2>
-                <button class="text-text-muted hover:text-white" @onclick="() => _showDeliveries = false">✕</button>
-            </div>
-
-            <div class="flex gap-2 mb-4">
-                <select @bind="_deliverySuccessFilter" class="input flex-1">
-                    <option value="">All status</option>
-                    <option value="true">Success</option>
-                    <option value="false">Failed</option>
-                </select>
-                <Button Variant="ButtonVariant.Primary" Size="ButtonSize.Small" OnClick="LoadDeliveries">Filter</Button>
-            </div>
-
-            @if (_loadingDeliveries)
-            {
-                <div class="flex-center py-8">
-                    <div class="spinner"></div>
-                </div>
-            }
-            else if (_deliveries.Count == 0)
-            {
-                <p class="text-text-muted text-center py-8">No deliveries found</p>
-            }
-            else
-            {
-                <div class="space-y-3">
-                    @foreach (var delivery in _deliveries)
-                    {
-                        <div class="p-3 rounded-lg bg-bg-secondary border border-border hover:border-border-hover cursor-pointer" @onclick="() => _selectedDelivery = delivery">
-                            <div class="flex items-center justify-between mb-1">
-                                <Badge Size="BadgeSize.Small">@GetShortEventType(delivery.EventType)</Badge>
-                                @if (delivery.Success)
-                                {
-                                    <Badge Variant="BadgeVariant.Success" Size="BadgeSize.Small">@delivery.StatusCode</Badge>
-                                }
-                                else
-                                {
-                                    <Badge Variant="BadgeVariant.Warning" Size="BadgeSize.Small">@delivery.StatusCode</Badge>
-                                }
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else if (_webhooks.Count == 0)
+{
+    <MudPaper Class="pa-8 text-center" Elevation="2">
+        <MudText Color="Color.Secondary" Class="mb-4">No webhooks configured yet.</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ShowCreateForm">Create your first webhook</MudButton>
+    </MudPaper>
+}
+else
+{
+    <MudGrid>
+        @foreach (var webhook in _webhooks)
+        {
+            <MudItem xs="12">
+                <MudPaper Class="pa-4" Elevation="2">
+                    <div class="d-flex justify-space-between align-start">
+                        <div>
+                            <div class="d-flex align-center gap-2 mb-2">
+                                <MudText Typo="Typo.h6">@webhook.Name</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="@(webhook.IsActive ? Color.Success : Color.Warning)">
+                                    @(webhook.IsActive ? "Active" : "Inactive")
+                                </MudChip>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info">@GetFormatLabel(webhook.Format)</MudChip>
                             </div>
-                            <div class="text-xs text-text-muted">
-                                @delivery.CreatedAt.ToString("MMM d, HH:mm:ss") · Attempt @delivery.Attempt
+                            <MudText Typo="Typo.body2" Style="font-family: 'JetBrains Mono', monospace;" Color="Color.Secondary" Class="mb-2">
+                                @TruncateUrl(webhook.Url)
+                            </MudText>
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var eventType in webhook.EventTypes.Take(3))
+                                {
+                                    <MudChip T="string" Size="Size.Small">@GetShortEventType(eventType)</MudChip>
+                                }
+                                @if (webhook.EventTypes.Count > 3)
+                                {
+                                    <MudChip T="string" Size="Size.Small">+@(webhook.EventTypes.Count - 3) more</MudChip>
+                                }
                             </div>
                         </div>
-                    }
-                </div>
-
-                <div class="flex items-center justify-between mt-4 pt-4 border-t border-border">
-                    <span class="text-xs text-text-muted">@_deliveries.Count of @_deliveryTotalCount</span>
-                    <div class="flex gap-2">
-                        <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Disabled="@(_deliveryPage <= 1)" OnClick="PreviousDeliveryPage">←</Button>
-                        <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" Disabled="@(!HasMoreDeliveryPages)" OnClick="NextDeliveryPage">→</Button>
+                        <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                            <MudButton OnClick="() => EditWebhook(webhook)">Edit</MudButton>
+                            <MudButton Color="Color.Error" OnClick="() => ConfirmDelete(webhook)">Delete</MudButton>
+                        </MudButtonGroup>
                     </div>
-                </div>
-            }
-        </div>
-    </aside>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
 }
 
-@* Create/Edit Modal *@
-<Modal @bind-IsOpen="_showForm" Title="@(_editingWebhook == null ? "Create Webhook" : "Edit Webhook")" Size="ModalSize.Large">
-    <ChildContent>
-    <div class="space-y-4">
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <Label>Name</Label>
-                <Input @bind-Value="_formName" Placeholder="My Webhook" Class="w-full" />
-            </div>
-            <div>
-                <Label>Format</Label>
-                <div class="grid grid-cols-3 gap-2 mt-1">
-                    @foreach (var format in Enum.GetValues<WebhookFormat>())
-                    {
-                        <button type="button"
-                                class="p-2 rounded-lg border text-center text-sm transition-colors @(_formFormat == format ? "border-neon-pink bg-bg-tertiary" : "border-border hover:border-border-hover")"
-                                @onclick="() => _formFormat = format">
-                            @GetFormatLabel(format)
-                        </button>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <div>
-            <Label>URL</Label>
-            <Input Type="url" @bind-Value="_formUrl" Placeholder="https://discord.com/api/webhooks/..." Class="w-full" />
-        </div>
-
-        <div>
-            <Label>Secret <span class="text-text-muted font-normal">(optional)</span></Label>
-            <Input @bind-Value="_formSecret" Placeholder="webhook-secret-key" Class="w-full" />
-        </div>
-
-        <div>
-            <div class="flex items-center justify-between mb-2">
-                <Label>Event Types</Label>
-                <div class="flex gap-3 text-xs">
-                    <button type="button" class="text-neon-pink hover:underline" @onclick="SelectAllEvents">Select all</button>
-                    <button type="button" class="text-text-muted hover:underline" @onclick="ClearAllEvents">Clear</button>
-                </div>
-            </div>
-
-            <div class="flex gap-2 mb-2">
-                @foreach (var domain in Admin.Services.EventTypeCatalog.Domains)
-                {
-                    var domainEvents = Admin.Services.EventTypeCatalog.GetByDomain(domain);
-                    var selected = domainEvents.Count(e => _selectedEventTypes.Contains(e.Type));
-                    <button type="button"
-                            class="text-xs px-2 py-1 rounded border transition-colors @(selected > 0 ? "border-neon-pink/50 bg-neon-pink/10 text-neon-pink" : "border-border text-text-muted hover:border-border-hover")"
-                            @onclick="() => ToggleDomain(domain)">
-                        @domain (@selected/@domainEvents.Count)
-                    </button>
-                }
-            </div>
-
-            <div class="border border-border rounded-lg max-h-40 overflow-y-auto bg-bg-secondary">
-                @foreach (var domain in Admin.Services.EventTypeCatalog.Domains)
-                {
-                    <div class="border-b border-border last:border-b-0">
-                        <div class="px-3 py-1.5 bg-bg-tertiary text-xs font-medium text-text-muted sticky top-0">@domain</div>
-                        <div class="grid grid-cols-2 gap-x-2">
-                            @foreach (var eventType in Admin.Services.EventTypeCatalog.GetByDomain(domain))
-                            {
-                                <label class="flex items-center gap-2 px-3 py-1 hover:bg-bg-tertiary cursor-pointer">
-                                    <input type="checkbox"
-                                           checked="@_selectedEventTypes.Contains(eventType.Type)"
-                                           @onchange="() => ToggleEventType(eventType.Type)"
-                                           class="w-3 h-3" />
-                                    <span class="text-xs truncate">@eventType.Entity @eventType.Action</span>
-                                </label>
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
-
-            @if (_selectedEventTypes.Count > 0)
-            {
-                <div class="mt-2 text-xs text-text-muted">@_selectedEventTypes.Count event(s) selected</div>
-            }
-        </div>
-
-        <div class="flex items-center gap-2">
-            <Toggle @bind-Value="_formIsActive" />
-            <Label>Active</Label>
-        </div>
-    </div>
-    </ChildContent>
-
-    <FooterTemplate>
-        <Button Variant="ButtonVariant.Secondary" OnClick="CloseForm">Cancel</Button>
-        <Button Variant="ButtonVariant.Primary" OnClick="SaveWebhook" Disabled="@(_saving || !IsFormValid)">
+@* Create/Edit Dialog *@
+<MudDialog @bind-Visible="_showForm">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editingWebhook == null ? "Create Webhook" : "Edit Webhook")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_formName" Label="Name" Variant="Variant.Outlined" Class="mb-4" />
+        <MudTextField @bind-Value="_formUrl" Label="URL" Variant="Variant.Outlined" Class="mb-4" />
+        <MudTextField @bind-Value="_formSecret" Label="Secret (optional)" Variant="Variant.Outlined" Class="mb-4" />
+        <MudSelect @bind-Value="_formFormat" Label="Format" Variant="Variant.Outlined" Class="mb-4">
+            <MudSelectItem Value="WebhookFormat.Raw">Raw JSON</MudSelectItem>
+            <MudSelectItem Value="WebhookFormat.Discord">Discord</MudSelectItem>
+            <MudSelectItem Value="WebhookFormat.Slack">Slack</MudSelectItem>
+        </MudSelect>
+        <MudSwitch @bind-Value="_formIsActive" Label="Active" Color="Color.Primary" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseForm">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveWebhook" Disabled="@(_saving || !IsFormValid)">
             @(_saving ? "Saving..." : "Save")
-        </Button>
-    </FooterTemplate>
-</Modal>
+        </MudButton>
+    </DialogActions>
+</MudDialog>
 
 @* Delete Confirmation *@
-<Modal @bind-IsOpen="_showDeleteConfirm" Title="Delete Webhook" Size="ModalSize.Small">
-    <ChildContent>
-    <p class="text-text-secondary">
-        Are you sure you want to delete <strong class="text-white">@_webhookToDelete?.Name</strong>? This cannot be undone.
-    </p>
-    </ChildContent>
-    <FooterTemplate>
-        <Button Variant="ButtonVariant.Secondary" OnClick="() => _showDeleteConfirm = false">Cancel</Button>
-        <Button Variant="ButtonVariant.Danger" OnClick="DeleteWebhook">Delete</Button>
-    </FooterTemplate>
-</Modal>
-
-@* Delivery Details *@
-<Modal @bind-IsOpen="_showDeliveryDetails" Title="Delivery Details" Size="ModalSize.Large">
-    <ChildContent>
-    @if (_selectedDelivery != null)
-    {
-        <div class="space-y-3 text-sm">
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <span class="text-text-muted">Event Type</span>
-                    <div><Badge Variant="BadgeVariant.Info">@_selectedDelivery.EventType</Badge></div>
-                </div>
-                <div>
-                    <span class="text-text-muted">Status</span>
-                    <div>
-                        @if (_selectedDelivery.Success)
-                        {
-                            <Badge Variant="BadgeVariant.Success">@_selectedDelivery.StatusCode</Badge>
-                        }
-                        else
-                        {
-                            <Badge Variant="BadgeVariant.Warning">@_selectedDelivery.StatusCode</Badge>
-                        }
-                    </div>
-                </div>
-            </div>
-            <div>
-                <span class="text-text-muted">Event ID</span>
-                <div class="font-mono text-xs">@_selectedDelivery.EventId</div>
-            </div>
-            <div>
-                <span class="text-text-muted">Attempt</span>
-                <div>@_selectedDelivery.Attempt</div>
-            </div>
-            @if (!string.IsNullOrEmpty(_selectedDelivery.ResponseBody))
-            {
-                <div>
-                    <span class="text-text-muted">Response</span>
-                    <pre class="mt-1 p-3 rounded bg-bg-secondary border border-border font-mono text-xs overflow-x-auto max-h-48">@_selectedDelivery.ResponseBody</pre>
-                </div>
-            }
-        </div>
-    }
-    </ChildContent>
-</Modal>
+<MudDialog @bind-Visible="_showDeleteConfirm">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Delete Webhook</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>Are you sure you want to delete <strong>@_webhookToDelete?.Name</strong>? This cannot be undone.</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _showDeleteConfirm = false">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="DeleteWebhook">Delete</MudButton>
+    </DialogActions>
+</MudDialog>
 
 @code {
     private IReadOnlyList<Webhook> _webhooks = [];
-    private Dictionary<string, WebhookDelivery> _lastDeliveries = [];
     private bool _loadingWebhooks = true;
-
-    private bool _showDeliveries;
-    private string? _deliveryWebhookId;
-    private IReadOnlyList<WebhookDelivery> _deliveries = [];
-    private int _deliveryTotalCount;
-    private int _deliveryPage = 1;
-    private bool _loadingDeliveries;
-    private string? _deliverySuccessFilter;
-
-    private bool HasMoreDeliveryPages => _deliveryPage * 20 < _deliveryTotalCount;
 
     private bool _showForm;
     private Webhook? _editingWebhook;
     private string _formName = "";
     private string _formUrl = "";
     private string _formSecret = "";
-    private HashSet<string> _selectedEventTypes = [];
     private WebhookFormat _formFormat = WebhookFormat.Discord;
     private bool _formIsActive = true;
     private bool _saving;
 
-    private bool IsFormValid => !string.IsNullOrWhiteSpace(_formName) && !string.IsNullOrWhiteSpace(_formUrl) && _selectedEventTypes.Count > 0;
+    private bool IsFormValid => !string.IsNullOrWhiteSpace(_formName) && !string.IsNullOrWhiteSpace(_formUrl);
 
     private bool _showDeleteConfirm;
     private Webhook? _webhookToDelete;
-
-    private bool _showDeliveryDetails;
-    private WebhookDelivery? _selectedDelivery
-    {
-        get => _deliveryDetails;
-        set
-        {
-            _deliveryDetails = value;
-            _showDeliveryDetails = value != null;
-        }
-    }
-    private WebhookDelivery? _deliveryDetails;
 
     protected override async Task OnInitializedAsync()
     {
@@ -375,14 +182,7 @@
 
     private void HandleWebhookUpdate(object? sender, UpdateEventArgs e)
     {
-        InvokeAsync(async () =>
-        {
-            await LoadWebhooks();
-            if (_showDeliveries)
-            {
-                await LoadDeliveries();
-            }
-        });
+        InvokeAsync(async () => await LoadWebhooks());
     }
 
     private async Task LoadWebhooks()
@@ -393,48 +193,8 @@
         var response = await EventsApi.GetWebhooks(1, 100);
         _webhooks = response.Data;
 
-        // Load last delivery for each webhook
-        _lastDeliveries.Clear();
-        foreach (var webhook in _webhooks)
-        {
-            var deliveries = await EventsApi.GetDeliveries(1, 1, webhook.Id);
-            if (deliveries.Data.Count > 0)
-            {
-                _lastDeliveries[webhook.Id] = deliveries.Data[0];
-            }
-        }
-
         _loadingWebhooks = false;
         StateHasChanged();
-    }
-
-    private async Task LoadDeliveries()
-    {
-        _loadingDeliveries = true;
-        StateHasChanged();
-
-        bool? success = _deliverySuccessFilter switch
-        {
-            "true" => true,
-            "false" => false,
-            _ => null
-        };
-
-        var response = await EventsApi.GetDeliveries(_deliveryPage, 20, _deliveryWebhookId, success);
-        _deliveries = response.Data;
-        _deliveryTotalCount = response.TotalCount;
-
-        _loadingDeliveries = false;
-        StateHasChanged();
-    }
-
-    private async Task ViewDeliveries(string webhookId)
-    {
-        _deliveryWebhookId = webhookId;
-        _deliveryPage = 1;
-        _deliverySuccessFilter = null;
-        _showDeliveries = true;
-        await LoadDeliveries();
     }
 
     private void ShowCreateForm()
@@ -443,7 +203,6 @@
         _formName = "";
         _formUrl = "";
         _formSecret = "";
-        _selectedEventTypes = [];
         _formFormat = WebhookFormat.Discord;
         _formIsActive = true;
         _showForm = true;
@@ -455,52 +214,9 @@
         _formName = webhook.Name;
         _formUrl = webhook.Url;
         _formSecret = webhook.Secret;
-
-        var knownTypes = Admin.Services.EventTypeCatalog.All.Select(e => e.Type).ToHashSet();
-        _selectedEventTypes = webhook.EventTypes.Where(t => knownTypes.Contains(t)).ToHashSet();
-
         _formFormat = webhook.Format;
         _formIsActive = webhook.IsActive;
         _showForm = true;
-    }
-
-    private void ToggleEventType(string eventType)
-    {
-        if (!_selectedEventTypes.Remove(eventType))
-        {
-            _selectedEventTypes.Add(eventType);
-        }
-    }
-
-    private void ToggleDomain(string domain)
-    {
-        var domainEvents = Admin.Services.EventTypeCatalog.GetByDomain(domain);
-        var allSelected = domainEvents.All(e => _selectedEventTypes.Contains(e.Type));
-
-        if (allSelected)
-        {
-            foreach (var e in domainEvents)
-            {
-                _selectedEventTypes.Remove(e.Type);
-            }
-        }
-        else
-        {
-            foreach (var e in domainEvents)
-            {
-                _selectedEventTypes.Add(e.Type);
-            }
-        }
-    }
-
-    private void SelectAllEvents()
-    {
-        _selectedEventTypes = EventTypeCatalog.All.Select(e => e.Type).ToHashSet();
-    }
-
-    private void ClearAllEvents()
-    {
-        _selectedEventTypes = [];
     }
 
     private void CloseForm()
@@ -516,17 +232,20 @@
         _saving = true;
         StateHasChanged();
 
-        var eventTypes = _selectedEventTypes.ToList();
+        // TODO: Add event type selection
+        var eventTypes = _editingWebhook?.EventTypes.ToList() ?? ["hellarch.auth.user.created.v1"];
 
         if (_editingWebhook == null)
         {
             var request = new CreateWebhookRequest(_formName, _formUrl, _formSecret, eventTypes, _formFormat, _formIsActive);
             await EventsApi.CreateWebhook(request);
+            Snackbar.Add("Webhook created", Severity.Success);
         }
         else
         {
             var request = new UpdateWebhookRequest(_formName, _formUrl, _formSecret, eventTypes, _formFormat, _formIsActive);
             await EventsApi.UpdateWebhook(_editingWebhook.Id, request);
+            Snackbar.Add("Webhook updated", Severity.Success);
         }
 
         _saving = false;
@@ -545,24 +264,10 @@
         if (_webhookToDelete != null)
         {
             await EventsApi.DeleteWebhook(_webhookToDelete.Id);
+            Snackbar.Add("Webhook deleted", Severity.Success);
             _webhookToDelete = null;
             _showDeleteConfirm = false;
             await LoadWebhooks();
-        }
-    }
-
-    private async Task NextDeliveryPage()
-    {
-        _deliveryPage++;
-        await LoadDeliveries();
-    }
-
-    private async Task PreviousDeliveryPage()
-    {
-        if (_deliveryPage > 1)
-        {
-            _deliveryPage--;
-            await LoadDeliveries();
         }
     }
 
@@ -582,17 +287,7 @@
     private static string TruncateUrl(string url)
     {
         const int maxLen = 50;
-        if (url.Length <= maxLen) return url;
-        return url[..(maxLen - 3)] + "...";
-    }
-
-    private static string GetTimeAgo(DateTime time)
-    {
-        var diff = DateTime.UtcNow - time;
-        if (diff.TotalMinutes < 1) return "just now";
-        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
-        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
-        return $"{(int)diff.TotalDays}d ago";
+        return url.Length <= maxLen ? url : url[..(maxLen - 3)] + "...";
     }
 
     public void Dispose()

@@ -10,195 +10,191 @@
 
 @if (UserId is null)
 {
-    <h1 class="text-display text-gradient mb-6">Users</h1>
+    <MudText Typo="Typo.h4" Class="mb-6" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        Users
+    </MudText>
 
-    <div class="overflow-x-auto mb-4">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th class="data-th">ID</th>
-                    <th class="data-th">Email</th>
-                    <th class="data-th">Username</th>
-                    <th class="data-th">Status</th>
-                    <th class="data-th">Created</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var user in _users)
-                {
-                    <tr @onclick="() => ViewUser(user.Id)" class="data-row cursor-pointer">
-                        <td class="data-td font-mono text-sm">@user.Id[..8]...</td>
-                        <td class="data-td">@user.Email</td>
-                        <td class="data-td">@user.Username</td>
-                        <td class="data-td">
-                            <Badge Variant="@(user.IsActive ? BadgeVariant.Success : BadgeVariant.Danger)">
-                                @(user.IsActive ? "Active" : "Inactive")
-                            </Badge>
-                        </td>
-                        <td class="data-td">@user.CreatedAt.ToString("g")</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <MudTable Items="@_users" Hover="true" Striped="true" Dense="true" OnRowClick="@(args => ViewUser(args.Item?.Id ?? ""))" T="UserSummary" Class="mb-4">
+        <HeaderContent>
+            <MudTh>ID</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh>Username</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Created</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="ID" Style="font-family: 'JetBrains Mono', monospace; font-size: 0.875rem;">@context.Id[..8]...</MudTd>
+            <MudTd DataLabel="Email">@context.Email</MudTd>
+            <MudTd DataLabel="Username">@context.Username</MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Error)">
+                    @(context.IsActive ? "Active" : "Inactive")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Created">@context.CreatedAt.ToString("g")</MudTd>
+        </RowTemplate>
+    </MudTable>
 
-    <div class="flex items-center justify-center gap-4 mt-4">
-        <Button Variant="ButtonVariant.Secondary" Disabled="@(_page <= 1)" OnClick="PrevPage">Previous</Button>
-        <span class="text-text-secondary">Page @_page of @_totalPages</span>
-        <Button Variant="ButtonVariant.Secondary" Disabled="@(_page >= _totalPages)" OnClick="NextPage">Next</Button>
+    <div class="d-flex justify-center align-center gap-4 mt-4">
+        <MudButton Variant="Variant.Outlined" Disabled="@(_page <= 1)" OnClick="PrevPage">Previous</MudButton>
+        <MudText>Page @_page of @_totalPages</MudText>
+        <MudButton Variant="Variant.Outlined" Disabled="@(_page >= _totalPages)" OnClick="NextPage">Next</MudButton>
     </div>
 }
 else
 {
-    <div class="flex items-center gap-2 mb-4 text-sm text-text-muted">
-        <a href="users" class="link">Users</a>
-        <span>/</span>
-        <span class="text-text-primary">@_userDetail?.Username</span>
-    </div>
+    <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
 
-    <h1 class="text-display text-gradient mb-6">User Details</h1>
+    <MudText Typo="Typo.h4" Class="mb-6" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        User Details
+    </MudText>
 
     @if (_userDetail is not null)
     {
-        <section class="mb-8">
-            <h2 class="text-heading mb-4 text-glitch">Profile</h2>
-            <div class="card">
-                <dl class="grid grid-cols-[120px_1fr] gap-2">
-                    <dt class="text-xs uppercase text-text-muted">ID</dt>
-                    <dd class="font-mono text-sm break-all">@_userDetail.Id</dd>
-                    <dt class="text-xs uppercase text-text-muted">Email</dt>
-                    <dd>@_userDetail.Email</dd>
-                    <dt class="text-xs uppercase text-text-muted">Username</dt>
-                    <dd>@_userDetail.Username</dd>
-                    <dt class="text-xs uppercase text-text-muted">Status</dt>
-                    <dd class="flex items-center gap-2">
-                        <Badge Variant="@(_userDetail.IsActive ? BadgeVariant.Success : BadgeVariant.Danger)">
-                            @(_userDetail.IsActive ? "Active" : "Inactive")
-                        </Badge>
-                        @if (_userDetail.IsActive)
-                        {
-                            <Button Variant="ButtonVariant.Danger" Size="ButtonSize.Small" OnClick="DeactivateUser">Deactivate</Button>
-                        }
-                        else
-                        {
-                            <Button Variant="ButtonVariant.Success" Size="ButtonSize.Small" OnClick="ActivateUser">Activate</Button>
-                        }
-                    </dd>
-                    <dt class="text-xs uppercase text-text-muted">Created</dt>
-                    <dd>@_userDetail.CreatedAt.ToString("F")</dd>
-                    <dt class="text-xs uppercase text-text-muted">Updated</dt>
-                    <dd>@_userDetail.UpdatedAt.ToString("F")</dd>
-                </dl>
-            </div>
-        </section>
-
-        <section class="mb-8">
-            <h2 class="text-heading mb-4 text-glitch">Permissions</h2>
-            <div class="card">
-                @if (_userDetail.Permissions is not null && _userDetail.Permissions.Count > 0)
-                {
-                    <div class="flex flex-col gap-2 mb-4">
-                        @foreach (var perm in _userDetail.Permissions.Where(p => p.Value))
-                        {
-                            <div class="flex items-center justify-between p-2 rounded-sm bg-bg-secondary">
-                                <span class="font-mono text-sm text-neon-pink">@perm.Key</span>
-                                <Button Variant="ButtonVariant.Danger" Size="ButtonSize.Small" OnClick="() => RemovePermission(perm.Key)">Remove</Button>
+        <MudText Typo="Typo.h6" Class="mb-4">Profile</MudText>
+        <MudPaper Class="pa-4 mb-6" Elevation="2">
+            <MudSimpleTable Dense="true" Hover="false">
+                <tbody>
+                    <tr>
+                        <td style="width: 150px;"><MudText Typo="Typo.caption">ID</MudText></td>
+                        <td><MudText Style="font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; word-break: break-all;">@_userDetail.Id</MudText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Email</MudText></td>
+                        <td>@_userDetail.Email</td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Username</MudText></td>
+                        <td>@_userDetail.Username</td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Status</MudText></td>
+                        <td>
+                            <div class="d-flex align-center gap-2">
+                                <MudChip T="string" Size="Size.Small" Color="@(_userDetail.IsActive ? Color.Success : Color.Error)">
+                                    @(_userDetail.IsActive ? "Active" : "Inactive")
+                                </MudChip>
+                                @if (_userDetail.IsActive)
+                                {
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="DeactivateUser">Deactivate</MudButton>
+                                }
+                                else
+                                {
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Success" Size="Size.Small" OnClick="ActivateUser">Activate</MudButton>
+                                }
                             </div>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <p class="text-text-muted text-center py-4 italic">No permissions assigned</p>
-                }
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Created</MudText></td>
+                        <td>@_userDetail.CreatedAt.ToString("F")</td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Updated</MudText></td>
+                        <td>@_userDetail.UpdatedAt.ToString("F")</td>
+                    </tr>
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
 
-                <div class="flex gap-2 pt-4 border-t border-border">
-                    <Input @bind-Value="_newPermission" Placeholder="e.g. admin.users.write" Class="flex-1" />
-                    <Button Variant="ButtonVariant.Neon" OnClick="AddPermission" Disabled="@string.IsNullOrWhiteSpace(_newPermission)">
-                        Grant Permission
-                    </Button>
-                </div>
-            </div>
-        </section>
-
-        <section class="mb-8">
-            <h2 class="text-heading mb-4 text-glitch">Linked Accounts (@_userDetail.LinkedAccounts.Count)</h2>
-            @if (_userDetail.LinkedAccounts.Count > 0)
+        <MudText Typo="Typo.h6" Class="mb-4">Permissions</MudText>
+        <MudPaper Class="pa-4 mb-6" Elevation="2">
+            @if (_userDetail.Permissions is not null && _userDetail.Permissions.Any(p => p.Value))
             {
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    @foreach (var account in _userDetail.LinkedAccounts)
+                <div class="d-flex flex-wrap gap-2 mb-4">
+                    @foreach (var perm in _userDetail.Permissions.Where(p => p.Value))
                     {
-                        <div class="card">
-                            <div class="mb-3">
-                                <Badge Variant="BadgeVariant.Info" Class="uppercase">@account.Provider</Badge>
-                            </div>
-                            <dl class="text-sm">
-                                <dt class="text-text-muted text-xs mt-2">Provider ID</dt>
-                                <dd class="font-mono">@account.ProviderUserId</dd>
-                                @if (account.Email is not null)
-                                {
-                                    <dt class="text-text-muted text-xs mt-2">Email</dt>
-                                    <dd>@account.Email</dd>
-                                }
-                                @if (account.Username is not null)
-                                {
-                                    <dt class="text-text-muted text-xs mt-2">Username</dt>
-                                    <dd>@account.Username</dd>
-                                }
-                            </dl>
-                        </div>
+                        <MudChip T="string" Color="Color.Primary" OnClose="() => RemovePermission(perm.Key)">
+                            @perm.Key
+                        </MudChip>
                     }
                 </div>
             }
             else
             {
-                <p class="text-text-muted text-center py-4 italic">No linked accounts</p>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">No permissions assigned</MudText>
             }
-        </section>
 
-        <section class="mb-8">
-            <h2 class="text-heading mb-4 text-glitch">Sessions (@_sessions.Count)</h2>
-            @if (_sessions.Count > 0)
-            {
-                <div class="overflow-x-auto">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th class="data-th">ID</th>
-                                <th class="data-th">IP Address</th>
-                                <th class="data-th">User Agent</th>
-                                <th class="data-th">Expires</th>
-                                <th class="data-th">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var session in _sessions)
-                            {
-                                <tr class="data-row">
-                                    <td class="data-td font-mono text-sm">@session.Id[..8]...</td>
-                                    <td class="data-td">@(session.IpAddress ?? "Unknown")</td>
-                                    <td class="data-td truncate max-w-xs">@(session.UserAgent ?? "Unknown")</td>
-                                    <td class="data-td">@session.ExpiresAt.ToString("g")</td>
-                                    <td class="data-td">
-                                        <Button Variant="ButtonVariant.Danger" Size="ButtonSize.Small" OnClick="() => RevokeSession(session.Id)">Revoke</Button>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-            else
-            {
-                <p class="text-text-muted text-center py-4 italic">No active sessions</p>
-            }
-        </section>
+            <MudDivider Class="my-4" />
+            <div class="d-flex gap-2">
+                <MudTextField @bind-Value="_newPermission" Label="Permission" Placeholder="e.g. admin.users.write" Variant="Variant.Outlined" Class="flex-grow-1" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddPermission" Disabled="@string.IsNullOrWhiteSpace(_newPermission)">
+                    Grant
+                </MudButton>
+            </div>
+        </MudPaper>
+
+        <MudText Typo="Typo.h6" Class="mb-4">Linked Accounts (@_userDetail.LinkedAccounts.Count)</MudText>
+        @if (_userDetail.LinkedAccounts.Count > 0)
+        {
+            <MudGrid Class="mb-6">
+                @foreach (var account in _userDetail.LinkedAccounts)
+                {
+                    <MudItem xs="12" md="6">
+                        <MudPaper Class="pa-4" Elevation="1">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="mb-3">@account.Provider.ToUpperInvariant()</MudChip>
+                            <MudSimpleTable Dense="true" Hover="false">
+                                <tbody>
+                                    <tr>
+                                        <td><MudText Typo="Typo.caption">Provider ID</MudText></td>
+                                        <td><MudText Style="font-family: 'JetBrains Mono', monospace;">@account.ProviderUserId</MudText></td>
+                                    </tr>
+                                    @if (account.Email is not null)
+                                    {
+                                        <tr>
+                                            <td><MudText Typo="Typo.caption">Email</MudText></td>
+                                            <td>@account.Email</td>
+                                        </tr>
+                                    }
+                                    @if (account.Username is not null)
+                                    {
+                                        <tr>
+                                            <td><MudText Typo="Typo.caption">Username</MudText></td>
+                                            <td>@account.Username</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </MudSimpleTable>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">No linked accounts</MudText>
+        }
+
+        <MudText Typo="Typo.h6" Class="mb-4">Sessions (@_sessions.Count)</MudText>
+        @if (_sessions.Count > 0)
+        {
+            <MudTable Items="@_sessions" Hover="true" Striped="true" Dense="true" T="SessionInfo">
+                <HeaderContent>
+                    <MudTh>ID</MudTh>
+                    <MudTh>IP Address</MudTh>
+                    <MudTh>User Agent</MudTh>
+                    <MudTh>Expires</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd Style="font-family: 'JetBrains Mono', monospace; font-size: 0.875rem;">@context.Id[..8]...</MudTd>
+                    <MudTd>@(context.IpAddress ?? "Unknown")</MudTd>
+                    <MudTd Style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(context.UserAgent ?? "Unknown")</MudTd>
+                    <MudTd>@context.ExpiresAt.ToString("g")</MudTd>
+                    <MudTd>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="() => RevokeSession(context.Id)">Revoke</MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">No active sessions</MudText>
+        }
     }
     else
     {
-        <div class="flex-center py-12">
-            <div class="spinner-lg"></div>
-        </div>
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
     }
 }
 
@@ -213,6 +209,7 @@ else
     private int _totalPages = 1;
     private const int PageSize = 20;
     private string _newPermission = "";
+    private List<BreadcrumbItem> _breadcrumbs = [];
 
     protected override void OnInitialized()
     {
@@ -222,6 +219,12 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
+        _breadcrumbs =
+        [
+            new("Users", href: "users"),
+            new(_userDetail?.Username ?? UserId ?? "", href: null, disabled: true)
+        ];
+
         if (UserId is null)
         {
             await LoadUsers();

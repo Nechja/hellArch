@@ -1,13 +1,7 @@
-# Multi-stage build for Gateway with embedded Login WASM and Vue App
+# Multi-stage build for Gateway with embedded Vue App
 # This Dockerfile should be run from the repo root context
 
-# Stage 1: Build Login WASM client
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS login-build
-WORKDIR /src
-COPY src/clients/Login/ ./Login/
-RUN dotnet publish Login/Login.csproj -c Release -o /login-out
-
-# Stage 2: Build Vue App client
+# Stage 1: Build Vue App client
 FROM node:22-slim AS app-build
 WORKDIR /src
 
@@ -22,12 +16,9 @@ RUN npm install
 COPY src/clients/App/ ./
 RUN npm run build
 
-# Stage 3: Build Gateway with static files
+# Stage 2: Build Gateway with static files
 FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS gateway-build
 WORKDIR /src
-
-# Copy Login WASM output to Gateway wwwroot
-COPY --from=login-build /login-out/wwwroot /src/Gateway/wwwroot/login
 
 # Copy Vue App output to Gateway wwwroot
 COPY --from=app-build /src/App/dist /src/Gateway/wwwroot/app
@@ -40,7 +31,7 @@ RUN dotnet restore Gateway/Gateway.csproj
 COPY src/gateway/Gateway/ ./Gateway/
 RUN dotnet publish Gateway/Gateway.csproj -c Release -o /gateway-out
 
-# Stage 4: Runtime
+# Stage 3: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
 WORKDIR /app
 

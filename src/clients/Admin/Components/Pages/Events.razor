@@ -10,249 +10,118 @@
 
 <PageTitle>Events - HellArch Admin</PageTitle>
 
-<h1 class="text-display text-gradient mb-6">Events</h1>
+<MudText Typo="Typo.h4" Class="mb-6" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+    Events
+</MudText>
 
-<p class="text-text-secondary mb-6">
+<MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
     View CloudEvents published through RabbitMQ and queue statistics.
-</p>
+</MudText>
 
-<section class="mb-8">
-    <div class="flex items-center justify-between mb-4">
-        <h2 class="text-heading text-glitch">Live Events</h2>
-        <div class="flex items-center gap-2">
-            <span class="@GetConnectionStatusClass()">●</span>
-            <span class="text-sm text-text-secondary">@_connectionStatus</span>
-        </div>
-    </div>
-    <div class="card-featured-green bg-bg-secondary">
-        @if (_liveEvents.Count == 0)
-        {
-            <p class="empty-state">Waiting for events... Events will appear here in real-time.</p>
-        }
-        else
-        {
-            <div class="flex flex-col gap-3 max-h-96 overflow-y-auto">
-                @foreach (var evt in _liveEvents)
-                {
-                    <div class="p-3 rounded-sm bg-bg-primary border border-border animate-pulse-once">
-                        <div class="flex items-center justify-between mb-1">
-                            <Badge Variant="BadgeVariant.Success" Size="BadgeSize.Small">@GetEventTypeName(evt.Type)</Badge>
-                            <span class="text-xs text-text-muted font-mono">@evt.Time.ToString("HH:mm:ss.fff")</span>
-                        </div>
-                        <div class="flex gap-4 text-xs text-text-muted">
-                            <span>Source: @evt.Source</span>
-                            @if (evt.GetUserId() is { } userId)
-                            {
-                                <span>User: @userId</span>
-                            }
-                        </div>
-                        @if (evt.Data.HasValue)
-                        {
-                            <details class="mt-2">
-                                <summary class="cursor-pointer text-xs text-neon-pink hover:underline">Data</summary>
-                                <pre class="mt-1 p-2 rounded-sm bg-bg-tertiary text-xs font-mono overflow-x-auto">@FormatJson(evt.Data.Value)</pre>
-                            </details>
-                        }
-                    </div>
-                }
-            </div>
-        }
-    </div>
-</section>
+@*
+TODO: Rebuild this page with MudBlazor
+Original functionality:
+- Live Events section: Real-time CloudEvents via SignalR (RealtimeHub.OnEventReceived)
+  - Shows event type badge, timestamp, source, user ID
+  - Expandable data section with formatted JSON
+  - Max 25 events in list, newest first
+  - Connection status indicator (Connected/Reconnecting/Disconnected)
 
-<section class="mb-8">
-    <h2 class="section-header">RabbitMQ Overview</h2>
-    @if (_overview == null)
-    {
-        <div class="flex-center py-8">
-            <div class="spinner"></div>
-        </div>
-    }
-    else
-    {
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <MetricCard Label="Messages" Value="@((_overview.QueueTotals?.Messages ?? 0).ToString())" />
-            <MetricCard Label="Queues" Value="@((_overview.ObjectTotals?.Queues ?? 0).ToString())" />
-            <MetricCard Label="Consumers" Value="@((_overview.ObjectTotals?.Consumers ?? 0).ToString())" />
-            <MetricCard Label="Connections" Value="@((_overview.ObjectTotals?.Connections ?? 0).ToString())" />
-        </div>
-    }
-</section>
+- RabbitMQ Overview section: MetricCards showing:
+  - Total Messages (_overview.QueueTotals.Messages)
+  - Queue Count (_overview.ObjectTotals.Queues)
+  - Consumer Count (_overview.ObjectTotals.Consumers)
+  - Connection Count (_overview.ObjectTotals.Connections)
 
-<section class="mb-8">
-    <h2 class="section-header">Queues</h2>
-    @if (_queues.Count == 0)
-    {
-        <p class="empty-state">No queues found</p>
-    }
-    else
-    {
-        <div class="overflow-x-auto">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th class="data-th">Queue</th>
-                        <th class="data-th">Messages</th>
-                        <th class="data-th">Ready</th>
-                        <th class="data-th">Unacked</th>
-                        <th class="data-th">Consumers</th>
-                        <th class="data-th">State</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var queue in _queues)
-                    {
-                        <tr class="data-row">
-                            <td class="data-td font-mono text-sm">@queue.Name</td>
-                            <td class="data-td">@queue.Messages</td>
-                            <td class="data-td">@queue.MessagesReady</td>
-                            <td class="data-td">@queue.MessagesUnacknowledged</td>
-                            <td class="data-td">@queue.Consumers</td>
-                            <td class="data-td"><span class="@GetStateClass(queue.State)">@queue.State</span></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
-</section>
+- Queues table: Name, Messages, Ready, Unacked, Consumers, State
+  - State shown as badge (running=green, idle=yellow)
 
-<section class="mb-8">
-    <h2 class="section-header">Exchanges</h2>
-    @if (_exchanges.Count == 0)
-    {
-        <p class="empty-state">No custom exchanges found</p>
-    }
-    else
-    {
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            @foreach (var exchange in _exchanges)
-            {
-                <div class="card">
-                    <h3 class="font-bold text-neon-pink mb-2">@exchange.Name</h3>
-                    <p class="text-sm text-text-secondary">Type: @exchange.Type</p>
-                    <p class="text-xs text-text-muted mt-1">@(exchange.Durable ? "Durable" : "Transient")</p>
-                </div>
-            }
-        </div>
-    }
-</section>
+- Exchanges grid: Name, Type, Durable/Transient
 
-<section class="mb-8">
-    <div class="flex items-center justify-between mb-4">
-        <h2 class="text-heading text-glitch">Recent Events</h2>
-        <Button Variant="ButtonVariant.Secondary" OnClick="LoadRecentEvents">Refresh</Button>
-    </div>
-    @if (_loadingEvents)
-    {
-        <div class="flex-center py-8">
-            <div class="spinner"></div>
-        </div>
-    }
-    else if (_recentEvents.Count == 0)
-    {
-        <p class="empty-state">No events in queue (events are consumed by workers)</p>
-    }
-    else
-    {
-        <div class="flex flex-col gap-4">
-            @foreach (var evt in _recentEvents)
-            {
-                <div class="card">
-                    <div class="flex items-center justify-between mb-2">
-                        <Badge Variant="BadgeVariant.Info">@evt.GetEventTypeName()</Badge>
-                        <span class="text-xs text-text-muted font-mono">@evt.Time</span>
-                    </div>
-                    <div class="flex gap-4 text-xs text-text-muted mb-2">
-                        <span>ID: @evt.Id</span>
-                        <span>Source: @evt.Source</span>
-                    </div>
-                    <details class="mt-2">
-                        <summary class="cursor-pointer text-sm text-neon-pink hover:underline">View Data</summary>
-                        <pre class="mt-2 code-block">@evt.GetFormattedData()</pre>
-                    </details>
-                </div>
-            }
-        </div>
-    }
-</section>
+- Recent Events section: CloudEventMessage list from RabbitMq.GetRecentEvents(20)
+  - Event type badge, timestamp, ID, source
+  - Expandable formatted data section
+  - Refresh button
 
-<section class="card-featured">
-    <h2 class="text-subheading mb-3">External Tools</h2>
-    <div class="flex gap-4">
-        <a href="http://localhost:15672" target="_blank" rel="noopener" class="link">
-            RabbitMQ Management Console
-        </a>
-        <a href="http://localhost:16686" target="_blank" rel="noopener" class="link">
-            Jaeger Tracing
-        </a>
-    </div>
-</section>
+- External links: RabbitMQ Management Console, Jaeger Tracing
+*@
+
+<MudAlert Severity="Severity.Info" Class="mb-6">
+    This page is being rebuilt with MudBlazor. See source comments for original functionality.
+</MudAlert>
+
+<MudGrid Class="mb-6">
+    <MudItem xs="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h4" Color="Color.Primary">@((_overview?.QueueTotals?.Messages ?? 0))</MudText>
+            <MudText Typo="Typo.caption">Messages</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h4" Color="Color.Primary">@((_overview?.ObjectTotals?.Queues ?? 0))</MudText>
+            <MudText Typo="Typo.caption">Queues</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h4" Color="Color.Primary">@((_overview?.ObjectTotals?.Consumers ?? 0))</MudText>
+            <MudText Typo="Typo.caption">Consumers</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h4" Color="Color.Primary">@((_overview?.ObjectTotals?.Connections ?? 0))</MudText>
+            <MudText Typo="Typo.caption">Connections</MudText>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudText Typo="Typo.h6" Class="mb-4">Queues</MudText>
+<MudTable Items="@_queues" Hover="true" Striped="true" Dense="true" T="QueueInfo" Class="mb-6">
+    <HeaderContent>
+        <MudTh>Queue</MudTh>
+        <MudTh>Messages</MudTh>
+        <MudTh>Ready</MudTh>
+        <MudTh>Unacked</MudTh>
+        <MudTh>Consumers</MudTh>
+        <MudTh>State</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd Style="font-family: 'JetBrains Mono', monospace;">@context.Name</MudTd>
+        <MudTd>@context.Messages</MudTd>
+        <MudTd>@context.MessagesReady</MudTd>
+        <MudTd>@context.MessagesUnacknowledged</MudTd>
+        <MudTd>@context.Consumers</MudTd>
+        <MudTd>
+            <MudChip T="string" Size="Size.Small" Color="@(context.State == "running" ? Color.Success : Color.Warning)">
+                @context.State
+            </MudChip>
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+<MudText Typo="Typo.h6" Class="mb-4">External Tools</MudText>
+<MudButtonGroup Variant="Variant.Outlined">
+    <MudButton Href="http://localhost:15672" Target="_blank">RabbitMQ Management</MudButton>
+    <MudButton Href="http://localhost:16686" Target="_blank">Jaeger Tracing</MudButton>
+</MudButtonGroup>
 
 @code {
     private RabbitMqOverview? _overview;
     private IReadOnlyList<QueueInfo> _queues = [];
-    private IReadOnlyList<ExchangeInfo> _exchanges = [];
-    private IReadOnlyList<CloudEventMessage> _recentEvents = [];
-    private readonly List<CloudEventDto> _liveEvents = [];
-    private bool _loadingEvents;
-    private string _connectionStatus = "Connecting...";
-    private const int MaxLiveEvents = 25;
 
     protected override async Task OnInitializedAsync()
     {
-        // Subscribe to realtime events
-        RealtimeHub.OnEventReceived += HandleEventReceived;
-        RealtimeHub.OnConnectionStateChanged += HandleConnectionStateChanged;
         LiveUpdate.OnHealthUpdate += HandleHealthUpdate;
-        _connectionStatus = RealtimeHub.ConnectionStateText;
-
-        // Connect to realtime hub with session token (lazy connect on first admin visit)
-        var sessionToken = HttpContextAccessor.HttpContext?.Items["SessionToken"] as string;
-        if (!string.IsNullOrEmpty(sessionToken))
-        {
-            await RealtimeHub.Connect(sessionToken);
-            _connectionStatus = RealtimeHub.ConnectionStateText;
-        }
-        else
-        {
-            Logger.LogWarning("No session token available for realtime hub connection");
-            _connectionStatus = "No Auth";
-        }
-
-        // Load initial data from RabbitMQ
         await LoadData();
     }
 
     private void HandleHealthUpdate(object? sender, EventArgs e)
     {
-        // Refresh RabbitMQ stats periodically
         InvokeAsync(async () =>
         {
-            _overview = await RabbitMq.GetOverview();
-            _queues = await RabbitMq.GetQueues();
-            StateHasChanged();
-        });
-    }
-
-    private void HandleEventReceived(object? sender, CloudEventReceivedEventArgs e)
-    {
-        InvokeAsync(() =>
-        {
-            _liveEvents.Insert(0, e.CloudEvent);
-            if (_liveEvents.Count > MaxLiveEvents)
-            {
-                _liveEvents.RemoveAt(_liveEvents.Count - 1);
-            }
-            StateHasChanged();
-        });
-    }
-
-    private void HandleConnectionStateChanged(object? sender, ConnectionStateChangedEventArgs e)
-    {
-        InvokeAsync(() =>
-        {
-            _connectionStatus = e.State;
+            await LoadData();
             StateHasChanged();
         });
     }
@@ -261,59 +130,10 @@
     {
         _overview = await RabbitMq.GetOverview();
         _queues = await RabbitMq.GetQueues();
-        _exchanges = await RabbitMq.GetExchanges();
-        await LoadRecentEvents();
-    }
-
-    private async Task LoadRecentEvents()
-    {
-        _loadingEvents = true;
-        StateHasChanged();
-
-        _recentEvents = await RabbitMq.GetRecentEvents(20);
-
-        _loadingEvents = false;
-        StateHasChanged();
-    }
-
-    private static string GetStateClass(string state) => state?.ToLower() switch
-    {
-        "running" => "badge-success",
-        "idle" => "badge-warning",
-        _ => "badge"
-    };
-
-    private string GetConnectionStatusClass() => _connectionStatus switch
-    {
-        "Connected" => "text-neon-green",
-        "Reconnecting" => "text-neon-yellow animate-pulse",
-        "Disconnected" or "Failed" => "text-neon-red",
-        _ => "text-text-muted animate-pulse"
-    };
-
-    private static string GetEventTypeName(string type)
-    {
-        // Extract short name from full type (e.g., "hellarch.user.created" -> "user.created")
-        var parts = type.Split('.');
-        return parts.Length > 1 ? string.Join(".", parts[1..]) : type;
-    }
-
-    private static string FormatJson(System.Text.Json.JsonElement element)
-    {
-        try
-        {
-            return System.Text.Json.JsonSerializer.Serialize(element, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-        }
-        catch
-        {
-            return element.ToString();
-        }
     }
 
     public void Dispose()
     {
-        RealtimeHub.OnEventReceived -= HandleEventReceived;
-        RealtimeHub.OnConnectionStateChanged -= HandleConnectionStateChanged;
         LiveUpdate.OnHealthUpdate -= HandleHealthUpdate;
     }
 }

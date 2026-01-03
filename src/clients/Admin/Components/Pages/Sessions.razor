@@ -6,22 +6,23 @@
 
 <PageTitle>Sessions - HellArch Admin</PageTitle>
 
-<h1 class="text-display text-gradient mb-6">Active Sessions</h1>
+<MudText Typo="Typo.h4" Class="mb-6" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+    Active Sessions
+</MudText>
 
-<p class="text-text-secondary mb-6">
+<MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
     View and manage all active user sessions. Sessions are created when users log in via OAuth.
-</p>
+</MudText>
 
-<section class="mb-8">
-    <MetricCard Label="Total Active" Value="@_stats.SessionCount.ToString()" Class="inline-block" />
-</section>
+<MudPaper Class="pa-4 mb-6" Elevation="2">
+    <MudText Typo="Typo.h4" Color="Color.Primary">@_stats.SessionCount</MudText>
+    <MudText Typo="Typo.caption">Total Active Sessions</MudText>
+</MudPaper>
 
-<section class="card border-l-2 border-neon-pink">
-    <p class="text-text-secondary">
-        To view or revoke sessions for a specific user, go to the
-        <Link Href="users">Users</Link> page and select a user.
-    </p>
-</section>
+<MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+    To view or revoke sessions for a specific user, go to the
+    <MudLink Href="users">Users</MudLink> page and select a user.
+</MudAlert>
 
 @code {
     private AdminStats _stats = new(0, 0, 0);

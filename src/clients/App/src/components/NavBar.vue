@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { computed, ref } from 'vue'
 import type { UserProfile } from '@hellarch/types'
 
 const props = defineProps<{
   user: UserProfile | null
 }>()
 
-const mobileMenuOpen = ref(false)
-const mobileMenuRef = ref<HTMLElement | null>(null)
-const hamburgerRef = ref<HTMLButtonElement | null>(null)
+const drawer = ref(false)
 
 const initials = computed(() => {
   const name = props.user?.display_name || props.user?.email
@@ -16,208 +14,128 @@ const initials = computed(() => {
   return name.slice(0, 2).toUpperCase()
 })
 
-function closeMobileMenu() {
-  mobileMenuOpen.value = false
-  nextTick(() => hamburgerRef.value?.focus())
-}
-
-function handleEscapeKey(event: KeyboardEvent) {
-  if (event.key === 'Escape' && mobileMenuOpen.value) {
-    closeMobileMenu()
-  }
-}
-
-function trapFocus(event: KeyboardEvent) {
-  if (!mobileMenuOpen.value || event.key !== 'Tab') return
-
-  const focusableElements = mobileMenuRef.value?.querySelectorAll<HTMLElement>(
-    'a, button, input, [tabindex]:not([tabindex="-1"])'
-  )
-  if (!focusableElements?.length) return
-
-  const firstElement = focusableElements[0]
-  const lastElement = focusableElements[focusableElements.length - 1]
-
-  if (event.shiftKey && document.activeElement === firstElement) {
-    event.preventDefault()
-    lastElement.focus()
-  } else if (!event.shiftKey && document.activeElement === lastElement) {
-    event.preventDefault()
-    firstElement.focus()
-  }
-}
-
-watch(mobileMenuOpen, (isOpen) => {
-  if (isOpen) {
-    document.body.style.overflow = 'hidden'
-    nextTick(() => {
-      const firstLink = mobileMenuRef.value?.querySelector<HTMLElement>('a, button')
-      firstLink?.focus()
-    })
-  } else {
-    document.body.style.overflow = ''
-  }
-})
-
-onMounted(() => {
-  document.addEventListener('keydown', handleEscapeKey)
-  document.addEventListener('keydown', trapFocus)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('keydown', handleEscapeKey)
-  document.removeEventListener('keydown', trapFocus)
-  document.body.style.overflow = ''
-})
+const navItems = [
+  { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard' },
+  { title: 'Settings', to: '/settings', icon: 'mdi-cog' },
+]
 </script>
 
 <template>
-  <nav class="bg-surface-raised border-b border-border">
-    <div class="max-w-5xl mx-auto px-4">
-      <div class="flex-between h-16">
-        <!-- Logo -->
-        <RouterLink to="/" class="text-xl font-bold text-gradient hover-glow">
-          HellArch
-        </RouterLink>
-
-        <!-- Desktop Navigation -->
-        <div class="hidden md:flex items-center gap-8">
-          <RouterLink
-            to="/"
-            class="topnav-link group"
-          >
-            Dashboard
-            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-neon-pink group-hover:w-full transition-all duration-normal" />
-          </RouterLink>
-          <RouterLink
-            to="/settings"
-            class="topnav-link group"
-          >
-            Settings
-            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-neon-pink group-hover:w-full transition-all duration-normal" />
-          </RouterLink>
-
-          <!-- User Menu -->
-          <div v-if="user" class="flex items-center gap-3 ml-2">
-            <img
-              v-if="user.avatar_url"
-              :src="user.avatar_url"
-              :alt="user.display_name || user.email"
-              class="w-8 h-8 rounded-full border-2 border-neon-pink/30 hover:border-neon-pink transition-colors"
-            />
-            <div v-else class="w-8 h-8 rounded-full bg-neon-pink flex-center text-sm font-bold text-bg-primary hover:shadow-glow-pink transition-shadow">
-              {{ initials }}
-            </div>
-            <a
-              href="/api/auth/logout"
-              class="text-sm text-text-muted hover:text-neon-coral transition-colors"
-            >
-              Logout
-            </a>
-          </div>
-          <a v-else href="/login" class="btn-neon text-sm">
-            Sign in
-          </a>
-        </div>
-
-        <!-- Mobile Hamburger -->
-        <button
-          ref="hamburgerRef"
-          class="hamburger md:hidden"
-          @click="mobileMenuOpen = !mobileMenuOpen"
-          :aria-expanded="mobileMenuOpen"
-          aria-controls="mobile-menu"
-          aria-label="Toggle navigation menu"
-        >
-          <span class="hamburger-line" :class="{ 'rotate-45 translate-y-2': mobileMenuOpen }" />
-          <span class="hamburger-line" :class="{ 'opacity-0': mobileMenuOpen }" />
-          <span class="hamburger-line" :class="{ '-rotate-45 -translate-y-2': mobileMenuOpen }" />
-        </button>
-      </div>
-
-    </div>
-  </nav>
-
-  <!-- Mobile Menu Overlay -->
-  <Teleport to="body">
-    <div
-      v-if="mobileMenuOpen"
-      class="mobile-nav-overlay md:hidden"
-      @click="closeMobileMenu"
-      aria-hidden="true"
+  <v-app-bar color="surface-variant" elevation="1">
+    <v-app-bar-nav-icon
+      class="d-md-none"
+      @click="drawer = !drawer"
     />
-    <aside
-      id="mobile-menu"
-      ref="mobileMenuRef"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Navigation menu"
-      class="mobile-nav-panel md:hidden"
-      :class="mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'"
-    >
-      <div class="p-4 border-b border-border mb-4 flex-between">
-        <div>
-          <h2 class="text-xl font-bold text-gradient">HellArch</h2>
-          <span class="text-xs text-text-muted uppercase tracking-wider">Menu</span>
-        </div>
-        <button
-          class="text-text-secondary hover:text-neon-pink p-2 transition-colors"
-          @click="closeMobileMenu"
-          aria-label="Close navigation menu"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
 
-      <nav class="flex flex-col gap-1 px-2" aria-label="Main navigation">
-        <RouterLink
-          to="/"
-          class="nav-link"
-          active-class="nav-link-active"
-          @click="closeMobileMenu"
-        >
-          <span class="text-neon-pink" aria-hidden="true">&#9632;</span>
-          <span>Dashboard</span>
-        </RouterLink>
-        <RouterLink
-          to="/settings"
-          class="nav-link"
-          active-class="nav-link-active"
-          @click="closeMobileMenu"
-        >
-          <span class="text-neon-rose" aria-hidden="true">&#9679;</span>
-          <span>Settings</span>
-        </RouterLink>
+    <v-app-bar-title>
+      <RouterLink to="/" class="text-decoration-none">
+        <span class="text-h6 font-weight-bold text-primary">HellArch</span>
+      </RouterLink>
+    </v-app-bar-title>
 
-        <div class="h-px bg-border my-3" />
+    <template #append>
+      <!-- Desktop Navigation -->
+      <div class="d-none d-md-flex align-center ga-2">
+        <v-btn
+          v-for="item in navItems"
+          :key="item.to"
+          :to="item.to"
+          variant="text"
+          class="text-none"
+        >
+          {{ item.title }}
+        </v-btn>
 
-        <div v-if="user" class="px-3 py-2">
-          <div class="flex items-center gap-3 mb-3">
-            <img
-              v-if="user.avatar_url"
-              :src="user.avatar_url"
-              :alt="user.display_name || user.email"
-              class="w-8 h-8 rounded-full border border-neon-pink/30"
-            />
-            <div v-else class="w-8 h-8 rounded-full bg-neon-pink flex-center text-sm font-bold text-bg-primary">
-              {{ initials }}
-            </div>
-            <span class="text-text-secondary text-sm">{{ user.display_name || user.email }}</span>
-          </div>
-          <a
-            href="/api/auth/logout"
-            class="nav-link text-neon-coral hover:bg-neon-coral/10"
-          >
-            <span>&#10140;</span>
-            <span>Logout</span>
-          </a>
-        </div>
-        <a v-else href="/login" class="btn-neon text-sm mx-2">
+        <template v-if="user">
+          <v-menu offset-y>
+            <template #activator="{ props: menuProps }">
+              <v-btn v-bind="menuProps" icon variant="text">
+                <v-avatar v-if="user.avatar_url" size="32">
+                  <v-img :src="user.avatar_url" :alt="user.display_name || user.email" />
+                </v-avatar>
+                <v-avatar v-else size="32" color="primary">
+                  {{ initials }}
+                </v-avatar>
+              </v-btn>
+            </template>
+            <v-list density="compact">
+              <v-list-item>
+                <v-list-item-title class="text-body-2 text-medium-emphasis">
+                  {{ user.display_name || user.email }}
+                </v-list-item-title>
+              </v-list-item>
+              <v-divider />
+              <v-list-item href="/api/auth/logout">
+                <template #prepend>
+                  <v-icon>mdi-logout</v-icon>
+                </template>
+                <v-list-item-title>Logout</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </template>
+        <v-btn v-else to="/login" color="primary" variant="outlined" class="text-none">
           Sign in
-        </a>
-      </nav>
-    </aside>
-  </Teleport>
+        </v-btn>
+      </div>
+    </template>
+  </v-app-bar>
+
+  <!-- Mobile Navigation Drawer -->
+  <v-navigation-drawer v-model="drawer" temporary>
+    <v-list-item class="pa-4">
+      <v-list-item-title class="text-h6 font-weight-bold text-primary">
+        HellArch
+      </v-list-item-title>
+      <v-list-item-subtitle class="text-caption text-uppercase">
+        Menu
+      </v-list-item-subtitle>
+    </v-list-item>
+
+    <v-divider />
+
+    <v-list nav>
+      <v-list-item
+        v-for="item in navItems"
+        :key="item.to"
+        :to="item.to"
+        :prepend-icon="item.icon"
+        :title="item.title"
+        @click="drawer = false"
+      />
+    </v-list>
+
+    <v-divider />
+
+    <v-list v-if="user" nav>
+      <v-list-item class="px-4 py-2">
+        <template #prepend>
+          <v-avatar v-if="user.avatar_url" size="32" class="mr-3">
+            <v-img :src="user.avatar_url" :alt="user.display_name || user.email" />
+          </v-avatar>
+          <v-avatar v-else size="32" color="primary" class="mr-3">
+            {{ initials }}
+          </v-avatar>
+        </template>
+        <v-list-item-title class="text-body-2">
+          {{ user.display_name || user.email }}
+        </v-list-item-title>
+      </v-list-item>
+      <v-list-item
+        href="/api/auth/logout"
+        prepend-icon="mdi-logout"
+        title="Logout"
+        base-color="error"
+      />
+    </v-list>
+    <v-list v-else nav>
+      <v-list-item
+        to="/login"
+        prepend-icon="mdi-login"
+        title="Sign in"
+        base-color="primary"
+        @click="drawer = false"
+      />
+    </v-list>
+  </v-navigation-drawer>
 </template>

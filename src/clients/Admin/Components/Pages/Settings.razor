@@ -1,90 +1,86 @@
 @page "/settings"
+@inject ISnackbar Snackbar
 
 <PageTitle>Settings - HellArch Admin</PageTitle>
 
-<h1 class="text-display text-gradient mb-8">System Configuration</h1>
+<MudText Typo="Typo.h4" Class="mb-6" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+    System Configuration
+</MudText>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Session Configuration -->
-    <div class="card">
-        <h2 class="text-heading mb-4">Sessions</h2>
-        <div class="space-y-4">
-            <div>
-                <label class="text-sm text-text-muted mb-1 block">Session Timeout (minutes)</label>
-                <input type="number" class="input w-full" @bind="_sessionTimeout" min="5" max="1440" />
-            </div>
-            <div>
-                <label class="text-sm text-text-muted mb-1 block">Max Concurrent Sessions</label>
-                <input type="number" class="input w-full" @bind="_maxConcurrentSessions" min="1" max="10" />
-            </div>
-            <label class="flex items-center justify-between p-3 rounded-sm bg-surface-raised">
-                <span class="text-sm">Revoke on Password Change</span>
-                <Toggle @bind-Value="_revokeOnPasswordChange" />
-            </label>
-        </div>
-    </div>
+@*
+TODO: Rebuild this page with MudBlazor
+Original functionality:
+- 4 configuration sections in 2x2 grid:
 
-    <!-- Webhook Configuration -->
-    <div class="card">
-        <h2 class="text-heading mb-4">Webhooks</h2>
-        <div class="space-y-4">
-            <div>
-                <label class="text-sm text-text-muted mb-1 block">Max Retry Attempts</label>
-                <input type="number" class="input w-full" @bind="_webhookMaxRetries" min="0" max="10" />
-            </div>
-            <div>
-                <label class="text-sm text-text-muted mb-1 block">Retry Interval (seconds)</label>
-                <input type="number" class="input w-full" @bind="_webhookRetryInterval" min="5" max="3600" />
-            </div>
-            <div>
-                <label class="text-sm text-text-muted mb-1 block">Request Timeout (seconds)</label>
-                <input type="number" class="input w-full" @bind="_webhookTimeout" min="5" max="60" />
-            </div>
-        </div>
-    </div>
+1. Sessions:
+   - Session Timeout (minutes): number input, 5-1440
+   - Max Concurrent Sessions: number input, 1-10
+   - Revoke on Password Change: toggle
 
-    <!-- Rate Limiting -->
-    <div class="card">
-        <h2 class="text-heading mb-4">Rate Limiting</h2>
-        <div class="space-y-4">
-            <div>
-                <label class="text-sm text-text-muted mb-1 block">Requests per Minute</label>
-                <input type="number" class="input w-full" @bind="_rateLimit" min="10" max="1000" />
-            </div>
-            <div>
-                <label class="text-sm text-text-muted mb-1 block">Burst Limit</label>
-                <input type="number" class="input w-full" @bind="_burstLimit" min="5" max="100" />
-            </div>
-            <label class="flex items-center justify-between p-3 rounded-sm bg-surface-raised">
-                <span class="text-sm">Enable Rate Limiting</span>
-                <Toggle @bind-Value="_rateLimitEnabled" />
-            </label>
-        </div>
-    </div>
+2. Webhooks:
+   - Max Retry Attempts: number input, 0-10
+   - Retry Interval (seconds): number input, 5-3600
+   - Request Timeout (seconds): number input, 5-60
 
-    <!-- Event Retention -->
-    <div class="card">
-        <h2 class="text-heading mb-4">Events</h2>
-        <div class="space-y-4">
-            <div>
-                <label class="text-sm text-text-muted mb-1 block">Retention Period (days)</label>
-                <input type="number" class="input w-full" @bind="_eventRetentionDays" min="1" max="365" />
-            </div>
-            <div>
-                <label class="text-sm text-text-muted mb-1 block">Max Payload Size (KB)</label>
-                <input type="number" class="input w-full" @bind="_maxPayloadSize" min="1" max="1024" />
-            </div>
-            <label class="flex items-center justify-between p-3 rounded-sm bg-surface-raised">
-                <span class="text-sm">Archive on Delete</span>
-                <Toggle @bind-Value="_archiveOnDelete" />
-            </label>
-        </div>
-    </div>
-</div>
+3. Rate Limiting:
+   - Requests per Minute: number input, 10-1000
+   - Burst Limit: number input, 5-100
+   - Enable Rate Limiting: toggle
 
-<div class="mt-6 flex justify-end gap-3">
-    <button class="btn-ghost" @onclick="ResetToDefaults">Reset to Defaults</button>
-    <button class="btn-primary" @onclick="SaveSettings">Save Changes</button>
+4. Events:
+   - Retention Period (days): number input, 1-365
+   - Max Payload Size (KB): number input, 1-1024
+   - Archive on Delete: toggle
+
+- Footer buttons: Reset to Defaults, Save Changes
+- Note: SaveSettings() and ResetToDefaults() were stubbed (TODO: Persist to configuration store)
+*@
+
+<MudAlert Severity="Severity.Info" Class="mb-6">
+    This page is being rebuilt with MudBlazor. See source comments for original functionality.
+</MudAlert>
+
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-4">Sessions</MudText>
+            <MudNumericField @bind-Value="_sessionTimeout" Label="Session Timeout (minutes)" Min="5" Max="1440" Variant="Variant.Outlined" Class="mb-4" />
+            <MudNumericField @bind-Value="_maxConcurrentSessions" Label="Max Concurrent Sessions" Min="1" Max="10" Variant="Variant.Outlined" Class="mb-4" />
+            <MudSwitch @bind-Value="_revokeOnPasswordChange" Label="Revoke on Password Change" Color="Color.Primary" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-4">Webhooks</MudText>
+            <MudNumericField @bind-Value="_webhookMaxRetries" Label="Max Retry Attempts" Min="0" Max="10" Variant="Variant.Outlined" Class="mb-4" />
+            <MudNumericField @bind-Value="_webhookRetryInterval" Label="Retry Interval (seconds)" Min="5" Max="3600" Variant="Variant.Outlined" Class="mb-4" />
+            <MudNumericField @bind-Value="_webhookTimeout" Label="Request Timeout (seconds)" Min="5" Max="60" Variant="Variant.Outlined" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-4">Rate Limiting</MudText>
+            <MudNumericField @bind-Value="_rateLimit" Label="Requests per Minute" Min="10" Max="1000" Variant="Variant.Outlined" Class="mb-4" />
+            <MudNumericField @bind-Value="_burstLimit" Label="Burst Limit" Min="5" Max="100" Variant="Variant.Outlined" Class="mb-4" />
+            <MudSwitch @bind-Value="_rateLimitEnabled" Label="Enable Rate Limiting" Color="Color.Primary" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-4">Events</MudText>
+            <MudNumericField @bind-Value="_eventRetentionDays" Label="Retention Period (days)" Min="1" Max="365" Variant="Variant.Outlined" Class="mb-4" />
+            <MudNumericField @bind-Value="_maxPayloadSize" Label="Max Payload Size (KB)" Min="1" Max="1024" Variant="Variant.Outlined" Class="mb-4" />
+            <MudSwitch @bind-Value="_archiveOnDelete" Label="Archive on Delete" Color="Color.Primary" />
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<div class="d-flex justify-end gap-2 mt-6">
+    <MudButton Variant="Variant.Outlined" OnClick="ResetToDefaults">Reset to Defaults</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveSettings">Save Changes</MudButton>
 </div>
 
 @code {
@@ -107,6 +103,7 @@
     private void SaveSettings()
     {
         // TODO: Persist to configuration store
+        Snackbar.Add("Settings saved (not persisted - TODO)", Severity.Success);
     }
 
     private void ResetToDefaults()
@@ -114,17 +111,15 @@
         _sessionTimeout = 30;
         _maxConcurrentSessions = 3;
         _revokeOnPasswordChange = true;
-
         _webhookMaxRetries = 3;
         _webhookRetryInterval = 60;
         _webhookTimeout = 30;
-
         _rateLimit = 100;
         _burstLimit = 20;
         _rateLimitEnabled = true;
-
         _eventRetentionDays = 30;
         _maxPayloadSize = 256;
         _archiveOnDelete = false;
+        Snackbar.Add("Settings reset to defaults", Severity.Info);
     }
 }

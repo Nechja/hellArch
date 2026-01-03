@@ -1,12 +1,22 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import NavBar from './components/NavBar.vue'
 import type { UserProfile } from '@hellarch/types'
 
+const route = useRoute()
 const user = ref<UserProfile | null>(null)
 const loading = ref(true)
 
+const hideNav = computed(() => route.meta.hideNav === true)
+const isPublicRoute = computed(() => route.meta.public === true)
+
 onMounted(async () => {
+  if (isPublicRoute.value) {
+    loading.value = false
+    return
+  }
+
   try {
     const res = await fetch('/api/user/me')
     if (res.ok) {
@@ -21,14 +31,20 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-surface">
-    <NavBar :user="user" />
-    <main class="max-w-5xl mx-auto px-4 py-8">
-      <div v-if="loading" class="flex-center min-h-[50vh]" role="status" aria-live="polite">
-        <div class="spinner-lg" aria-hidden="true"></div>
-        <span class="sr-only">Loading application...</span>
-      </div>
+  <v-app>
+    <NavBar v-if="!hideNav" :user="user" />
+    <v-main>
+      <v-container v-if="!hideNav" class="py-8">
+        <v-progress-circular
+          v-if="loading"
+          indeterminate
+          color="primary"
+          size="64"
+          class="d-flex mx-auto mt-16"
+        />
+        <RouterView v-else :user="user" />
+      </v-container>
       <RouterView v-else :user="user" />
-    </main>
-  </div>
+    </v-main>
+  </v-app>
 </template>
