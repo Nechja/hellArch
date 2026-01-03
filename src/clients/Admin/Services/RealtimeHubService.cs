@@ -8,10 +8,10 @@ namespace Admin.Services;
 /// Registered as a singleton. Connection is established lazily when Connect is called
 /// with a valid session token.
 /// </summary>
-public sealed class RealtimeHubService : IAsyncDisposable
+public sealed class RealtimeHubService(
+    IHubConnectionFactory hubConnectionFactory,
+    ILogger<RealtimeHubService> logger) : IAsyncDisposable
 {
-    private readonly IHubConnectionFactory _hubConnectionFactory;
-    private readonly ILogger<RealtimeHubService> _logger;
     private readonly List<CloudEventDto> _recentEvents = [];
     private readonly Lock _eventsLock = new();
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
@@ -38,12 +38,6 @@ public sealed class RealtimeHubService : IAsyncDisposable
         }
     }
 
-    public RealtimeHubService(IHubConnectionFactory hubConnectionFactory, ILogger<RealtimeHubService> logger)
-    {
-        _hubConnectionFactory = hubConnectionFactory;
-        _logger = logger;
-    }
-
     /// <summary>
     /// Connects to the realtime hub with the provided session token.
     /// If already connected with the same token, this is a no-op.
@@ -53,7 +47,7 @@ public sealed class RealtimeHubService : IAsyncDisposable
     {
         if (string.IsNullOrEmpty(sessionToken))
         {
-            _logger.LogWarning("Cannot connect to realtime hub without a session token");
+            logger.LogWarning("Cannot connect to realtime hub without a session token");
             return;
         }
 
@@ -83,23 +77,23 @@ public sealed class RealtimeHubService : IAsyncDisposable
             if (_hubConnection.State == HubConnectionState.Disconnected)
             {
                 await _hubConnection.StartAsync(cancellationToken);
-                _logger.LogInformation("Connected to realtime hub");
+                logger.LogInformation("Connected to realtime hub");
                 OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Connected"));
             }
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP error connecting to realtime hub");
+            logger.LogError(ex, "HTTP error connecting to realtime hub");
             OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Failed"));
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Invalid operation while connecting to realtime hub");
+            logger.LogError(ex, "Invalid operation while connecting to realtime hub");
             OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Failed"));
         }
         catch (OperationCanceledException)
         {
-            _logger.LogInformation("Connection to realtime hub was cancelled");
+            logger.LogInformation("Connection to realtime hub was cancelled");
             OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Disconnected"));
         }
         finally
@@ -110,7 +104,7 @@ public sealed class RealtimeHubService : IAsyncDisposable
 
     private HubConnection BuildConnection(string sessionToken)
     {
-        var connection = _hubConnectionFactory.Create(sessionToken);
+        var connection = hubConnectionFactory.Create(sessionToken);
         ConfigureHandlers(connection);
         return connection;
     }
@@ -123,21 +117,21 @@ public sealed class RealtimeHubService : IAsyncDisposable
 
         connection.Reconnecting += error =>
         {
-            _logger.LogWarning(error, "SignalR connection lost, attempting to reconnect...");
+            logger.LogWarning(error, "SignalR connection lost, attempting to reconnect...");
             OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Reconnecting"));
             return Task.CompletedTask;
         };
 
         connection.Reconnected += connectionId =>
         {
-            _logger.LogInformation("SignalR reconnected with connection ID: {ConnectionId}", connectionId);
+            logger.LogInformation("SignalR reconnected with connection ID: {ConnectionId}", connectionId);
             OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Connected"));
             return Task.CompletedTask;
         };
 
         connection.Closed += error =>
         {
-            _logger.LogWarning(error, "SignalR connection closed");
+            logger.LogWarning(error, "SignalR connection closed");
             OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Disconnected"));
             return Task.CompletedTask;
         };
@@ -171,7 +165,7 @@ public sealed class RealtimeHubService : IAsyncDisposable
         await _hubConnection.DisposeAsync();
         _hubConnection = null;
         _currentSessionToken = null;
-        _logger.LogInformation("Disconnected from realtime hub");
+        logger.LogInformation("Disconnected from realtime hub");
         OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Disconnected"));
     }
 
@@ -182,12 +176,12 @@ public sealed class RealtimeHubService : IAsyncDisposable
         {
             if (_hubConnection?.State != HubConnectionState.Connected)
             {
-                _logger.LogWarning("Cannot subscribe - not connected to hub");
+                logger.LogWarning("Cannot subscribe - not connected to hub");
                 return;
             }
 
             await _hubConnection.InvokeAsync("SubscribeToEventType", eventType, cancellationToken);
-            _logger.LogDebug("Subscribed to event type: {EventType}", eventType);
+            logger.LogDebug("Subscribed to event type: {EventType}", eventType);
         }
         finally
         {
@@ -206,7 +200,7 @@ public sealed class RealtimeHubService : IAsyncDisposable
             }
 
             await _hubConnection.InvokeAsync("UnsubscribeFromEventType", eventType, cancellationToken);
-            _logger.LogDebug("Unsubscribed from event type: {EventType}", eventType);
+            logger.LogDebug("Unsubscribed from event type: {EventType}", eventType);
         }
         finally
         {
@@ -216,7 +210,7 @@ public sealed class RealtimeHubService : IAsyncDisposable
 
     private void HandleEvent(CloudEventDto cloudEvent)
     {
-        _logger.LogDebug("Received event: {Type} from {Source}", cloudEvent.Type, cloudEvent.Source);
+        logger.LogDebug("Received event: {Type} from {Source}", cloudEvent.Type, cloudEvent.Source);
 
         EventHandler<CloudEventReceivedEventArgs>? handler;
         using (_eventsLock.EnterScope())
@@ -234,12 +228,12 @@ public sealed class RealtimeHubService : IAsyncDisposable
 
     private void HandleSessionInvalidated(string reason)
     {
-        _logger.LogInformation("Session invalidated: {Reason}", reason);
+        logger.LogInformation("Session invalidated: {Reason}", reason);
     }
 
     private void HandleUserUpdated()
     {
-        _logger.LogInformation("User data updated notification received");
+        logger.LogInformation("User data updated notification received");
     }
 
     public async ValueTask DisposeAsync()
