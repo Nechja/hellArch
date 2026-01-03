@@ -50,30 +50,6 @@ type UserPreferences struct {
 }
 ```
 
-## Rust
-
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Theme {
-    System,
-    Light,
-    Dark,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct UserPreferences {
-    pub id: uuid::Uuid,
-    pub user_profile_id: uuid::Uuid,
-    pub theme: Theme,
-    pub locale: Option<String>,
-    pub timezone: Option<String>,
-    pub email_notifications: bool,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub updated_at: chrono::DateTime<chrono::Utc>,
-}
-```
-
 ## F#
 
 ```fsharp

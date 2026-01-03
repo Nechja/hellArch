@@ -1,0 +1,52 @@
+@namespace HellArch.Components.Dashboard
+
+<div class="relative inline-block @Class">
+    <button type="button" class="@GetTriggerClass()" @onclick="Toggle" @onclick:stopPropagation="true">
+        @if (TriggerTemplate is not null)
+        {
+            @TriggerTemplate
+        }
+        else
+        {
+            <span>@Label</span>
+            <span class="ml-2">▼</span>
+        }
+    </button>
+
+    @if (_isOpen)
+    {
+        <div class="absolute @GetPositionClass() z-50 min-w-[160px] py-1 mt-1 rounded-sm bg-bg-card border border-border shadow-lg enter-fade">
+            @ChildContent
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public RenderFragment? TriggerTemplate { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public DropdownPosition Position { get; set; } = DropdownPosition.BottomLeft;
+    [Parameter] public DropdownTriggerVariant TriggerVariant { get; set; } = DropdownTriggerVariant.Default;
+
+    private bool _isOpen;
+
+    private void Toggle() => _isOpen = !_isOpen;
+
+    public void Close() => _isOpen = false;
+
+    private string GetPositionClass() => Position switch
+    {
+        DropdownPosition.BottomRight => "right-0",
+        DropdownPosition.TopLeft => "bottom-full left-0 mb-1",
+        DropdownPosition.TopRight => "bottom-full right-0 mb-1",
+        _ => "left-0"
+    };
+
+    private string GetTriggerClass() => TriggerVariant switch
+    {
+        DropdownTriggerVariant.Ghost => "btn-ghost inline-flex items-center",
+        DropdownTriggerVariant.Neon => "btn-neon inline-flex items-center",
+        _ => "btn-secondary inline-flex items-center"
+    };
+}

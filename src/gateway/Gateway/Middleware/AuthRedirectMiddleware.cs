@@ -20,7 +20,7 @@ internal sealed partial class AuthRedirectMiddleware(
     private readonly string _defaultRedirect = configuration.GetValue("Auth:DefaultRedirect", "/admin")!;
     private readonly string _validateEndpoint = configuration.GetValue("Auth:ValidateEndpoint", "http://hellarch-auth:5001/auth/validate")!;
     private readonly string[] _protectedPaths = configuration.GetSection("Auth:ProtectedPaths").Get<string[]>() ?? ["/admin", "/app"];
-    private readonly string[] _bypassPaths = ["/login", "/api/auth", "/health", "/_framework", "/_content", "/css", "/js", "/lib", "/favicon"];
+    private readonly string[] _bypassPaths = ["/login", "/api/auth", "/health", "/hubs", "/_framework", "/_content", "/css", "/js", "/lib", "/favicon"];
     private readonly Dictionary<string, string> _permissionRoutes = configuration.GetSection("Auth:PermissionRoutes").Get<Dictionary<string, string>>() ?? [];
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Path {Path} requires authentication, redirecting to login")]

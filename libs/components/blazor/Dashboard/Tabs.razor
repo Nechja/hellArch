@@ -1,0 +1,29 @@
+@namespace HellArch.Components.Dashboard
+@typeparam TKey
+
+<div class="@(Pills ? "tabs-pills" : "tabs")">
+    @foreach (var tab in Items)
+    {
+        var isActive = EqualityComparer<TKey>.Default.Equals(tab.Key, ActiveKey);
+        <button type="button"
+                class="@(Pills ? (isActive ? "tab-pill-active" : "tab-pill") : (isActive ? "tab-active" : "tab"))"
+                @onclick="() => SetActive(tab.Key)">
+            @tab.Label
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<TabItem<TKey>> Items { get; set; } = [];
+    [Parameter] public TKey? ActiveKey { get; set; }
+    [Parameter] public EventCallback<TKey> ActiveKeyChanged { get; set; }
+    [Parameter] public bool Pills { get; set; }
+
+    private async Task SetActive(TKey key)
+    {
+        ActiveKey = key;
+        await ActiveKeyChanged.InvokeAsync(key);
+    }
+
+    public record TabItem<T>(T Key, string Label);
+}

@@ -10,8 +10,9 @@ hellArch/
 │   │   ├── auth/          # Go Auth Service
 │   │   ├── user/          # F# User Service
 │   │   └── health/        # Gleam Health Service
-│   ├── workers/
-│   │   └── events/        # Rust Events Worker
+│   ├── workers/           # Background workers
+│   │   ├── audit/         # Go Audit Worker
+│   │   └── webhooks/      # Go Webhooks Worker
 │   ├── schema/
 │   │   ├── Schema/        # EF Core contexts + migrations
 │   │   ├── Schema.Codegen/# Legacy reflection codegen
@@ -25,7 +26,6 @@ hellArch/
 │   ├── data_types/        # Entity types (persistence)
 │   │   ├── csharp/        # Source of truth
 │   │   ├── go/            # Generated
-│   │   ├── rust/          # Generated
 │   │   ├── fsharp/        # Generated
 │   │   ├── python/        # Generated
 │   │   ├── typescript/    # Generated
@@ -33,7 +33,6 @@ hellArch/
 │   ├── cloud_events/      # CloudEvent payloads
 │   │   ├── csharp/        # Source of truth
 │   │   ├── go/            # Generated
-│   │   ├── rust/          # Generated
 │   │   ├── fsharp/        # Generated
 │   │   ├── python/        # Generated
 │   │   └── Codegen/       # Roslyn codegen
@@ -59,9 +58,8 @@ hellArch/
 Managed via mise (`.mise.toml`):
 - .NET 10
 - Go 1.24
-- Gleam 1.14
+- Gleam
 - Node 22
-- Rust 1.85
 - Python 3.12
 
 Infrastructure:

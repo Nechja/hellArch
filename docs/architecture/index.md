@@ -21,10 +21,6 @@ graph TB
         HEALTH[Health Service<br/>Gleam :5004]
     end
 
-    subgraph Workers
-        EVENTS[Events Worker<br/>Rust]
-    end
-
     subgraph Infrastructure
         PG_AUTH[(PostgreSQL<br/>Auth DB :5434)]
         PG_USER[(PostgreSQL<br/>User DB :5433)]
@@ -44,7 +40,6 @@ graph TB
     AUTH -.->|gRPC| USER
     AUTH -->|CloudEvents| RABBIT
     RABBIT --> USER
-    RABBIT --> EVENTS
     HEALTH -->|HTTP| AUTH
     HEALTH -->|HTTP| USER
     HEALTH -->|TCP| REDIS
@@ -59,7 +54,6 @@ graph TB
 | Auth | Go | 5001 (HTTP), 50051 (gRPC) | OAuth flows, JWT tokens, sessions |
 | User | F# | 5002 | Profiles, preferences, linked accounts |
 | Health | Gleam | 5004 | Aggregates health status from all services |
-| Events Worker | Rust | - | Emails, analytics, audit logging |
 | Admin Console | C# Blazor | 5003 | User management, Redis browser, health dashboard |
 
 ## Technology Stack
@@ -70,7 +64,6 @@ graph LR
         GO[Go 1.24]
         GLEAM[Gleam 1.14]
         DOTNET[.NET 10]
-        RUST[Rust 1.85]
         PY[Python 3.12]
     end
 
@@ -105,7 +98,6 @@ graph TB
 
     subgraph Generated
         GO[Go structs]
-        RUST[Rust structs]
         FS[F# records]
         PY[Python models]
         TS[TypeScript interfaces]
@@ -119,7 +111,6 @@ graph TB
     end
 
     CS --> GO
-    CS --> RUST
     CS --> FS
     CS --> PY
     CS --> TS

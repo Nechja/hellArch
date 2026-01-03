@@ -1,0 +1,29 @@
+@namespace HellArch.Components.Dashboard
+
+<div class="@Class">
+    <div class="progress-bar">
+        <div class="@GetFillClass()" style="width: @(Math.Clamp(Value, 0, 100))%"></div>
+    </div>
+    @if (ShowLabel)
+    {
+        <div class="progress-label">@Value.ToString("0")%@(Label is not null ? $" - {Label}" : "")</div>
+    }
+</div>
+
+@code {
+    [Parameter] public double Value { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool ShowLabel { get; set; } = true;
+    [Parameter] public ProgressVariant Variant { get; set; } = ProgressVariant.Primary;
+    [Parameter] public string? Class { get; set; }
+
+    private string GetFillClass() => Variant switch
+    {
+        ProgressVariant.Success => "progress-fill-success",
+        ProgressVariant.Warning => "progress-fill-warning",
+        ProgressVariant.Danger => "progress-fill-danger",
+        _ => "progress-fill-primary"
+    };
+
+    public enum ProgressVariant { Primary, Success, Warning, Danger }
+}

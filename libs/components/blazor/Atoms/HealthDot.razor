@@ -1,0 +1,25 @@
+@namespace HellArch.Components.Atoms
+
+<span class="@GetDotClass()" title="@Title"></span>
+
+@code {
+    [Parameter] public HealthStatus Status { get; set; } = HealthStatus.Healthy;
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string GetDotClass()
+    {
+        var statusClass = Status switch
+        {
+            HealthStatus.Healthy => "health-dot-healthy",
+            HealthStatus.Warning => "health-dot-warning",
+            HealthStatus.Danger => "health-dot-danger",
+            _ => "health-dot"
+        };
+
+        var custom = !string.IsNullOrEmpty(Class) ? $" {Class}" : "";
+        return $"{statusClass}{custom}";
+    }
+
+    public enum HealthStatus { Healthy, Warning, Danger }
+}

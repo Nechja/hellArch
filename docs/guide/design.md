@@ -270,3 +270,133 @@ libs/design/
    ```typescript
    safelist: ['bg-my-new', 'text-my-new'],
    ```
+
+## Dashboard Components
+
+Reusable dashboard UI components available for both Blazor and Vue 3. All components use the same CSS classes from `uno.config.ts`.
+
+### Component Libraries
+
+```
+libs/components/
+├── blazor/                  # .NET Razor components
+│   └── Dashboard/
+│       ├── MetricCard.razor
+│       ├── ProgressBar.razor
+│       ├── StatusPill.razor
+│       ├── Alert.razor
+│       ├── Tabs.razor
+│       ├── Pagination.razor
+│       ├── Avatar.razor
+│       ├── KeyValue.razor
+│       ├── KeyValueItem.razor
+│       └── Breadcrumbs.razor
+└── vue/                     # Vue 3 SFC components
+    └── src/dashboard/
+        └── (matching components)
+```
+
+### Available Components
+
+| Component | Description |
+|-----------|-------------|
+| `MetricCard` | Display KPI with label, value, and optional trend indicator |
+| `ProgressBar` | Progress indicator with variants (success/warning/danger) |
+| `StatusPill` | Colored status badges (online/offline/pending/etc) |
+| `Alert` | Contextual feedback messages |
+| `Tabs` | Tab navigation with pill variant option |
+| `Pagination` | Page navigation with ellipsis support |
+| `Avatar` | User avatar with image or initials fallback |
+| `KeyValue` | List/grid container for key-value pairs |
+| `KeyValueItem` | Single key-value display row |
+| `Breadcrumbs` | Navigation breadcrumb trail |
+
+### Usage - Blazor
+
+Reference the component library:
+
+```xml
+<!-- In your .csproj -->
+<ProjectReference Include="..\..\libs\components\blazor\HellArch.Components.csproj" />
+```
+
+```razor
+@using HellArch.Components.Dashboard
+
+<MetricCard Label="Total Users" Value="1,234" Trend="12.5" TrendDirection="TrendDirection.Up" />
+
+<StatusPill Variant="PillVariant.Online">Active</StatusPill>
+
+<ProgressBar Value="75" Variant="ProgressVariant.Success" ShowLabel="true" />
+
+<KeyValue>
+    <KeyValueItem Key="Status" Value="Running" />
+    <KeyValueItem Key="Uptime" Value="99.9%" />
+</KeyValue>
+```
+
+### Usage - Vue 3
+
+Import components from the package:
+
+```typescript
+import { MetricCard, StatusPill, ProgressBar, KeyValue, KeyValueItem } from '@hellarch/components-vue'
+```
+
+```vue
+<template>
+  <MetricCard label="Total Users" :value="1234" :trend="12.5" trend-direction="up" />
+
+  <StatusPill variant="online">Active</StatusPill>
+
+  <ProgressBar :value="75" variant="success" show-label />
+
+  <KeyValue>
+    <KeyValueItem label="Status" value="Running" />
+    <KeyValueItem label="Uptime" value="99.9%" />
+  </KeyValue>
+</template>
+```
+
+### CSS Classes Reference
+
+All components use these UnoCSS shortcuts (from `uno.config.ts`):
+
+```css
+/* Metrics */
+.metric-card        /* Card container with flex column */
+.metric-value       /* Large bold value text */
+.metric-label       /* Muted label text */
+.metric-trend-up    /* Green upward trend */
+.metric-trend-down  /* Red downward trend */
+
+/* Status Pills */
+.pill               /* Base badge styling */
+.pill-success       /* Green for success/active */
+.pill-warning       /* Yellow for warnings */
+.pill-danger        /* Red for errors */
+.pill-online        /* Green dot + text for online */
+.pill-offline       /* Gray for offline */
+
+/* Progress */
+.progress-bar       /* Track container */
+.progress-fill      /* Animated fill bar */
+.progress-fill-success/warning/danger
+
+/* Key-Value */
+.kv-list            /* Vertical list layout */
+.kv-grid            /* Two-column grid */
+.kv-row             /* Single row flex container */
+.kv-key             /* Muted key label */
+.kv-value           /* Primary value text */
+
+/* Alerts */
+.alert              /* Base alert container */
+.alert-info/success/warning/danger
+
+/* Navigation */
+.breadcrumbs        /* Breadcrumb container */
+.pagination         /* Pagination container */
+.page-btn           /* Page button */
+.page-btn-active    /* Current page */
+```

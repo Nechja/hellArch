@@ -6,88 +6,157 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    background: var(--color-surface);
 }
 
 .login-container {
     width: 100%;
-    max-width: 400px;
-    padding: 1rem;
+    max-width: 420px;
+    padding: var(--space-4);
 }
 
 .login-card {
-    background: var(--color-bg-card);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: 2.5rem;
+    background: var(--color-surface-overlay);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-sm);
+    padding: var(--space-10);
     text-align: center;
+    box-shadow: var(--glow-primary);
+    transition: box-shadow var(--duration-normal);
+}
+
+.login-card:hover {
+    box-shadow: var(--glow-primary-intense);
 }
 
 .login-card h1 {
-    font-size: var(--text-3xl);
+    font-size: var(--text-4xl);
     font-weight: var(--font-bold);
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--space-2);
+    background: linear-gradient(135deg, var(--palette-neon-pink), var(--palette-neon-orange));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .subtitle {
     color: var(--color-text-secondary);
-    margin-bottom: 2rem;
+    margin-bottom: var(--space-8);
+    font-size: var(--text-sm);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
 }
 
 .providers {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--space-3);
+}
+
+.provider-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-sm);
+    font-weight: var(--font-semibold);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    transition: all var(--duration-normal);
+    cursor: pointer;
+    border: 1px solid transparent;
+    transform: translateY(0);
+}
+
+.provider-btn:hover {
+    transform: translateY(-2px);
+}
+
+.provider-btn:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.provider-btn.discord {
+    background: var(--color-discord);
+    color: white;
+}
+
+.provider-btn.discord:hover {
+    box-shadow: 0 0 20px rgba(88, 101, 242, 0.5), var(--shadow-md);
+}
+
+.provider-btn.github {
+    background: var(--color-github);
+    color: var(--color-text-inverse);
+}
+
+.provider-btn.github:hover {
+    box-shadow: 0 0 20px rgba(240, 240, 240, 0.3), var(--shadow-md);
+}
+
+.provider-btn.google {
+    background: var(--color-google);
+    color: white;
+}
+
+.provider-btn.google:hover {
+    box-shadow: var(--glow-danger-intense);
 }
 
 .footer-text {
-    color: var(--color-text-secondary);
-    font-size: var(--text-sm);
-    margin-top: 1.5rem;
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    margin-top: var(--space-8);
+    letter-spacing: var(--tracking-wide);
 }
 
 .user-info {
-    background: var(--color-bg-secondary);
-    border-radius: var(--radius-md);
-    padding: 1rem;
-    margin-bottom: 1.5rem;
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-4);
+    margin-bottom: var(--space-6);
 }
 
 .user-info p {
     color: var(--color-text-secondary);
 }
 
-/* Blazor loading and error UI */
+/* Blazor loading - styled */
 #blazor-error-ui {
-    background: var(--color-error);
+    background: var(--color-danger);
     bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--glow-danger);
     display: none;
     left: 0;
-    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    padding: var(--space-3) var(--space-6);
     position: fixed;
     width: 100%;
     z-index: 1000;
     color: white;
+    font-family: var(--font-sans);
 }
 
 #blazor-error-ui .dismiss {
     cursor: pointer;
     position: absolute;
-    right: 0.75rem;
-    top: 0.5rem;
+    right: var(--space-4);
+    top: var(--space-2);
 }
 
 .blazor-error-boundary {
-    background: var(--color-error);
-    padding: 1rem;
+    background: var(--color-danger);
+    padding: var(--space-4);
     color: white;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
 }
 
 .blazor-error-boundary::after {
     content: "An error has occurred.";
 }
 
+/* Loading spinner */
 .loading-progress {
     position: absolute;
     display: block;
@@ -100,23 +169,27 @@
 .loading-progress circle {
     fill: none;
     stroke: var(--color-border);
-    stroke-width: 0.6rem;
+    stroke-width: 0.4rem;
     transform-origin: 50% 50%;
     transform: rotate(-90deg);
 }
 
 .loading-progress circle:last-child {
-    stroke: var(--color-accent);
+    stroke: var(--color-primary);
     stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
     transition: stroke-dasharray 0.05s ease-in-out;
+    filter: drop-shadow(0 0 8px var(--color-primary));
 }
 
 .loading-progress-text {
     position: absolute;
     text-align: center;
-    font-weight: bold;
+    font-weight: var(--font-bold);
     inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
-    color: var(--color-text-primary);
+    color: var(--color-primary);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wider);
 }
 
 .loading-progress-text:after {
@@ -125,10 +198,10 @@
 
 @media (max-width: 480px) {
     .login-card {
-        padding: 1.5rem;
+        padding: var(--space-6);
     }
 
     .login-card h1 {
-        font-size: var(--text-2xl);
+        font-size: var(--text-3xl);
     }
 }

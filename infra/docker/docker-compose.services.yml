@@ -80,25 +80,10 @@ services:
       - hellarch
     restart: unless-stopped
 
-  events-worker:
-    build:
-      context: ../..
-      dockerfile: src/workers/events/Dockerfile
-      target: dev
-    container_name: hellarch-events-worker
-    environment:
-      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
-      - RUST_LOG=info
-      - OTEL_SERVICE_NAME=events-worker
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
-    networks:
-      - hellarch
-    restart: unless-stopped
-
   admin:
     build:
-      context: ../../src/clients/Admin
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/clients/Admin/Dockerfile
       target: dev
     container_name: hellarch-admin
     user: "${UID:-1000}:${GID:-1000}"
@@ -119,8 +104,9 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
     volumes:
-      - ../../src/clients/Admin:/app
+      - ../..:/repo
       - admin-nuget:/root/.nuget
+    working_dir: /repo/src/clients/Admin
     networks:
       - hellarch
     restart: unless-stopped
@@ -136,10 +122,156 @@ services:
     environment:
       - PORT=5004
       - POLL_INTERVAL_MS=10000
+      - EVENTS_SERVICE_URL=http://events:5005
       - OTEL_SERVICE_NAME=health
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
       - ../../src/services/health:/app
+    networks:
+      - hellarch
+    restart: unless-stopped
+
+  events:
+    build:
+      context: ../../src/services/events
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hellarch-events
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "5005:5005"
+    environment:
+      - HTTP_ADDRESS=:5005
+      - DATABASE_URL=postgres://hellarch:hellarch@events-db:5432/events_db
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - RABBITMQ_MANAGEMENT_URL=http://hellarch:hellarch@rabbitmq:15672
+      - OTEL_SERVICE_NAME=events
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - LOG_LEVEL=debug
+    volumes:
+      - ../../src/services/events:/app
+      - ../../libs:/libs
+      - events-go-cache:/go/pkg/mod
+    networks:
+      - hellarch
+    restart: unless-stopped
+
+  audit-worker:
+    build:
+      context: ../../src/workers/audit
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hellarch-audit-worker
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      - EVENTS_API_URL=http://events:5005
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - OTEL_SERVICE_NAME=audit-worker
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4318
+    volumes:
+      - ../../src/workers/audit:/app
+      - ../../libs:/libs
+      - audit-go-cache:/go/pkg/mod
+    networks:
+      - hellarch
+    restart: unless-stopped
+
+  webhooks-worker:
+    build:
+      context: ../../src/workers/webhooks
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hellarch-webhooks-worker
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      - EVENTS_API_URL=http://events:5005
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - OTEL_SERVICE_NAME=webhooks-worker
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4318
+    volumes:
+      - ../../src/workers/webhooks:/app
+      - ../../libs:/libs
+      - webhooks-go-cache:/go/pkg/mod
+    networks:
+      - hellarch
+    restart: unless-stopped
+
+  realtime-worker:
+    build:
+      context: ../..
+      dockerfile: src/workers/realtime/Dockerfile
+      target: dev
+    container_name: hellarch-realtime-worker
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "5020:5020"
+    env_file:
+      - ../../.env
+      - ../../.env.secrets
+    environment:
+      - ASPNETCORE_URLS=http://+:5020
+      - ASPNETCORE_ENVIRONMENT=Development
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - AUTH_SERVICE_URL=http://hellarch-auth:5001
+      - JWT_PUBLIC_KEY_PATH=/keys/dev-public.pem
+      - CORS_ORIGINS=http://localhost:5000,http://localhost:5010,http://hellarch-gateway:5000,http://hellarch-admin:5003
+      - OTEL_SERVICE_NAME=realtime-worker
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - LOG_LEVEL=debug
+    volumes:
+      - ../..:/repo
+      - ../../infra/keys:/keys:ro
+      - realtime-nuget:/root/.nuget
+    working_dir: /repo/src/workers/realtime
+    networks:
+      - hellarch
+    restart: unless-stopped
+
+  infra-worker:
+    build:
+      context: ../../src/workers/infra
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hellarch-infra-worker
+    # No user: directive - needs root for Docker socket access
+    environment:
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - ORCHESTRATOR_BACKEND=docker
+      - RESTART_COOLDOWN_SECONDS=60
+      - MAX_RESTARTS=3
+      - RESTART_WINDOW_SECONDS=300
+      - OTEL_SERVICE_NAME=infra-worker
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - LOG_LEVEL=debug
+    volumes:
+      - ../../src/workers/infra:/app
+      - ../../libs:/libs
+      - infra-go-cache:/go/pkg/mod
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - hellarch
+    restart: unless-stopped
+
+  dlq-worker:
+    build:
+      context: ../..
+      dockerfile: src/workers/dlq/Dockerfile
+      target: dev
+    container_name: hellarch-dlq-worker
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "5025:5025"
+    environment:
+      - ASPNETCORE_URLS=http://+:5025
+      - ASPNETCORE_ENVIRONMENT=Development
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - OTEL_SERVICE_NAME=dlq-worker
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - LOG_LEVEL=debug
+    volumes:
+      - ../..:/repo
+      - dlq-nuget:/root/.nuget
+    working_dir: /repo/src/workers/dlq
     networks:
       - hellarch
     restart: unless-stopped
@@ -149,6 +281,12 @@ volumes:
   auth-go-cache:
   user-nuget:
   admin-nuget:
+  events-go-cache:
+  audit-go-cache:
+  webhooks-go-cache:
+  realtime-nuget:
+  infra-go-cache:
+  dlq-nuget:
 
 networks:
   hellarch:

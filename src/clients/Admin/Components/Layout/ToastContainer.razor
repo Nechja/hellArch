@@ -1,0 +1,142 @@
+@implements IDisposable
+@inject Admin.Services.ToastService ToastService
+
+<div class="toast-container">
+    @foreach (var toast in _toasts)
+    {
+        <div class="toast @GetToastClass(toast.Type)" @key="toast.Id">
+            <div class="toast-icon">@GetToastIcon(toast.Type)</div>
+            <div class="toast-message">@toast.Message</div>
+            <button class="toast-dismiss" @onclick="() => Dismiss(toast.Id)">×</button>
+        </div>
+    }
+</div>
+
+<style>
+    .toast-container {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        max-width: 400px;
+        pointer-events: none;
+    }
+
+    .toast {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-radius: 0.375rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        animation: toast-slide-in 0.3s ease-out;
+        pointer-events: auto;
+    }
+
+    @@keyframes toast-slide-in {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .toast-info {
+        border-left: 3px solid var(--neon-blue);
+    }
+
+    .toast-success {
+        border-left: 3px solid var(--neon-green);
+    }
+
+    .toast-warning {
+        border-left: 3px solid var(--neon-yellow);
+    }
+
+    .toast-error {
+        border-left: 3px solid var(--neon-red);
+    }
+
+    .toast-icon {
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .toast-info .toast-icon { color: var(--neon-blue); }
+    .toast-success .toast-icon { color: var(--neon-green); }
+    .toast-warning .toast-icon { color: var(--neon-yellow); }
+    .toast-error .toast-icon { color: var(--neon-red); }
+
+    .toast-message {
+        flex: 1;
+        font-size: 0.875rem;
+        color: var(--text-primary);
+    }
+
+    .toast-dismiss {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 1.25rem;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+    }
+
+    .toast-dismiss:hover {
+        opacity: 1;
+        color: var(--text-primary);
+    }
+</style>
+
+@code {
+    private IReadOnlyList<Admin.Services.Toast> _toasts = [];
+
+    protected override void OnInitialized()
+    {
+        ToastService.OnChange += HandleChange;
+        _toasts = ToastService.Toasts;
+    }
+
+    private void HandleChange(object? sender, EventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            _toasts = ToastService.Toasts;
+            StateHasChanged();
+        });
+    }
+
+    private void Dismiss(int id) => ToastService.Dismiss(id);
+
+    private static string GetToastClass(Admin.Services.ToastType type) => type switch
+    {
+        Admin.Services.ToastType.Success => "toast-success",
+        Admin.Services.ToastType.Warning => "toast-warning",
+        Admin.Services.ToastType.Error => "toast-error",
+        _ => "toast-info"
+    };
+
+    private static string GetToastIcon(Admin.Services.ToastType type) => type switch
+    {
+        Admin.Services.ToastType.Success => "✓",
+        Admin.Services.ToastType.Warning => "⚠",
+        Admin.Services.ToastType.Error => "✕",
+        _ => "ℹ"
+    };
+
+    public void Dispose()
+    {
+        ToastService.OnChange -= HandleChange;
+    }
+}

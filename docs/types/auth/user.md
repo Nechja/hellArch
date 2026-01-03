@@ -28,19 +28,6 @@ type User struct {
 }
 ```
 
-## Rust
-
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct User {
-    pub id: uuid::Uuid,
-    pub email: String,
-    pub username: String,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub updated_at: chrono::DateTime<chrono::Utc>,
-}
-```
-
 ## F#
 
 ```fsharp

@@ -4,9 +4,10 @@ import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/option.{type Option}
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import health/config
+import health/events.{type EventPublisher}
 import health/http_client
 import health/registry
 import health/types.{
@@ -27,7 +28,11 @@ pub type Message {
 }
 
 type State {
-  State(statuses: Dict(String, ServiceStatus))
+  State(
+    statuses: Dict(String, ServiceStatus),
+    publisher: EventPublisher,
+    unhealthy_since: Dict(String, birl.Time),
+  )
 }
 
 const check_timeout_ms = 5000
@@ -44,11 +49,20 @@ pub fn start() -> Result(Poller, Nil) {
     // Send the subject back to the parent
     process.send(parent_subject, message_subject)
 
+    // Initialize event publisher
+    let publisher = events.new()
+
     // Send initial poll to self
     process.send(message_subject, Poll)
 
     // Start the loop
-    run_loop(message_subject, State(statuses: dict.new()))
+    let initial_state =
+      State(
+        statuses: dict.new(),
+        publisher: publisher,
+        unhealthy_since: dict.new(),
+      )
+    run_loop(message_subject, initial_state)
   })
 
   // Wait for the spawned process to send us its subject
@@ -66,13 +80,26 @@ fn run_loop(self: Subject(Message), state: State) -> Nil {
   case process.selector_receive(from: selector, within: 60_000) {
     Ok(Poll) -> {
       let services = registry.services()
-      let new_statuses = poll_all_services(services, state.statuses)
+      let #(new_statuses, new_unhealthy_since) =
+        poll_all_services_with_events(
+          services,
+          state.statuses,
+          state.unhealthy_since,
+          state.publisher,
+        )
 
       // Schedule next poll
       let poll_interval = config.get_poll_interval()
       process.send_after(self, poll_interval, Poll)
 
-      run_loop(self, State(statuses: new_statuses))
+      run_loop(
+        self,
+        State(
+          statuses: new_statuses,
+          publisher: state.publisher,
+          unhealthy_since: new_unhealthy_since,
+        ),
+      )
     }
 
     Ok(GetStatus(reply_with)) -> {
@@ -99,28 +126,87 @@ fn run_loop(self: Subject(Message), state: State) -> Nil {
   }
 }
 
-fn poll_all_services(
+fn poll_all_services_with_events(
   services: List(types.Service),
   current_statuses: Dict(String, ServiceStatus),
-) -> Dict(String, ServiceStatus) {
-  list.fold(services, current_statuses, fn(acc, service) {
+  unhealthy_since: Dict(String, birl.Time),
+  publisher: EventPublisher,
+) -> #(Dict(String, ServiceStatus), Dict(String, birl.Time)) {
+  list.fold(services, #(current_statuses, unhealthy_since), fn(acc, service) {
+    let #(statuses, unhealthy_times) = acc
     let check = check_service(service)
-    let history = get_history(acc, service.name)
+    let history = get_history(statuses, service.name)
     let new_history = [check, ..history] |> list.take(config.history_depth)
-    let status = calculate_status(new_history)
+    let new_status = calculate_status(new_history)
+
+    // Get previous status
+    let previous_status = case dict.get(statuses, service.name) {
+      Ok(prev) -> Some(prev.status)
+      Error(_) -> None
+    }
+
+    // Emit events on status transitions
+    let new_unhealthy_times = case previous_status, new_status {
+      // Became unhealthy
+      Some(Healthy), Unhealthy | Some(Degraded), Unhealthy | None, Unhealthy -> {
+        io.println(
+          "Service became unhealthy: " <> service.name,
+        )
+        let _ =
+          events.publish_service_unhealthy(
+            publisher,
+            service.name,
+            "unhealthy",
+            count_consecutive_failures(new_history),
+            check.error,
+          )
+        dict.insert(unhealthy_times, service.name, birl.now())
+      }
+
+      // Recovered
+      Some(Unhealthy), Healthy -> {
+        io.println("Service recovered: " <> service.name)
+        let downtime = case dict.get(unhealthy_times, service.name) {
+          Ok(since) -> {
+            // Calculate seconds between timestamps
+            let now_unix = birl.to_unix(birl.now())
+            let since_unix = birl.to_unix(since)
+            now_unix - since_unix
+          }
+          Error(_) -> 0
+        }
+        let _ =
+          events.publish_service_recovered(publisher, service.name, downtime)
+        dict.delete(unhealthy_times, service.name)
+      }
+
+      // No transition of interest
+      _, _ -> unhealthy_times
+    }
 
     let service_status =
       ServiceStatus(
         name: service.name,
-        status: status,
+        status: new_status,
         latency_ms: check.latency_ms,
         last_check: check.checked_at,
         error: check.error,
         history: new_history,
       )
 
-    dict.insert(acc, service.name, service_status)
+    #(dict.insert(statuses, service.name, service_status), new_unhealthy_times)
   })
+}
+
+fn count_consecutive_failures(history: List(HealthCheck)) -> Int {
+  list.fold(history, 0, fn(count, check) {
+    case check.status {
+      Unhealthy if count >= 0 -> count + 1
+      _ -> -1000
+      // Stop counting after first healthy
+    }
+  })
+  |> int.max(0)
 }
 
 fn get_history(

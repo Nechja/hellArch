@@ -1,0 +1,11 @@
+@namespace HellArch.Components.Dashboard
+
+<div class="kv-row">
+    <span class="kv-key">@Key</span>
+    <span class="kv-value">@Value</span>
+</div>
+
+@code {
+    [Parameter] public string Key { get; set; } = "";
+    [Parameter] public string? Value { get; set; }
+}

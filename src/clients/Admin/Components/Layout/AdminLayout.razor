@@ -1,32 +1,107 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject Admin.Services.RealtimeHubService RealtimeHub
 
-<div class="admin-layout">
-    <aside class="sidebar">
-        <div class="brand">
-            <h2>HellArch</h2>
-            <span class="subtitle">Admin Console</span>
+<div class="grid md:grid-cols-[220px_1fr] min-h-screen">
+    <!-- Desktop Sidebar -->
+    <aside class="bg-bg-secondary border-r border-border sticky top-0 h-screen overflow-y-auto hidden md:block">
+        <div class="p-4 border-b border-border mb-4">
+            <h2 class="text-xl font-bold text-gradient">HellArch</h2>
+            <span class="text-xs text-text-muted uppercase tracking-wider">Admin Console</span>
         </div>
         <NavMenu />
     </aside>
 
-    <main class="content">
-        <header class="content-header">
-            <div class="user-info">
+    <!-- Mobile Nav Overlay -->
+    @if (_mobileNavOpen)
+    {
+        <div class="mobile-nav-overlay md:hidden" @onclick="CloseMobileNav"></div>
+        <aside class="mobile-nav-panel translate-x-0 md:hidden">
+            <div class="p-4 border-b border-border mb-4 flex-between">
+                <div>
+                    <h2 class="text-xl font-bold text-gradient">HellArch</h2>
+                    <span class="text-xs text-text-muted uppercase tracking-wider">Admin Console</span>
+                </div>
+                <button class="text-text-secondary hover:text-neon-pink p-2" @onclick="CloseMobileNav">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <NavMenu />
+        </aside>
+    }
+
+    <main class="flex flex-col min-h-screen">
+        <header class="flex-between px-6 py-3 bg-bg-secondary border-b border-border">
+            <!-- Hamburger (mobile only) -->
+            <button class="hamburger md:hidden" @onclick="ToggleMobileNav" aria-label="Toggle menu">
+                <span class="hamburger-line @(_mobileNavOpen ? "rotate-45 translate-y-2" : "")"></span>
+                <span class="hamburger-line @(_mobileNavOpen ? "opacity-0" : "")"></span>
+                <span class="hamburger-line @(_mobileNavOpen ? "-rotate-45 -translate-y-2" : "")"></span>
+            </button>
+
+            <div class="flex items-center gap-4 ml-auto">
+                <!-- Realtime connection status -->
+                <div class="flex items-center gap-1" title="Realtime: @_connectionStatus">
+                    <span class="@GetConnectionStatusClass() text-xs">●</span>
+                    <span class="text-xs text-text-muted hidden sm:inline">Live</span>
+                </div>
+
                 @if (Username is not null)
                 {
-                    <span>@Username</span>
+                    <span class="text-sm text-neon-pink">@Username</span>
+                    <a href="/api/auth/logout" class="text-sm text-text-muted hover:text-neon-coral transition-colors">
+                        Logout
+                    </a>
                 }
             </div>
         </header>
-        <div class="content-body">
+        <div class="flex-1 p-6 max-w-6xl">
             @Body
         </div>
     </main>
 </div>
+
+<ToastContainer />
 
 @code {
     [CascadingParameter]
     public HttpContext? HttpContext { get; set; }
 
     private string? Username => HttpContext?.Items["Username"]?.ToString();
+
+    private bool _mobileNavOpen;
+    private string _connectionStatus = "Connecting...";
+
+    protected override void OnInitialized()
+    {
+        RealtimeHub.OnConnectionStateChanged += HandleConnectionStateChanged;
+        _connectionStatus = RealtimeHub.ConnectionStateText;
+    }
+
+    private void HandleConnectionStateChanged(object? sender, Admin.Services.ConnectionStateChangedEventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            _connectionStatus = e.State;
+            StateHasChanged();
+        });
+    }
+
+    private string GetConnectionStatusClass() => _connectionStatus switch
+    {
+        "Connected" => "text-neon-green",
+        "Reconnecting" => "text-neon-yellow animate-pulse",
+        "Disconnected" or "Failed" => "text-neon-red",
+        _ => "text-text-muted animate-pulse"
+    };
+
+    private void ToggleMobileNav() => _mobileNavOpen = !_mobileNavOpen;
+    private void CloseMobileNav() => _mobileNavOpen = false;
+
+    public void Dispose()
+    {
+        RealtimeHub.OnConnectionStateChanged -= HandleConnectionStateChanged;
+    }
 }

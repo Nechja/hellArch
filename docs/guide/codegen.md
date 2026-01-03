@@ -20,7 +20,6 @@ graph LR
 
     subgraph Generated
         GO[Go structs]
-        RUST[Rust structs]
         FS[F# records]
         PY[Python models]
         TS[TypeScript interfaces]
@@ -30,12 +29,10 @@ graph LR
     DT --> DT_GEN
     CE --> CE_GEN
     DT_GEN --> GO
-    DT_GEN --> RUST
     DT_GEN --> FS
     DT_GEN --> PY
     DT_GEN --> TS
     CE_GEN --> GO
-    CE_GEN --> RUST
     CE_GEN --> FS
     CE_GEN --> PY
     PROTO --> PROTOC --> GRPC
@@ -97,7 +94,6 @@ graph TB
 
     subgraph Output
         GO[go/]
-        RUST[rust/]
         FS[fsharp/]
         PY[python/]
     end
@@ -109,7 +105,6 @@ graph TB
 
     CS --> PARSE --> EXTRACT --> GEN
     GEN --> GO
-    GEN --> RUST
     GEN --> FS
     GEN --> PY
     CS --> CTX --> MIG
@@ -154,12 +149,12 @@ public class User
 ```
 
 Key features:
-- Generates 5 languages: Go, Rust, F#, Python, TypeScript
+- Generates 4 languages: Go, F#, Python, TypeScript
 - Doc comments are preserved in generated code
-- Collection properties (`ICollection<T>`, `List<T>`) generate as `Vec<T>`, `[]*T`, `T list`, `T[]`
-- Dictionary properties (`Dictionary<K,V>`) generate as `map[K]V`, `HashMap<K,V>`, `Map<K,V>`, `dict[K,V]`
+- Collection properties (`ICollection<T>`, `List<T>`) generate as `[]*T`, `T list`, `list[T]`, `T[]`
+- Dictionary properties (`Dictionary<K,V>`) generate as `map[K]V`, `Map<K,V>`, `dict[K,V]`, `Record<K,V>`
 - `required` keyword maps to non-nullable in target languages
-- Nullables (`?`) map to `Option<T>`, `*T`, `T option`, `T | None`, `T | null`
+- Nullables (`?`) map to `*T`, `T option`, `T | None`, `T | null`
 - Enums defined alongside classes are generated in all languages
 - Go field names follow conventions (Id→ID, Url→URL, Ip→IP)
 - TypeScript generates proper type imports across files
@@ -172,7 +167,6 @@ libs/data_types/
 │   ├── Auth/
 │   └── User/
 ├── go/               # Generated Go
-├── rust/             # Generated Rust
 ├── fsharp/           # Generated F#
 ├── python/           # Generated Python
 ├── typescript/       # Generated TypeScript
@@ -206,32 +200,6 @@ type User struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	Sessions []*Session `json:"sessions"`
 	LinkedAccounts []*LinkedAccount `json:"linked_accounts"`
-}
-```
-
-### Rust
-
-```rust
-use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
-
-/// Core user identity in the auth system.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct User {
-    #[serde(rename = "id")]
-    pub id: String,
-    #[serde(rename = "email")]
-    pub email: String,
-    #[serde(rename = "username")]
-    pub username: String,
-    #[serde(rename = "created_at")]
-    pub created_at: DateTime<Utc>,
-    #[serde(rename = "updated_at")]
-    pub updated_at: DateTime<Utc>,
-    #[serde(rename = "sessions")]
-    pub sessions: Vec<Session>,
-    #[serde(rename = "linked_accounts")]
-    pub linked_accounts: Vec<LinkedAccount>,
 }
 ```
 
@@ -359,17 +327,6 @@ const (
 )
 ```
 
-```rust
-// Rust
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SessionEndReason {
-    Logout,
-    Expired,
-    Revoked,
-}
-```
-
 ### Run
 
 ```bash
@@ -399,21 +356,6 @@ type CloudEvent[T any] struct {
 }
 ```
 
-```rust
-// Rust
-#[derive(Debug, Clone, Deserialize)]
-pub struct CloudEvent<T> {
-    pub specversion: String,
-    pub id: String,
-    pub source: String,
-    #[serde(rename = "type")]
-    pub event_type: String,
-    pub datacontenttype: String,
-    pub time: DateTime<Utc>,
-    pub data: T,
-}
-```
-
 ### Output Structure
 
 ```
@@ -424,9 +366,6 @@ libs/cloud_events/
 │   └── AccountEvents.cs
 ├── go/
 │   ├── cloud_event.go   # Generic wrapper
-│   └── auth/            # Event payloads
-├── rust/src/
-│   ├── lib.rs           # Generic wrapper + mod
 │   └── auth/            # Event payloads
 ├── fsharp/
 │   ├── CloudEvent.fs    # Generic wrapper
@@ -459,7 +398,7 @@ public class SomethingHappened
 mise run codegen:events
 ```
 
-3. Use generated types in consumers (Rust events worker, F# user service, etc.)
+3. Use generated types in consumers (Go workers, F# user service, etc.)
 
 ## Adding a New Entity
 
@@ -507,18 +446,18 @@ mise run proto:all
 
 ## Type Mappings
 
-| C# | Go | Rust | F# | Python | TypeScript |
-|----|-----|------|-----|--------|------------|
-| `Guid` | `string` | `String` | `Guid` | `str` | `string` |
-| `string` | `string` | `String` | `string` | `str` | `string` |
-| `int` | `int` | `i32` | `int` | `int` | `number` |
-| `long` | `int64` | `i64` | `int64` | `int` | `number` |
-| `bool` | `bool` | `bool` | `bool` | `bool` | `boolean` |
-| `DateTime` | `time.Time` | `DateTime<Utc>` | `DateTime` | `datetime` | `string` |
-| `T?` | `*T` | `Option<T>` | `T option` | `T \| None` | `T \| null` |
-| `ICollection<T>` | `[]*T` | `Vec<T>` | `T list` | `list[T]` | `T[]` |
-| `Dictionary<K,V>` | `map[K]V` | `HashMap<K,V>` | `Map<K,V>` | `dict[K,V]` | `Record<K,V>` |
-| `enum` | `type X string` | `enum` | `type X =` | `Enum` | `enum` |
+| C# | Go | F# | Python | TypeScript |
+|----|-----|-----|--------|------------|
+| `Guid` | `string` | `Guid` | `str` | `string` |
+| `string` | `string` | `string` | `str` | `string` |
+| `int` | `int` | `int` | `int` | `number` |
+| `long` | `int64` | `int64` | `int` | `number` |
+| `bool` | `bool` | `bool` | `bool` | `boolean` |
+| `DateTime` | `time.Time` | `DateTime` | `datetime` | `string` |
+| `T?` | `*T` | `T option` | `T \| None` | `T \| null` |
+| `ICollection<T>` | `[]*T` | `T list` | `list[T]` | `T[]` |
+| `Dictionary<K,V>` | `map[K]V` | `Map<K,V>` | `dict[K,V]` | `Record<K,V>` |
+| `enum` | `type X string` | `type X =` | `Enum` | `enum` |
 
 ## EF Core Integration
 

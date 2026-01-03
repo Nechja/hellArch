@@ -7,145 +7,139 @@
 
 @if (UserId is null)
 {
-    <h1>Users</h1>
+    <h1 class="text-display text-gradient mb-6">Users</h1>
 
-    <div class="data-table-container">
+    <div class="overflow-x-auto mb-4">
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Email</th>
-                    <th>Username</th>
-                    <th>Status</th>
-                    <th>Created</th>
+                    <th class="data-th">ID</th>
+                    <th class="data-th">Email</th>
+                    <th class="data-th">Username</th>
+                    <th class="data-th">Status</th>
+                    <th class="data-th">Created</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var user in _users)
                 {
-                    <tr @onclick="() => ViewUser(user.Id)" class="clickable">
-                        <td class="monospace">@user.Id[..8]...</td>
-                        <td>@user.Email</td>
-                        <td>@user.Username</td>
-                        <td>
-                            <span class="badge @(user.IsActive ? "badge-success" : "badge-danger")">
+                    <tr @onclick="() => ViewUser(user.Id)" class="data-row cursor-pointer">
+                        <td class="data-td font-mono text-sm">@user.Id[..8]...</td>
+                        <td class="data-td">@user.Email</td>
+                        <td class="data-td">@user.Username</td>
+                        <td class="data-td">
+                            <Badge Variant="@(user.IsActive ? BadgeVariant.Success : BadgeVariant.Danger)">
                                 @(user.IsActive ? "Active" : "Inactive")
-                            </span>
+                            </Badge>
                         </td>
-                        <td>@user.CreatedAt.ToString("g")</td>
+                        <td class="data-td">@user.CreatedAt.ToString("g")</td>
                     </tr>
                 }
             </tbody>
         </table>
     </div>
 
-    <div class="pagination">
-        <button disabled="@(_page <= 1)" @onclick="PrevPage" class="btn">Previous</button>
-        <span>Page @_page of @_totalPages</span>
-        <button disabled="@(_page >= _totalPages)" @onclick="NextPage" class="btn">Next</button>
+    <div class="flex items-center justify-center gap-4 mt-4">
+        <Button Variant="ButtonVariant.Secondary" Disabled="@(_page <= 1)" OnClick="PrevPage">Previous</Button>
+        <span class="text-text-secondary">Page @_page of @_totalPages</span>
+        <Button Variant="ButtonVariant.Secondary" Disabled="@(_page >= _totalPages)" OnClick="NextPage">Next</Button>
     </div>
 }
 else
 {
-    <div class="breadcrumb">
-        <a href="users">Users</a>
+    <div class="flex items-center gap-2 mb-4 text-sm text-text-muted">
+        <a href="users" class="link">Users</a>
         <span>/</span>
-        <span>@_userDetail?.Username</span>
+        <span class="text-text-primary">@_userDetail?.Username</span>
     </div>
 
-    <h1>User Details</h1>
+    <h1 class="text-display text-gradient mb-6">User Details</h1>
 
     @if (_userDetail is not null)
     {
-        <section class="detail-section">
-            <h2>Profile</h2>
-            <dl class="detail-list">
-                <dt>ID</dt>
-                <dd class="monospace">@_userDetail.Id</dd>
-                <dt>Email</dt>
-                <dd>@_userDetail.Email</dd>
-                <dt>Username</dt>
-                <dd>@_userDetail.Username</dd>
-                <dt>Status</dt>
-                <dd>
-                    <span class="badge @(_userDetail.IsActive ? "badge-success" : "badge-danger")">
-                        @(_userDetail.IsActive ? "Active" : "Inactive")
-                    </span>
-                    @if (_userDetail.IsActive)
-                    {
-                        <button @onclick="DeactivateUser" class="btn btn-danger btn-sm" style="margin-left: 0.5rem;">
-                            Deactivate
-                        </button>
-                    }
-                    else
-                    {
-                        <button @onclick="ActivateUser" class="btn btn-primary btn-sm" style="margin-left: 0.5rem;">
-                            Activate
-                        </button>
-                    }
-                </dd>
-                <dt>Created</dt>
-                <dd>@_userDetail.CreatedAt.ToString("F")</dd>
-                <dt>Updated</dt>
-                <dd>@_userDetail.UpdatedAt.ToString("F")</dd>
-            </dl>
+        <section class="mb-8">
+            <h2 class="text-heading mb-4 text-glitch">Profile</h2>
+            <div class="card">
+                <dl class="grid grid-cols-[120px_1fr] gap-2">
+                    <dt class="text-xs uppercase text-text-muted">ID</dt>
+                    <dd class="font-mono text-sm break-all">@_userDetail.Id</dd>
+                    <dt class="text-xs uppercase text-text-muted">Email</dt>
+                    <dd>@_userDetail.Email</dd>
+                    <dt class="text-xs uppercase text-text-muted">Username</dt>
+                    <dd>@_userDetail.Username</dd>
+                    <dt class="text-xs uppercase text-text-muted">Status</dt>
+                    <dd class="flex items-center gap-2">
+                        <Badge Variant="@(_userDetail.IsActive ? BadgeVariant.Success : BadgeVariant.Danger)">
+                            @(_userDetail.IsActive ? "Active" : "Inactive")
+                        </Badge>
+                        @if (_userDetail.IsActive)
+                        {
+                            <Button Variant="ButtonVariant.Danger" Size="ButtonSize.Small" OnClick="DeactivateUser">Deactivate</Button>
+                        }
+                        else
+                        {
+                            <Button Variant="ButtonVariant.Success" Size="ButtonSize.Small" OnClick="ActivateUser">Activate</Button>
+                        }
+                    </dd>
+                    <dt class="text-xs uppercase text-text-muted">Created</dt>
+                    <dd>@_userDetail.CreatedAt.ToString("F")</dd>
+                    <dt class="text-xs uppercase text-text-muted">Updated</dt>
+                    <dd>@_userDetail.UpdatedAt.ToString("F")</dd>
+                </dl>
+            </div>
         </section>
 
-        <section class="detail-section">
-            <h2>Permissions</h2>
-            <div class="permissions-container">
+        <section class="mb-8">
+            <h2 class="text-heading mb-4 text-glitch">Permissions</h2>
+            <div class="card">
                 @if (_userDetail.Permissions is not null && _userDetail.Permissions.Count > 0)
                 {
-                    <div class="permissions-list">
+                    <div class="flex flex-col gap-2 mb-4">
                         @foreach (var perm in _userDetail.Permissions.Where(p => p.Value))
                         {
-                            <div class="permission-item">
-                                <span class="permission-key">@perm.Key</span>
-                                <button @onclick="() => RemovePermission(perm.Key)" class="btn btn-danger btn-sm">
-                                    Remove
-                                </button>
+                            <div class="flex items-center justify-between p-2 rounded-sm bg-bg-secondary">
+                                <span class="font-mono text-sm text-neon-pink">@perm.Key</span>
+                                <Button Variant="ButtonVariant.Danger" Size="ButtonSize.Small" OnClick="() => RemovePermission(perm.Key)">Remove</Button>
                             </div>
                         }
                     </div>
                 }
                 else
                 {
-                    <p class="empty-state">No permissions assigned</p>
+                    <p class="text-text-muted text-center py-4 italic">No permissions assigned</p>
                 }
 
-                <div class="add-permission">
-                    <input type="text" @bind="_newPermission" @bind:event="oninput"
-                           placeholder="e.g. admin.users.write" class="input" />
-                    <button @onclick="AddPermission" disabled="@string.IsNullOrWhiteSpace(_newPermission)"
-                            class="btn btn-primary">
+                <div class="flex gap-2 pt-4 border-t border-border">
+                    <Input @bind-Value="_newPermission" Placeholder="e.g. admin.users.write" Class="flex-1" />
+                    <Button Variant="ButtonVariant.Neon" OnClick="AddPermission" Disabled="@string.IsNullOrWhiteSpace(_newPermission)">
                         Grant Permission
-                    </button>
+                    </Button>
                 </div>
             </div>
         </section>
 
-        <section class="detail-section">
-            <h2>Linked Accounts (@_userDetail.LinkedAccounts.Count)</h2>
+        <section class="mb-8">
+            <h2 class="text-heading mb-4 text-glitch">Linked Accounts (@_userDetail.LinkedAccounts.Count)</h2>
             @if (_userDetail.LinkedAccounts.Count > 0)
             {
-                <div class="cards-grid">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     @foreach (var account in _userDetail.LinkedAccounts)
                     {
                         <div class="card">
-                            <div class="card-header">
-                                <span class="provider-badge @account.Provider.ToLower()">@account.Provider</span>
+                            <div class="mb-3">
+                                <Badge Variant="BadgeVariant.Info" Class="uppercase">@account.Provider</Badge>
                             </div>
-                            <dl class="card-details">
-                                <dt>Provider ID</dt>
-                                <dd class="monospace">@account.ProviderUserId</dd>
+                            <dl class="text-sm">
+                                <dt class="text-text-muted text-xs mt-2">Provider ID</dt>
+                                <dd class="font-mono">@account.ProviderUserId</dd>
                                 @if (account.Email is not null)
                                 {
-                                    <dt>Email</dt>
+                                    <dt class="text-text-muted text-xs mt-2">Email</dt>
                                     <dd>@account.Email</dd>
                                 }
                                 @if (account.Username is not null)
                                 {
-                                    <dt>Username</dt>
+                                    <dt class="text-text-muted text-xs mt-2">Username</dt>
                                     <dd>@account.Username</dd>
                                 }
                             </dl>
@@ -155,37 +149,35 @@ else
             }
             else
             {
-                <p class="empty-state">No linked accounts</p>
+                <p class="text-text-muted text-center py-4 italic">No linked accounts</p>
             }
         </section>
 
-        <section class="detail-section">
-            <h2>Sessions (@_sessions.Count)</h2>
+        <section class="mb-8">
+            <h2 class="text-heading mb-4 text-glitch">Sessions (@_sessions.Count)</h2>
             @if (_sessions.Count > 0)
             {
-                <div class="data-table-container">
+                <div class="overflow-x-auto">
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>IP Address</th>
-                                <th>User Agent</th>
-                                <th>Expires</th>
-                                <th>Actions</th>
+                                <th class="data-th">ID</th>
+                                <th class="data-th">IP Address</th>
+                                <th class="data-th">User Agent</th>
+                                <th class="data-th">Expires</th>
+                                <th class="data-th">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var session in _sessions)
                             {
-                                <tr>
-                                    <td class="monospace">@session.Id[..8]...</td>
-                                    <td>@(session.IpAddress ?? "Unknown")</td>
-                                    <td class="truncate">@(session.UserAgent ?? "Unknown")</td>
-                                    <td>@session.ExpiresAt.ToString("g")</td>
-                                    <td>
-                                        <button @onclick="() => RevokeSession(session.Id)" class="btn btn-danger btn-sm">
-                                            Revoke
-                                        </button>
+                                <tr class="data-row">
+                                    <td class="data-td font-mono text-sm">@session.Id[..8]...</td>
+                                    <td class="data-td">@(session.IpAddress ?? "Unknown")</td>
+                                    <td class="data-td truncate max-w-xs">@(session.UserAgent ?? "Unknown")</td>
+                                    <td class="data-td">@session.ExpiresAt.ToString("g")</td>
+                                    <td class="data-td">
+                                        <Button Variant="ButtonVariant.Danger" Size="ButtonSize.Small" OnClick="() => RevokeSession(session.Id)">Revoke</Button>
                                     </td>
                                 </tr>
                             }
@@ -195,13 +187,15 @@ else
             }
             else
             {
-                <p class="empty-state">No active sessions</p>
+                <p class="text-text-muted text-center py-4 italic">No active sessions</p>
             }
         </section>
     }
     else
     {
-        <p class="loading">Loading...</p>
+        <div class="flex-center py-12">
+            <div class="spinner-lg"></div>
+        </div>
     }
 }
 

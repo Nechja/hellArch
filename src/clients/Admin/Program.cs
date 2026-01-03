@@ -53,6 +53,12 @@ builder.Services.AddHttpClient("UserService", client =>
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
+builder.Services.AddHttpClient("EventsService", client =>
+{
+    client.BaseAddress = new Uri(gatewayUrl + "/api/events/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
 // Redis direct connection for key browsing
 var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL") ?? "localhost:6379";
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
@@ -79,9 +85,15 @@ builder.Services.AddHttpClient("HealthService", client =>
 });
 
 builder.Services.AddScoped<AuthAdminFacade>();
+builder.Services.AddScoped<EventsAdminFacade>();
 builder.Services.AddScoped<RedisBrowserAdapter>();
 builder.Services.AddScoped<RabbitMqAdapter>();
 builder.Services.AddScoped<HealthAdapter>();
+
+// Realtime SignalR hub connection (singleton for shared connection, lazy connect)
+builder.Services.AddSingleton<RealtimeHubService>();
+builder.Services.AddSingleton<ToastService>();
+builder.Services.AddHttpContextAccessor();
 
 var otelEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT")
     ?? "http://localhost:4318";

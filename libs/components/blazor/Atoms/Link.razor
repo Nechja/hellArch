@@ -1,0 +1,28 @@
+@namespace HellArch.Components.Atoms
+
+<a href="@Href" class="@GetLinkClass()" target="@Target">
+    @ChildContent
+</a>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public LinkVariant Variant { get; set; } = LinkVariant.Default;
+    [Parameter] public string? Target { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string GetLinkClass()
+    {
+        var variantClass = Variant switch
+        {
+            LinkVariant.Underline => "link-underline",
+            LinkVariant.Subtle => "link-subtle",
+            _ => "link"
+        };
+
+        var custom = !string.IsNullOrEmpty(Class) ? $" {Class}" : "";
+        return $"{variantClass}{custom}";
+    }
+
+    public enum LinkVariant { Default, Underline, Subtle }
+}

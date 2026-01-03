@@ -13,7 +13,7 @@ graph LR
         DOCKER[Docker]
     end
 
-    MISE -->|manages| VERSIONS[Tool Versions<br/>Go, .NET, Node, Rust]
+    MISE -->|manages| VERSIONS[Tool Versions<br/>Go, .NET, Node, Gleam]
     DIRENV -->|loads| ENV[Environment Variables]
     DIRENV -->|activates| MISE
     TILT -->|orchestrates| SERVICES[Services]
@@ -53,8 +53,7 @@ Defined in `.mise.toml`:
 [tools]
 dotnet = "10.0"
 go = "1.24"
-gleam = "1.14"
-rust = "1.85"
+gleam = "latest"
 node = "22"
 python = "3.12"
 uv = "latest"

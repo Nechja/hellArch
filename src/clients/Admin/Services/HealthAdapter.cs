@@ -46,9 +46,50 @@ public class HealthAdapter(IHttpClientFactory httpClientFactory, ILogger<HealthA
             var json = await response.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<ServiceStatus>(json, JsonOptions.Default);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
             logger.LogWarning(ex, "Failed to get status for service {Name}", name);
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Request timed out for service {Name}", name);
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse response for service {Name}", name);
+            return null;
+        }
+    }
+
+    public async Task<WorkersStatus?> GetWorkers()
+    {
+        try
+        {
+            var response = await _client.GetAsync("workers");
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogWarning("Health service workers endpoint returned {StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<WorkersStatus>(json, JsonOptions.Default);
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogWarning(ex, "Failed to get workers status");
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogWarning(ex, "Workers status request timed out");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse workers response");
             return null;
         }
     }
@@ -73,7 +114,7 @@ public record ServiceStatus(
     [property: JsonPropertyName("latency_ms")] int LatencyMs,
     [property: JsonPropertyName("last_check")] string LastCheck,
     [property: JsonPropertyName("error")] string? Error,
-    [property: JsonPropertyName("history")] List<HealthCheck> History
+    [property: JsonPropertyName("history")] IReadOnlyList<HealthCheck> History
 );
 
 public record HealthCheck(
@@ -81,6 +122,19 @@ public record HealthCheck(
     [property: JsonPropertyName("latency_ms")] int LatencyMs,
     [property: JsonPropertyName("checked_at")] string CheckedAt,
     [property: JsonPropertyName("error")] string? Error
+);
+
+public record WorkersStatus(
+    [property: JsonPropertyName("overall")] string Overall,
+    [property: JsonPropertyName("workers")] IReadOnlyList<WorkerInfo> Workers
+);
+
+public record WorkerInfo(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("queue")] string Queue,
+    [property: JsonPropertyName("consumers")] int Consumers,
+    [property: JsonPropertyName("status")] string Status,
+    [property: JsonPropertyName("messages")] int Messages
 );
 
 internal static class JsonOptions

@@ -6,6 +6,8 @@ import gleam/http/response.{type Response}
 import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
+import health/config
+import health/http_client
 import health/poller.{type Poller}
 import health/types.{
   type AggregatedStatus, type HealthCheck, type ServiceStatus,
@@ -20,6 +22,7 @@ pub fn handler(
       ["health"] -> health_response()
       ["status"] -> status_response(poller)
       ["status", name] -> service_status_response(poller, name)
+      ["workers"] -> workers_response()
       _ -> not_found_response()
     }
   }
@@ -66,6 +69,35 @@ fn service_status_response(
       |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
     }
     None -> not_found_response()
+  }
+}
+
+fn workers_response() -> Response(ResponseData) {
+  let events_url = config.get_events_url()
+  let url = events_url <> "/api/workers/status"
+
+  case http_client.get(url, 5000) {
+    http_client.HttpOk(status, body) if status >= 200 && status < 300 -> {
+      response.new(200)
+      |> response.set_header("content-type", "application/json")
+      |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+    }
+    http_client.HttpOk(status, _) -> {
+      let body =
+        json.object([#("error", json.string("Events API error"))])
+        |> json.to_string
+      response.new(status)
+      |> response.set_header("content-type", "application/json")
+      |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+    }
+    http_client.HttpError(reason) -> {
+      let body =
+        json.object([#("error", json.string(reason))])
+        |> json.to_string
+      response.new(503)
+      |> response.set_header("content-type", "application/json")
+      |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+    }
   }
 }
 

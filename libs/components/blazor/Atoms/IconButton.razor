@@ -1,0 +1,37 @@
+@namespace HellArch.Components.Atoms
+
+<button type="button" class="@GetButtonClass()" disabled="@Disabled" title="@Title" @onclick="OnClick">
+    @ChildContent
+</button>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public IconButtonVariant Variant { get; set; } = IconButtonVariant.Default;
+    [Parameter] public IconButtonSize Size { get; set; } = IconButtonSize.Default;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string GetButtonClass()
+    {
+        var baseClass = Size switch
+        {
+            IconButtonSize.Small => "btn-icon-sm",
+            _ => "btn-icon"
+        };
+
+        var variantClass = Variant switch
+        {
+            IconButtonVariant.Danger => " hover:bg-danger/10 hover:text-danger",
+            IconButtonVariant.Success => " hover:bg-success/10 hover:text-success",
+            _ => ""
+        };
+
+        var custom = !string.IsNullOrEmpty(Class) ? $" {Class}" : "";
+        return $"{baseClass}{variantClass}{custom}";
+    }
+
+    public enum IconButtonVariant { Default, Danger, Success }
+    public enum IconButtonSize { Default, Small }
+}

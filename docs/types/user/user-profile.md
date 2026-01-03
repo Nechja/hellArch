@@ -32,21 +32,6 @@ type UserProfile struct {
 }
 ```
 
-## Rust
-
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct UserProfile {
-    pub id: uuid::Uuid,
-    pub auth_user_id: uuid::Uuid,
-    pub display_name: Option<String>,
-    pub bio: Option<String>,
-    pub avatar_url: Option<String>,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub updated_at: chrono::DateTime<chrono::Utc>,
-}
-```
-
 ## F#
 
 ```fsharp

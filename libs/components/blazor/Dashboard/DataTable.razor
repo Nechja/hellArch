@@ -1,0 +1,51 @@
+@namespace HellArch.Components.Dashboard
+@typeparam TItem
+
+<div class="overflow-x-auto @Class">
+    <table class="data-table">
+        @if (HeaderTemplate is not null)
+        {
+            <thead>
+                <tr>
+                    @HeaderTemplate
+                </tr>
+            </thead>
+        }
+        <tbody>
+            @if (Items is null || !Items.Any())
+            {
+                <tr>
+                    <td colspan="100" class="data-td text-center py-8 text-text-muted italic">
+                        @(EmptyMessage ?? "No data available")
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var item in Items)
+                {
+                    <tr class="data-row @(OnRowClick.HasDelegate ? "cursor-pointer" : "")" @onclick="() => HandleRowClick(item)">
+                        @RowTemplate(item)
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter] public IEnumerable<TItem>? Items { get; set; }
+    [Parameter] public RenderFragment? HeaderTemplate { get; set; }
+    [Parameter, EditorRequired] public RenderFragment<TItem> RowTemplate { get; set; } = default!;
+    [Parameter] public string? EmptyMessage { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public EventCallback<TItem> OnRowClick { get; set; }
+
+    private async Task HandleRowClick(TItem item)
+    {
+        if (OnRowClick.HasDelegate)
+        {
+            await OnRowClick.InvokeAsync(item);
+        }
+    }
+}

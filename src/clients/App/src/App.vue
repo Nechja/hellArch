@@ -25,7 +25,7 @@ onMounted(async () => {
     <NavBar :user="user" />
     <main class="max-w-5xl mx-auto px-4 py-8">
       <div v-if="loading" class="flex-center min-h-[50vh]">
-        <div class="text-text-secondary">Loading...</div>
+        <div class="spinner-lg"></div>
       </div>
       <RouterView v-else :user="user" />
     </main>

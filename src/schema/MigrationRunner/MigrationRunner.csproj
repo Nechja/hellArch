@@ -5,6 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <NoWarn>CA1031;CA2000;CA1303;CA1308</NoWarn>
 
     <!-- Self-contained single-file publishing -->
     <PublishSingleFile>true</PublishSingleFile>

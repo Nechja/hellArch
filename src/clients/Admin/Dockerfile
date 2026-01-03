@@ -1,27 +1,40 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS dev
 
-WORKDIR /app
+WORKDIR /repo
 
 ENV ASPNETCORE_ENVIRONMENT=Development
 ENV DOTNET_USE_POLLING_FILE_WATCHER=1
 
-COPY *.csproj ./
-RUN dotnet restore
+# Copy csproj files for restore
+COPY libs/components/blazor/*.csproj libs/components/blazor/
+COPY libs/cloud_events/csharp/*.csproj libs/cloud_events/csharp/
+COPY src/clients/Admin/*.csproj src/clients/Admin/
+RUN dotnet restore src/clients/Admin/Admin.csproj
 
-COPY . .
+# Copy source
+COPY libs/components/blazor/ libs/components/blazor/
+COPY libs/cloud_events/csharp/ libs/cloud_events/csharp/
+COPY src/clients/Admin/ src/clients/Admin/
 
+WORKDIR /repo/src/clients/Admin
 CMD ["dotnet", "run", "--no-launch-profile"]
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
 
-WORKDIR /app
+WORKDIR /repo
 
-COPY *.csproj ./
-RUN dotnet restore
+# Copy csproj files for restore
+COPY libs/components/blazor/*.csproj libs/components/blazor/
+COPY libs/cloud_events/csharp/*.csproj libs/cloud_events/csharp/
+COPY src/clients/Admin/*.csproj src/clients/Admin/
+RUN dotnet restore src/clients/Admin/Admin.csproj
 
-COPY . .
+# Copy source
+COPY libs/components/blazor/ libs/components/blazor/
+COPY libs/cloud_events/csharp/ libs/cloud_events/csharp/
+COPY src/clients/Admin/ src/clients/Admin/
 
-RUN dotnet publish -c Release -o /out
+RUN dotnet publish src/clients/Admin/Admin.csproj -c Release -o /out
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS prod
 

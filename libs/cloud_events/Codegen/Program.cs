@@ -34,7 +34,6 @@ foreach (var file in csFiles)
         Console.WriteLine($"  {namespaceName}.{typeDef.Name}");
 
         GenerateGo(typeDef, domain, outputDir);
-        GenerateRust(typeDef, domain, outputDir);
         GeneratePython(typeDef, domain, outputDir);
         GenerateFSharp(typeDef, domain, outputDir);
     }
@@ -163,63 +162,6 @@ string CSharpToGo(string type, bool nullable, List<EnumDef> enums)
     };
 
     return nullable ? $"*{goType}" : goType;
-}
-
-void GenerateRust(TypeDef def, string domain, string outDir)
-{
-    var dir = Path.Combine(outDir, "rust", "src", domain);
-    Directory.CreateDirectory(dir);
-    var file = Path.Combine(dir, $"{ToSnakeCase(def.Name)}.rs");
-
-    var sb = new System.Text.StringBuilder();
-    sb.AppendLine("use chrono::{DateTime, Utc};");
-    sb.AppendLine("use serde::Deserialize;");
-    sb.AppendLine();
-
-    foreach (var e in def.Enums)
-    {
-        sb.AppendLine("#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]");
-        sb.AppendLine($"#[serde(rename_all = \"snake_case\")]");
-        sb.AppendLine($"pub enum {e.Name} {{");
-        foreach (var v in e.Values)
-            sb.AppendLine($"    {v},");
-        sb.AppendLine("}");
-        sb.AppendLine();
-    }
-
-    if (!string.IsNullOrEmpty(def.Doc))
-        foreach (var line in SplitDocLines(def.Doc))
-            sb.AppendLine($"/// {line}");
-    sb.AppendLine("#[derive(Debug, Clone, Deserialize)]");
-    sb.AppendLine($"pub struct {def.Name} {{");
-
-    foreach (var p in def.Properties)
-    {
-        var rustType = CSharpToRust(p.Type, p.IsNullable, def.Enums);
-        var fieldName = ToSnakeCase(p.Name);
-        sb.AppendLine($"    pub {fieldName}: {rustType},");
-    }
-
-    sb.AppendLine("}");
-    File.WriteAllText(file, sb.ToString());
-    Console.WriteLine($"    rust: ok");
-}
-
-string CSharpToRust(string type, bool nullable, List<EnumDef> enums)
-{
-    var rustType = type switch
-    {
-        "string" => "String",
-        "int" or "int32" => "i32",
-        "long" or "int64" => "i64",
-        "bool" => "bool",
-        "DateTime" or "DateTimeOffset" => "DateTime<Utc>",
-        "Guid" => "String",
-        _ when enums.Any(e => e.Name == type) => type,
-        _ => type
-    };
-
-    return nullable ? $"Option<{rustType}>" : rustType;
 }
 
 void GeneratePython(TypeDef def, string domain, string outDir)

@@ -1,0 +1,52 @@
+@namespace HellArch.Components.Dashboard
+
+<div class="@GetAvatarClass()" title="@Alt">
+    @if (!string.IsNullOrEmpty(Src))
+    {
+        <img src="@Src" alt="@Alt" class="w-full h-full object-cover" />
+    }
+    else
+    {
+        @GetInitials()
+    }
+</div>
+
+@code {
+    [Parameter] public string? Src { get; set; }
+    [Parameter] public string? Alt { get; set; }
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public AvatarSize Size { get; set; } = AvatarSize.Medium;
+    [Parameter] public bool Ring { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string GetAvatarClass()
+    {
+        var sizeClass = Size switch
+        {
+            AvatarSize.Small => "avatar avatar-sm",
+            AvatarSize.Large => "avatar avatar-lg",
+            AvatarSize.ExtraLarge => "avatar avatar-xl",
+            _ => "avatar"
+        };
+
+        var ringClass = Ring ? " avatar-ring" : "";
+        var customClass = !string.IsNullOrEmpty(Class) ? $" {Class}" : "";
+
+        return $"{sizeClass}{ringClass}{customClass}";
+    }
+
+    private string GetInitials()
+    {
+        if (string.IsNullOrEmpty(Name)) return "?";
+
+        var parts = Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "?",
+            1 => parts[0][..1].ToUpperInvariant(),
+            _ => $"{parts[0][..1]}{parts[^1][..1]}".ToUpperInvariant()
+        };
+    }
+
+    public enum AvatarSize { Small, Medium, Large, ExtraLarge }
+}
