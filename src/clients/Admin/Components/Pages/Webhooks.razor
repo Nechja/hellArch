@@ -209,8 +209,35 @@ else
                     <Input @bind-Value="_formSecret" Placeholder="webhook-secret-key" Class="w-full" />
                 </div>
                 <div>
-                    <Label>Event Types (comma-separated)</Label>
-                    <Input @bind-Value="_formEventTypes" Placeholder="hellarch.auth.user.created.v1, hellarch.auth.session.*" Class="w-full" />
+                    <Label>Event Types</Label>
+                    <div class="border border-border rounded-lg max-h-48 overflow-y-auto bg-bg-secondary">
+                        @foreach (var domain in Admin.Services.EventTypeCatalog.Domains)
+                        {
+                            <div class="border-b border-border last:border-b-0">
+                                <div class="px-3 py-2 bg-bg-tertiary text-xs font-semibold text-text-secondary">@domain</div>
+                                @foreach (var eventType in Admin.Services.EventTypeCatalog.GetByDomain(domain))
+                                {
+                                    <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-bg-tertiary cursor-pointer">
+                                        <input type="checkbox"
+                                               checked="@_selectedEventTypes.Contains(eventType.Type)"
+                                               @onchange="() => ToggleEventType(eventType.Type)"
+                                               class="w-3.5 h-3.5" />
+                                        <span class="text-sm truncate flex-1">@eventType.Action</span>
+                                        <span class="text-xs text-text-muted">@eventType.Entity</span>
+                                    </label>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="mt-2 flex flex-wrap gap-1">
+                        @foreach (var type in _selectedEventTypes)
+                        {
+                            <Badge Size="BadgeSize.Small" Class="cursor-pointer" @onclick="() => ToggleEventType(type)">
+                                @GetShortEventType(type) ✕
+                            </Badge>
+                        }
+                    </div>
+                    <Input @bind-Value="_formEventTypes" Placeholder="Or enter custom pattern: hellarch.auth.*" Class="w-full mt-2" />
                 </div>
                 <div>
                     <Label>Format</Label>
@@ -300,6 +327,7 @@ else
     private string _formUrl = "";
     private string _formSecret = "";
     private string _formEventTypes = "";
+    private HashSet<string> _selectedEventTypes = [];
     private WebhookFormat _formFormat = WebhookFormat.Raw;
     private bool _formIsActive = true;
     private bool _saving;
@@ -373,6 +401,7 @@ else
         _formUrl = "";
         _formSecret = "";
         _formEventTypes = "";
+        _selectedEventTypes = [];
         _formFormat = WebhookFormat.Raw;
         _formIsActive = true;
         _showForm = true;
@@ -384,10 +413,23 @@ else
         _formName = webhook.Name;
         _formUrl = webhook.Url;
         _formSecret = webhook.Secret;
-        _formEventTypes = string.Join(", ", webhook.EventTypes);
+
+        // Separate known event types from custom patterns
+        var knownTypes = Admin.Services.EventTypeCatalog.All.Select(e => e.Type).ToHashSet();
+        _selectedEventTypes = webhook.EventTypes.Where(t => knownTypes.Contains(t)).ToHashSet();
+        _formEventTypes = string.Join(", ", webhook.EventTypes.Where(t => !knownTypes.Contains(t)));
+
         _formFormat = webhook.Format;
         _formIsActive = webhook.IsActive;
         _showForm = true;
+    }
+
+    private void ToggleEventType(string eventType)
+    {
+        if (!_selectedEventTypes.Remove(eventType))
+        {
+            _selectedEventTypes.Add(eventType);
+        }
     }
 
     private void CloseForm()
@@ -406,9 +448,10 @@ else
         _saving = true;
         StateHasChanged();
 
-        var eventTypes = _formEventTypes
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .ToList();
+        // Combine selected event types with custom patterns from text input
+        var customTypes = _formEventTypes
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var eventTypes = _selectedEventTypes.Concat(customTypes).Distinct().ToList();
 
         if (_editingWebhook == null)
         {
