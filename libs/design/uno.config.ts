@@ -19,6 +19,7 @@ export default defineConfig({
       surface: {
         DEFAULT: 'var(--color-surface)',
         raised: 'var(--color-surface-raised)',
+        tertiary: 'var(--color-surface-tertiary)',
         overlay: 'var(--color-surface-overlay)',
         elevated: 'var(--color-surface-elevated)',
         backdrop: 'var(--color-surface-backdrop)',
@@ -98,11 +99,14 @@ export default defineConfig({
       google: 'var(--color-google)',
 
       // ========================================
-      // LEGACY ALIASES (remove after migration)
+      // LEGACY ALIASES
+      // @deprecated Will be removed in v2.0. Use semantic tokens instead:
+      // bg-primary → surface, bg-secondary → surface-raised, etc.
       // ========================================
       bg: {
         primary: 'var(--color-surface)',
         secondary: 'var(--color-surface-raised)',
+        tertiary: 'var(--color-surface-tertiary)',
         card: 'var(--color-surface-overlay)',
         elevated: 'var(--color-surface-elevated)',
         overlay: 'var(--color-surface-backdrop)',
@@ -215,12 +219,15 @@ export default defineConfig({
     // Cards (semantic)
     'card': 'bg-surface-overlay border border-border rounded-sm p-6 transition-all duration-normal',
     'card-elevated': 'bg-surface-elevated border border-border rounded-sm p-6 shadow-md transition-all duration-normal',
-    'card-glow': 'bg-surface-overlay border border-primary/30 rounded-sm p-6 hover:border-primary hover:shadow-glow-primary hover:-translate-y-0.5 transition-all duration-normal',
-    'card-interactive': 'card hover:border-primary/50 hover:bg-surface-elevated hover:-translate-y-0.5 cursor-pointer',
+    'card-glow': 'bg-surface-overlay border border-primary/30 rounded-sm p-6 hover:border-primary hover:shadow-glow-primary hover:-translate-y-0.5 focus-visible:border-primary focus-visible:shadow-glow-primary focus-visible:-translate-y-0.5 transition-all duration-normal',
+    'card-interactive': 'card hover:border-primary/50 hover:bg-surface-elevated hover:-translate-y-0.5 focus-visible:border-primary focus-visible:bg-surface-elevated focus-visible:-translate-y-0.5 cursor-pointer',
     'card-brutal': 'bg-surface-overlay border-2 border-text p-6',
+    'card-focusable': 'card focus-visible:border-primary focus-visible:shadow-glow-primary outline-none',
 
     // Buttons - base with active state
     'btn': 'inline-flex items-center justify-center gap-2 px-4 py-2 rounded-sm font-semibold transition-all duration-fast cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm active:scale-95',
+    'btn-sm': 'px-3 py-1.5 text-xs gap-1.5',
+    'btn-lg': 'px-6 py-3 text-base gap-3',
 
     // Buttons - brand variants (use neon primitives intentionally)
     'btn-neon': 'btn bg-transparent border border-neon-pink text-neon-pink hover:bg-neon-pink hover:text-surface hover:shadow-glow-pink active:shadow-none',
@@ -432,14 +439,15 @@ export default defineConfig({
     'icon-box': 'w-12 h-12 rounded-sm flex-center',
     'icon-box-pink': 'icon-box bg-neon-pink/10 text-neon-pink',
     'icon-box-rose': 'icon-box bg-neon-rose/10 text-neon-rose',
+    'icon-box-dusty': 'icon-box bg-neon-dusty/10 text-neon-dusty',
     'icon-box-peach': 'icon-box bg-neon-peach/10 text-neon-peach',
     'icon-box-orange': 'icon-box bg-neon-orange/10 text-neon-orange',
     'icon-box-coral': 'icon-box bg-neon-coral/10 text-neon-coral',
     'icon-box-green': 'icon-box bg-neon-green/10 text-neon-green',
 
     // Code/data display
-    'code-block': 'p-3 rounded-sm bg-bg-secondary border border-border font-mono text-xs overflow-x-auto',
-    'code-inline': 'px-1.5 py-0.5 rounded-sm bg-bg-secondary font-mono text-sm',
+    'code-block': 'p-3 rounded-sm bg-surface-raised border border-border font-mono text-xs overflow-x-auto',
+    'code-inline': 'px-1.5 py-0.5 rounded-sm bg-surface-raised font-mono text-sm',
 
     // Modal overlay
     'modal-overlay': 'fixed inset-0 bg-black/50 flex-center z-modal backdrop-blur-sm',
@@ -587,6 +595,16 @@ export default defineConfig({
     'segment': 'px-3 py-1.5 text-sm font-medium text-text-muted rounded-sm cursor-pointer transition-all hover:text-text',
     'segment-active': 'segment bg-primary text-text-inverse',
 
+    // Toggle switch
+    'toggle': 'relative w-11 h-6 bg-surface-raised rounded-full border border-border cursor-pointer transition-all duration-fast',
+    'toggle-sm': 'relative w-9 h-5 bg-surface-raised rounded-full border border-border cursor-pointer transition-all duration-fast',
+    'toggle-lg': 'relative w-14 h-8 bg-surface-raised rounded-full border border-border cursor-pointer transition-all duration-fast',
+    'toggle-on': 'bg-primary border-primary',
+    'toggle-knob': 'absolute top-0.5 left-0.5 w-4 h-4 bg-text-inverse rounded-full shadow-sm transition-all duration-fast',
+    'toggle-knob-sm': 'absolute top-0.5 left-0.5 w-3 h-3 bg-text-inverse rounded-full shadow-sm transition-all duration-fast',
+    'toggle-knob-lg': 'absolute top-1 left-1 w-5 h-5 bg-text-inverse rounded-full shadow-sm transition-all duration-fast',
+    'toggle-knob-on': 'translate-x-5',
+
     // Breadcrumbs
     'breadcrumbs': 'flex items-center gap-2 text-sm',
     'breadcrumb': 'text-text-muted hover:text-primary transition-colors cursor-pointer',
@@ -691,10 +709,10 @@ export default defineConfig({
     'flex-center', 'flex-between', 'flex-col-center',
 
     // Shortcuts - cards
-    'card', 'card-elevated', 'card-glow', 'card-interactive', 'card-brutal',
+    'card', 'card-elevated', 'card-glow', 'card-interactive', 'card-brutal', 'card-focusable',
 
     // Shortcuts - buttons
-    'btn', 'btn-neon', 'btn-neon-solid', 'btn-neon-rose',
+    'btn', 'btn-sm', 'btn-lg', 'btn-neon', 'btn-neon-solid', 'btn-neon-rose',
     'btn-primary', 'btn-secondary', 'btn-ghost', 'btn-danger', 'btn-success',
     'btn-discord', 'btn-github', 'btn-google',
 
@@ -753,7 +771,7 @@ export default defineConfig({
     'card-featured', 'card-featured-green', 'card-featured-coral',
 
     // Shortcuts - icon boxes
-    'icon-box', 'icon-box-pink', 'icon-box-rose', 'icon-box-peach',
+    'icon-box', 'icon-box-pink', 'icon-box-rose', 'icon-box-dusty', 'icon-box-peach',
     'icon-box-orange', 'icon-box-coral', 'icon-box-green',
 
     // Shortcuts - code display
@@ -785,6 +803,7 @@ export default defineConfig({
     'alert', 'alert-info', 'alert-success', 'alert-warning', 'alert-danger', 'alert-icon', 'alert-content', 'alert-title', 'alert-dismiss',
     'tabs', 'tab', 'tab-active', 'tabs-pills', 'tab-pill', 'tab-pill-active',
     'segmented', 'segment', 'segment-active',
+    'toggle', 'toggle-sm', 'toggle-lg', 'toggle-on', 'toggle-knob', 'toggle-knob-sm', 'toggle-knob-lg', 'toggle-knob-on',
     'breadcrumbs', 'breadcrumb', 'breadcrumb-current', 'breadcrumb-sep',
     'pagination', 'page-btn', 'page-btn-active', 'page-btn-disabled', 'page-ellipsis',
     'btn-icon', 'btn-icon-sm', 'btn-icon-danger', 'btn-icon-success',
@@ -799,7 +818,7 @@ export default defineConfig({
     'sparkline', 'inline-stat', 'inline-stat-value', 'inline-stat-label', 'inline-stat-unit',
 
     // Colors - semantic surfaces
-    'bg-surface', 'bg-surface-raised', 'bg-surface-overlay', 'bg-surface-elevated', 'bg-surface-backdrop',
+    'bg-surface', 'bg-surface-raised', 'bg-surface-tertiary', 'bg-surface-overlay', 'bg-surface-elevated', 'bg-surface-backdrop',
 
     // Colors - semantic brand
     'bg-primary', 'bg-primary-hover', 'bg-primary-active',
@@ -808,7 +827,7 @@ export default defineConfig({
     'bg-success/10', 'bg-warning/10', 'bg-danger/10', 'bg-info/10',
 
     // Colors - legacy backgrounds (for migration)
-    'bg-bg-primary', 'bg-bg-secondary', 'bg-bg-card', 'bg-bg-elevated',
+    'bg-bg-primary', 'bg-bg-secondary', 'bg-bg-tertiary', 'bg-bg-card', 'bg-bg-elevated',
 
     // Colors - primitive neon (for brand moments)
     'bg-neon-pink', 'bg-neon-rose', 'bg-neon-dusty', 'bg-neon-peach', 'bg-neon-orange', 'bg-neon-coral',
@@ -904,8 +923,11 @@ export default defineConfig({
     'origin-center',
 
     // Responsive
-    'md:flex', 'md:hidden', 'md:block', 'lg:flex', 'lg:hidden',
+    'sm:flex', 'sm:hidden', 'sm:block', 'sm:p-4', 'sm:px-4', 'sm:py-3',
+    'md:flex', 'md:hidden', 'md:block', 'md:p-6', 'md:px-6', 'md:py-4',
     'md:flex-row', 'md:grid-cols-2', 'md:grid-cols-3',
+    'lg:flex', 'lg:hidden', 'lg:block',
+    'xl:flex', 'xl:hidden', 'xl:block',
 
     // Hover states - semantic
     'hover:bg-surface-elevated', 'hover:bg-surface-elevated/50',

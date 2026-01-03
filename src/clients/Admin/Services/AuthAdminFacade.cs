@@ -1,5 +1,5 @@
-using System.Text.Json;
 using System.Text.Json.Serialization;
+using HellArch.Http;
 
 namespace Admin.Services;
 
@@ -11,251 +11,53 @@ public sealed class AuthAdminFacade(
 
     public async Task<UsersResponse> GetUsers(int page = 1, int pageSize = 20, CancellationToken ct = default)
     {
-        try
-        {
-            var response = await _client.GetFromJsonAsync<UsersResponse>(
-                $"auth/admin/users?page={page}&pageSize={pageSize}", ct);
-            return response ?? new UsersResponse([], 0, page, pageSize);
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting users");
-            return new UsersResponse([], 0, page, pageSize);
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting users");
-            return new UsersResponse([], 0, page, pageSize);
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse users response");
-            return new UsersResponse([], 0, page, pageSize);
-        }
+        var response = await _client.GetJsonSafe<UsersResponse>(
+            $"auth/admin/users?page={page}&pageSize={pageSize}", logger, ct);
+        return response ?? new UsersResponse([], 0, page, pageSize);
     }
 
-    public async Task<UserDetail?> GetUser(string userId, CancellationToken ct = default)
-    {
-        try
-        {
-            return await _client.GetFromJsonAsync<UserDetail>($"auth/admin/users/{userId}", ct);
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting user {UserId}", userId);
-            return null;
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting user {UserId}", userId);
-            return null;
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse user response for {UserId}", userId);
-            return null;
-        }
-    }
+    public async Task<UserDetail?> GetUser(string userId, CancellationToken ct = default) =>
+        await _client.GetJsonSafe<UserDetail>($"auth/admin/users/{userId}", logger, ct);
 
     public async Task<IReadOnlyList<SessionInfo>> GetUserSessions(string userId, CancellationToken ct = default)
     {
-        try
-        {
-            var response = await _client.GetFromJsonAsync<SessionsResponse>(
-                $"auth/admin/users/{userId}/sessions", ct);
-            return response?.Sessions ?? [];
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting sessions for user {UserId}", userId);
-            return [];
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting sessions for user {UserId}", userId);
-            return [];
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse sessions response for user {UserId}", userId);
-            return [];
-        }
+        var response = await _client.GetJsonSafe<SessionsResponse>(
+            $"auth/admin/users/{userId}/sessions", logger, ct);
+        return response?.Sessions ?? [];
     }
 
-    public async Task<bool> RevokeSession(string sessionId, CancellationToken ct = default)
-    {
-        try
-        {
-            var response = await _client.DeleteAsync($"auth/admin/sessions/{sessionId}", ct);
-            return response.IsSuccessStatusCode;
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error revoking session {SessionId}", sessionId);
-            return false;
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout revoking session {SessionId}", sessionId);
-            return false;
-        }
-    }
+    public async Task<bool> RevokeSession(string sessionId, CancellationToken ct = default) =>
+        await _client.DeleteSafe($"auth/admin/sessions/{sessionId}", logger, ct);
 
     public async Task<Dictionary<string, bool>> GetUserPermissions(string userId, CancellationToken ct = default)
     {
-        try
-        {
-            var response = await _client.GetFromJsonAsync<PermissionsResponse>(
-                $"auth/admin/users/{userId}/permissions", ct);
-            return response?.Permissions ?? [];
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting permissions for user {UserId}", userId);
-            return [];
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting permissions for user {UserId}", userId);
-            return [];
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse permissions response for user {UserId}", userId);
-            return [];
-        }
+        var response = await _client.GetJsonSafe<PermissionsResponse>(
+            $"auth/admin/users/{userId}/permissions", logger, ct);
+        return response?.Permissions ?? [];
     }
 
-    public async Task<bool> SetUserPermissions(string userId, Dictionary<string, bool> permissions, CancellationToken ct = default)
-    {
-        try
-        {
-            var response = await _client.PutAsJsonAsync(
-                $"auth/admin/users/{userId}/permissions",
-                new { permissions },
-                ct);
-            return response.IsSuccessStatusCode;
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error setting permissions for user {UserId}", userId);
-            return false;
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout setting permissions for user {UserId}", userId);
-            return false;
-        }
-    }
+    public async Task<bool> SetUserPermissions(string userId, Dictionary<string, bool> permissions, CancellationToken ct = default) =>
+        await _client.PutJsonSafe($"auth/admin/users/{userId}/permissions", new { permissions }, logger, ct);
 
-    public async Task<bool> GrantPermission(string userId, string permission, CancellationToken ct = default)
-    {
-        try
-        {
-            var response = await _client.PostAsJsonAsync(
-                $"auth/admin/users/{userId}/permissions/grant",
-                new { permission },
-                ct);
-            return response.IsSuccessStatusCode;
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error granting permission {Permission} to user {UserId}", permission, userId);
-            return false;
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout granting permission {Permission} to user {UserId}", permission, userId);
-            return false;
-        }
-    }
+    public async Task<bool> GrantPermission(string userId, string permission, CancellationToken ct = default) =>
+        await _client.PostJsonSafe($"auth/admin/users/{userId}/permissions/grant", new { permission }, logger, ct);
 
-    public async Task<bool> RevokePermission(string userId, string permission, CancellationToken ct = default)
-    {
-        try
-        {
-            var response = await _client.PostAsJsonAsync(
-                $"auth/admin/users/{userId}/permissions/revoke",
-                new { permission },
-                ct);
-            return response.IsSuccessStatusCode;
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error revoking permission {Permission} from user {UserId}", permission, userId);
-            return false;
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout revoking permission {Permission} from user {UserId}", permission, userId);
-            return false;
-        }
-    }
+    public async Task<bool> RevokePermission(string userId, string permission, CancellationToken ct = default) =>
+        await _client.PostJsonSafe($"auth/admin/users/{userId}/permissions/revoke", new { permission }, logger, ct);
 
-    public async Task<bool> ActivateUser(string userId, CancellationToken ct = default)
-    {
-        try
-        {
-            var response = await _client.PostAsync($"auth/admin/users/{userId}/activate", null, ct);
-            return response.IsSuccessStatusCode;
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error activating user {UserId}", userId);
-            return false;
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout activating user {UserId}", userId);
-            return false;
-        }
-    }
+    public async Task<bool> ActivateUser(string userId, CancellationToken ct = default) =>
+        await _client.PostJsonSafe($"auth/admin/users/{userId}/activate", new { }, logger, ct);
 
-    public async Task<bool> DeactivateUser(string userId, CancellationToken ct = default)
-    {
-        try
-        {
-            var response = await _client.PostAsync($"auth/admin/users/{userId}/deactivate", null, ct);
-            return response.IsSuccessStatusCode;
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error deactivating user {UserId}", userId);
-            return false;
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout deactivating user {UserId}", userId);
-            return false;
-        }
-    }
+    public async Task<bool> DeactivateUser(string userId, CancellationToken ct = default) =>
+        await _client.PostJsonSafe($"auth/admin/users/{userId}/deactivate", new { }, logger, ct);
 
     public async Task<AdminStats> GetStats(CancellationToken ct = default)
     {
-        try
-        {
-            var response = await _client.GetFromJsonAsync<AdminStats>("auth/admin/stats", ct);
-            return response ?? new AdminStats(0, 0, 0);
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting stats");
-            return new AdminStats(0, 0, 0);
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting stats");
-            return new AdminStats(0, 0, 0);
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse stats response");
-            return new AdminStats(0, 0, 0);
-        }
+        var response = await _client.GetJsonSafe<AdminStats>("auth/admin/stats", logger, ct);
+        return response ?? new AdminStats(0, 0, 0);
     }
 }
 
-// DTOs for Auth Admin API responses
 public sealed record UsersResponse(
     IReadOnlyList<UserSummary> Users,
     [property: JsonPropertyName("total_count")] int TotalCount,

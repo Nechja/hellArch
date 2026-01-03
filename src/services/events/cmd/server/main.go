@@ -13,6 +13,7 @@ import (
 	"github.com/nechja/hellarch/golibs/telemetry"
 	"github.com/nechja/hellarch/services/events/internal/config"
 	"github.com/nechja/hellarch/services/events/internal/handler"
+	"github.com/nechja/hellarch/services/events/internal/monitor"
 	"github.com/nechja/hellarch/services/events/internal/store"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -80,6 +81,12 @@ func main() {
 
 	// Create RabbitMQ management client for worker status checks
 	mgmt := rabbitmq.NewManagementClient(cfg.RabbitMQManagementURL)
+
+	// Start worker monitor (emits events when workers go unhealthy)
+	if publisher != nil {
+		workerMonitor := monitor.New(mgmt, publisher, 10*time.Second)
+		go workerMonitor.Start(ctx)
+	}
 
 	// Setup HTTP server
 	h := handler.New(st, publisher, mgmt)

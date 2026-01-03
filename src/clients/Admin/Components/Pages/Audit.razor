@@ -1,5 +1,9 @@
 @page "/audit"
-@inject Admin.Services.EventsAdminFacade EventsApi
+@using HellArch.CloudEvents
+@using Admin.Services
+@implements IDisposable
+@inject EventsAdminFacade EventsApi
+@inject LiveUpdateService LiveUpdate
 @inject ILogger<Audit> Logger
 
 <PageTitle>Audit Logs - HellArch Admin</PageTitle>
@@ -185,7 +189,17 @@
 
     protected override async Task OnInitializedAsync()
     {
+        LiveUpdate.OnAnyEvent += HandleAnyEvent;
         await LoadData();
+    }
+
+    private void HandleAnyEvent(object? sender, CloudEventUpdateEventArgs e)
+    {
+        // Refresh audit logs when new events are received
+        InvokeAsync(async () =>
+        {
+            await LoadData();
+        });
     }
 
     private async Task LoadData()
@@ -264,5 +278,10 @@
     private static string FormatJson(System.Text.Json.JsonElement element)
     {
         return System.Text.Json.JsonSerializer.Serialize(element, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+    }
+
+    public void Dispose()
+    {
+        LiveUpdate.OnAnyEvent -= HandleAnyEvent;
     }
 }

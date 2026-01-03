@@ -1,8 +1,10 @@
 @page "/events"
 @using HellArch.CloudEvents
+@using Admin.Services
 @implements IDisposable
-@inject Admin.Services.RabbitMqAdapter RabbitMq
-@inject Admin.Services.RealtimeHubService RealtimeHub
+@inject RabbitMqAdapter RabbitMq
+@inject RealtimeHubService RealtimeHub
+@inject LiveUpdateService LiveUpdate
 @inject IHttpContextAccessor HttpContextAccessor
 @inject ILogger<Events> Logger
 
@@ -188,10 +190,10 @@
 </section>
 
 @code {
-    private Admin.Services.RabbitMqOverview? _overview;
-    private IReadOnlyList<Admin.Services.QueueInfo> _queues = [];
-    private IReadOnlyList<Admin.Services.ExchangeInfo> _exchanges = [];
-    private IReadOnlyList<Admin.Services.CloudEventMessage> _recentEvents = [];
+    private RabbitMqOverview? _overview;
+    private IReadOnlyList<QueueInfo> _queues = [];
+    private IReadOnlyList<ExchangeInfo> _exchanges = [];
+    private IReadOnlyList<CloudEventMessage> _recentEvents = [];
     private readonly List<CloudEventDto> _liveEvents = [];
     private bool _loadingEvents;
     private string _connectionStatus = "Connecting...";
@@ -202,6 +204,7 @@
         // Subscribe to realtime events
         RealtimeHub.OnEventReceived += HandleEventReceived;
         RealtimeHub.OnConnectionStateChanged += HandleConnectionStateChanged;
+        LiveUpdate.OnHealthUpdate += HandleHealthUpdate;
         _connectionStatus = RealtimeHub.ConnectionStateText;
 
         // Connect to realtime hub with session token (lazy connect on first admin visit)
@@ -221,7 +224,18 @@
         await LoadData();
     }
 
-    private void HandleEventReceived(object? sender, Admin.Services.CloudEventReceivedEventArgs e)
+    private void HandleHealthUpdate(object? sender, EventArgs e)
+    {
+        // Refresh RabbitMQ stats periodically
+        InvokeAsync(async () =>
+        {
+            _overview = await RabbitMq.GetOverview();
+            _queues = await RabbitMq.GetQueues();
+            StateHasChanged();
+        });
+    }
+
+    private void HandleEventReceived(object? sender, CloudEventReceivedEventArgs e)
     {
         InvokeAsync(() =>
         {
@@ -234,7 +248,7 @@
         });
     }
 
-    private void HandleConnectionStateChanged(object? sender, Admin.Services.ConnectionStateChangedEventArgs e)
+    private void HandleConnectionStateChanged(object? sender, ConnectionStateChangedEventArgs e)
     {
         InvokeAsync(() =>
         {
@@ -300,5 +314,6 @@
     {
         RealtimeHub.OnEventReceived -= HandleEventReceived;
         RealtimeHub.OnConnectionStateChanged -= HandleConnectionStateChanged;
+        LiveUpdate.OnHealthUpdate -= HandleHealthUpdate;
     }
 }

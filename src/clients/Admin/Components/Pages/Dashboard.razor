@@ -1,6 +1,8 @@
 @page "/"
+@implements IDisposable
 @inject AuthAdminFacade AuthAdmin
 @inject HealthAdapter Health
+@inject Admin.Services.LiveUpdateService LiveUpdate
 @inject ILogger<Dashboard> Logger
 
 <PageTitle>Dashboard - HellArch Admin</PageTitle>
@@ -117,33 +119,69 @@
 
     private int QueuedMessages => _workersStatus?.Workers.Sum(w => w.Messages) ?? 0;
 
-
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe to live updates
+        LiveUpdate.OnHealthUpdate += HandleHealthUpdate;
+        LiveUpdate.OnStatsUpdate += HandleStatsUpdate;
+
+        // Load initial data
         await Task.WhenAll(
             LoadStats(),
             LoadHealth()
         );
     }
 
+    private void HandleHealthUpdate(object? sender, EventArgs e)
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadHealth();
+            StateHasChanged();
+        });
+    }
+
+    private void HandleStatsUpdate(object? sender, EventArgs e)
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadStats();
+            StateHasChanged();
+        });
+    }
+
     private async Task LoadStats()
     {
-        _stats = await AuthAdmin.GetStats();
+        try
+        {
+            _stats = await AuthAdmin.GetStats();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load stats");
+        }
     }
 
     private async Task LoadHealth()
     {
-        var healthTask = Health.GetStatus();
-        var workersTask = Health.GetWorkers();
-
-        await Task.WhenAll(healthTask, workersTask);
-
-        _healthStatus = await healthTask;
-        _workersStatus = await workersTask;
-
-        if (_healthStatus == null)
+        try
         {
-            Logger.LogWarning("Health service unavailable");
+            var healthTask = Health.GetStatus();
+            var workersTask = Health.GetWorkers();
+
+            await Task.WhenAll(healthTask, workersTask);
+
+            _healthStatus = await healthTask;
+            _workersStatus = await workersTask;
+
+            if (_healthStatus == null)
+            {
+                Logger.LogWarning("Health service unavailable");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load health status");
         }
     }
 
@@ -183,5 +221,11 @@
             return dt.ToLocalTime().ToString("HH:mm:ss");
         }
         return isoTime;
+    }
+
+    public void Dispose()
+    {
+        LiveUpdate.OnHealthUpdate -= HandleHealthUpdate;
+        LiveUpdate.OnStatsUpdate -= HandleStatsUpdate;
     }
 }

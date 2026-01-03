@@ -1,8 +1,8 @@
 # Design System
 
-**CSS Tokens + UnoCSS**
+**Neon Cyberpunk - CSS Tokens + UnoCSS**
 
-HellArch uses a unified design system with CSS custom properties (tokens) and UnoCSS for atomic styling.
+HellArch uses a two-layer design token system with a neon cyberpunk aesthetic. Dark mode first, mobile first.
 
 ## Architecture
 
@@ -25,82 +25,174 @@ graph LR
     UNO --> APP
 ```
 
-## Design Tokens
+## Two-Layer Token System
 
-`libs/design/tokens.css` defines the visual language:
+The design system uses a primitive → semantic token architecture:
 
-### Colors
+| Layer | Purpose | Usage |
+|-------|---------|-------|
+| **Primitive** | Raw palette values | 5% - intentional brand moments |
+| **Semantic** | Role-based tokens | 95% - everyday styling |
+
+## Primitive Tokens (Layer 1)
+
+Raw palette values. Use sparingly for intentional brand moments:
 
 ```css
 :root {
-  /* Backgrounds - Dark mode first */
-  --color-bg-primary: #0f0f0f;
-  --color-bg-secondary: #1a1a1a;
-  --color-bg-card: #1e1e1e;
-  --color-bg-elevated: #252525;
+  /* Backgrounds */
+  --palette-black: #0a0a0a;
+  --palette-black-light: #111111;
+  --palette-black-lighter: #161616;
+  --palette-black-lightest: #1c1c1c;
 
-  /* Text */
-  --color-text-primary: #f5f5f5;
-  --color-text-secondary: #a0a0a0;
-  --color-text-muted: #666666;
+  /* Grays */
+  --palette-gray-dark: #2a2a2a;
+  --palette-gray: #3a3a3a;
+  --palette-gray-light: #737373;
+  --palette-gray-lighter: #9a9a9a;
 
-  /* Brand */
-  --color-accent: #5865f2;
-  --color-accent-hover: #4752c4;
+  /* Neon Palette (brand colors) */
+  --palette-neon-pink: #D162A4;
+  --palette-neon-rose: #A30262;
+  --palette-neon-dusty: #B55690;
+  --palette-neon-peach: #FF9A56;
+  --palette-neon-orange: #EF7627;
+  --palette-neon-coral: #D52D00;
+  --palette-neon-green: #39ff14;
+  --palette-neon-red: #ff0033;
+  --palette-neon-yellow: #ffff00;
 
-  /* Semantic */
-  --color-success: #22c55e;
-  --color-warning: #eab308;
-  --color-error: #ef4444;
-  --color-info: #3b82f6;
-
-  /* Providers */
-  --color-discord: #5865f2;
-  --color-github: #333333;
-  --color-google: #ea4335;
+  /* Provider brands */
+  --palette-discord: #5865f2;
+  --palette-github: #f0f0f0;
+  --palette-google: #ea4335;
 }
 ```
 
-### Spacing
+## Semantic Tokens (Layer 2)
+
+Role-based tokens for 95% of styling:
 
 ```css
 :root {
-  --space-1: 0.25rem;   /* 4px */
-  --space-2: 0.5rem;    /* 8px */
-  --space-3: 0.75rem;   /* 12px */
-  --space-4: 1rem;      /* 16px */
-  --space-6: 1.5rem;    /* 24px */
-  --space-8: 2rem;      /* 32px */
+  /* Surfaces - where content lives */
+  --color-surface: var(--palette-black);
+  --color-surface-raised: var(--palette-black-light);
+  --color-surface-overlay: var(--palette-black-lighter);
+  --color-surface-elevated: var(--palette-black-lightest);
+  --color-surface-backdrop: rgba(0, 0, 0, 0.8);
+
+  /* Text hierarchy */
+  --color-text: #ffffff;
+  --color-text-secondary: var(--palette-gray-lighter);
+  --color-text-muted: var(--palette-gray-light);
+  --color-text-inverse: var(--palette-black);
+
+  /* Brand - primary actions */
+  --color-primary: var(--palette-neon-pink);
+  --color-primary-hover: var(--palette-neon-dusty);
+  --color-primary-active: var(--palette-neon-rose);
+
+  /* Feedback states */
+  --color-success: var(--palette-neon-green);
+  --color-warning: var(--palette-neon-yellow);
+  --color-danger: var(--palette-neon-red);
+  --color-info: var(--palette-neon-pink);
+
+  /* Borders */
+  --color-border: var(--palette-gray-dark);
+  --color-border-hover: var(--palette-gray);
+  --color-border-focus: var(--color-primary);
 }
 ```
 
-### Typography
+## Glows
+
+Neon glow effects for hover states and emphasis:
 
 ```css
 :root {
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  /* Semantic glows */
+  --glow-primary: 0 0 8px rgba(209, 98, 164, 0.4);
+  --glow-primary-intense: 0 0 20px rgba(209, 98, 164, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --glow-success: 0 0 8px rgba(57, 255, 20, 0.4);
+  --glow-danger: 0 0 8px rgba(255, 0, 51, 0.4);
+  --glow-warning: 0 0 8px rgba(255, 255, 0, 0.4);
 
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.25rem;
-  --text-2xl: 1.5rem;
+  /* Primitive glows (for brand moments) */
+  --glow-pink: 0 0 8px rgba(209, 98, 164, 0.4);
+  --glow-rose: 0 0 8px rgba(163, 2, 98, 0.4);
+  --glow-green: 0 0 8px rgba(57, 255, 20, 0.4);
 }
 ```
 
-### Borders & Shadows
+## Typography
+
+Custom fonts with modular scale:
 
 ```css
 :root {
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  /* Font families */
+  --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Consolas', monospace;
+
+  /* Type scale (1.25 ratio) */
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.25rem;      /* 20px */
+  --text-2xl: 1.5rem;      /* 24px */
+  --text-3xl: 2rem;        /* 32px */
+  --text-4xl: 2.5rem;      /* 40px */
+  --text-5xl: 3.5rem;      /* 56px */
+
+  /* Line heights */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-prose: 1.75;   /* Optimal for body text */
+}
+```
+
+## Spacing System
+
+Complete 4px-based scale:
+
+```css
+:root {
+  --space-1: 0.25rem;      /* 4px */
+  --space-2: 0.5rem;       /* 8px */
+  --space-3: 0.75rem;      /* 12px */
+  --space-4: 1rem;         /* 16px - base unit */
+  --space-6: 1.5rem;       /* 24px */
+  --space-8: 2rem;         /* 32px */
+  --space-12: 3rem;        /* 48px */
+  --space-16: 4rem;        /* 64px */
+  --space-24: 6rem;        /* 96px */
+
+  /* Layout widths */
+  --width-sidebar: 220px;
+  --width-content-lg: 1024px;
+  --width-content-xl: 1152px;
+}
+```
+
+## Borders & Shadows
+
+```css
+:root {
+  /* Sharper borders */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
   --radius-full: 9999px;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  /* Deep shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.7);
 }
 ```
 
@@ -112,14 +204,31 @@ graph LR
 export default defineConfig({
   theme: {
     colors: {
-      bg: {
-        primary: 'var(--color-bg-primary)',
-        secondary: 'var(--color-bg-secondary)',
-        card: 'var(--color-bg-card)',
+      // Semantic surfaces
+      surface: {
+        DEFAULT: 'var(--color-surface)',
+        raised: 'var(--color-surface-raised)',
+        overlay: 'var(--color-surface-overlay)',
+        elevated: 'var(--color-surface-elevated)',
       },
-      accent: {
-        DEFAULT: 'var(--color-accent)',
-        hover: 'var(--color-accent-hover)',
+      // Text hierarchy
+      text: {
+        DEFAULT: 'var(--color-text)',
+        secondary: 'var(--color-text-secondary)',
+        muted: 'var(--color-text-muted)',
+        inverse: 'var(--color-text-inverse)',
+      },
+      // Brand colors
+      primary: {
+        DEFAULT: 'var(--color-primary)',
+        hover: 'var(--color-primary-hover)',
+      },
+      // Neon primitives (for brand moments)
+      neon: {
+        pink: 'var(--color-neon-pink)',
+        rose: 'var(--color-neon-rose)',
+        green: 'var(--color-neon-green)',
+        // ...
       },
     },
   },
@@ -136,24 +245,99 @@ shortcuts: {
   'flex-center': 'flex items-center justify-center',
   'flex-between': 'flex items-center justify-between',
 
-  // Cards
-  'card': 'bg-bg-card border border-border rounded-lg p-6',
-  'card-elevated': 'bg-bg-elevated border border-border rounded-lg p-6 shadow-md',
+  // Cards (semantic)
+  'card': 'bg-surface-overlay border border-border rounded-sm p-6 transition-all',
+  'card-glow': 'card hover:border-primary hover:shadow-glow-primary',
+  'card-interactive': 'card hover:border-primary/50 hover:bg-surface-elevated cursor-pointer',
 
-  // Buttons
-  'btn': 'inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium transition-all',
-  'btn-primary': 'btn bg-accent text-white hover:bg-accent-hover',
-  'btn-secondary': 'btn bg-bg-secondary text-text-primary border border-border',
-  'btn-discord': 'btn bg-discord text-white hover:bg-accent-hover',
+  // Buttons - neon brand variants
+  'btn': 'inline-flex items-center gap-2 px-4 py-2 rounded-sm font-semibold transition-all active:scale-95',
+  'btn-neon': 'btn border border-neon-pink text-neon-pink hover:bg-neon-pink hover:text-surface hover:shadow-glow-pink',
+  'btn-neon-solid': 'btn bg-neon-pink text-surface font-bold hover:shadow-glow-pink',
+
+  // Buttons - semantic
+  'btn-primary': 'btn bg-primary text-text-inverse hover:shadow-glow-primary',
+  'btn-secondary': 'btn bg-surface-raised border border-border hover:bg-surface-elevated',
+  'btn-ghost': 'btn bg-transparent text-text-secondary hover:text-primary',
+  'btn-danger': 'btn border border-danger text-danger hover:bg-danger hover:text-white',
 
   // Inputs
-  'input': 'w-full px-4 py-2 bg-bg-secondary border border-border rounded-md',
+  'input': 'w-full px-4 py-2 bg-surface-raised border border-border rounded-sm focus:border-focus focus:shadow-glow-primary',
 
-  // Text
-  'text-heading': 'text-2xl font-bold text-text-primary',
+  // Typography
+  'h1': 'text-5xl font-bold leading-tight tracking-tight text-text',
+  'h2': 'text-4xl font-bold leading-tight tracking-tight text-text',
+  'text-heading': 'text-2xl font-bold tracking-tight text-text',
   'text-caption': 'text-sm text-text-secondary',
-  'link': 'text-accent hover:underline cursor-pointer',
+  'text-gradient': 'bg-gradient-to-r from-neon-pink to-neon-orange bg-clip-text text-transparent',
+
+  // Links
+  'link': 'text-link hover:text-link-hover transition-colors',
+  'link-underline': 'link hover:after:w-full after:transition-all',
 }
+
+## Animations
+
+The design system includes a comprehensive animation library:
+
+### Fade Animations
+
+```css
+.animate-fade-in        /* Basic fade in */
+.animate-fade-in-up     /* Fade in from below */
+.animate-fade-in-down   /* Fade in from above */
+.animate-fade-in-left   /* Fade in from left */
+.animate-fade-in-right  /* Fade in from right */
+.animate-fade-out       /* Fade out */
+```
+
+### Scale & Slide Animations
+
+```css
+.animate-scale-in       /* Scale up entrance */
+.animate-pop            /* Pop effect */
+.animate-slide-in-right /* Slide from right */
+.animate-slide-in-up    /* Slide from bottom */
+```
+
+### Utility Animations
+
+```css
+.animate-spin           /* Continuous rotation */
+.animate-bounce         /* Bouncing effect */
+.animate-shake          /* Error shake */
+.animate-ping           /* Notification pulse */
+.animate-shimmer        /* Skeleton loading */
+.glow-breathe           /* Subtle glow pulse */
+```
+
+### Stagger Delays
+
+For list animations:
+
+```css
+.stagger-1 through .stagger-8  /* 50ms increments */
+```
+
+### Animation Shortcuts
+
+```typescript
+// Enter animations
+'enter-fade': 'animate-fade-in',
+'enter-up': 'animate-fade-in-up',
+'enter-scale': 'animate-scale-in',
+
+// Exit animations
+'exit-fade': 'animate-fade-out',
+'exit-scale': 'animate-scale-out',
+
+// State animations
+'state-error': 'animate-shake border-danger',
+'state-success': 'animate-pop border-success',
+
+// Loading states
+'spinner': 'w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin',
+'skeleton-shimmer': 'bg-surface-raised animate-shimmer rounded-sm',
 ```
 
 ## Usage
@@ -170,9 +354,9 @@ import 'virtual:uno.css'
 
 ```vue
 <template>
-  <div class="card">
-    <h1 class="text-heading">Hello</h1>
-    <button class="btn-primary">Click me</button>
+  <div class="card-glow enter-up">
+    <h1 class="text-gradient">Hello</h1>
+    <button class="btn-neon-solid">Click me</button>
   </div>
 </template>
 ```
@@ -190,34 +374,37 @@ Use CSS variables directly or with safelisted classes:
 ```razor
 <div class="card">
     <h1 class="text-heading">Dashboard</h1>
+    <div class="health-dot-healthy"></div>
     <button class="btn-primary">Action</button>
 </div>
 ```
 
 ### In Plain CSS
 
-Reference tokens directly:
+Reference semantic tokens:
 
 ```css
 .my-component {
-  background: var(--color-bg-card);
+  background: var(--color-surface-overlay);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   padding: var(--space-4);
 }
 
 .my-component:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-primary);
+  box-shadow: var(--glow-primary);
 }
 ```
 
 ## Design Principles
 
-1. **Dark mode first** - Default palette is dark, light mode optional
-2. **Mobile first** - Responsive breakpoints scale up
-3. **Atomic classes** - Small, composable utility classes
-4. **Token-driven** - All values derive from CSS custom properties
-5. **Provider colors** - OAuth providers have branded colors
+1. **Two-layer tokens** - Semantic tokens for everyday use, primitives for brand moments
+2. **Dark mode first** - Neon cyberpunk palette optimized for dark backgrounds
+3. **Mobile first** - Responsive breakpoints scale up
+4. **Glow effects** - Neon glows for hover states and emphasis
+5. **Sharp corners** - Minimal border radius for a technical aesthetic
+6. **Custom fonts** - Space Grotesk + JetBrains Mono for the cyberpunk feel
 
 ## Build Tasks
 
@@ -271,132 +458,270 @@ libs/design/
    safelist: ['bg-my-new', 'text-my-new'],
    ```
 
-## Dashboard Components
+## Dashboard Atomic Elements
 
-Reusable dashboard UI components available for both Blazor and Vue 3. All components use the same CSS classes from `uno.config.ts`.
+The design system includes comprehensive dashboard UI patterns as UnoCSS shortcuts:
 
-### Component Libraries
+### Metric Cards
 
-```
-libs/components/
-├── blazor/                  # .NET Razor components
-│   └── Dashboard/
-│       ├── MetricCard.razor
-│       ├── ProgressBar.razor
-│       ├── StatusPill.razor
-│       ├── Alert.razor
-│       ├── Tabs.razor
-│       ├── Pagination.razor
-│       ├── Avatar.razor
-│       ├── KeyValue.razor
-│       ├── KeyValueItem.razor
-│       └── Breadcrumbs.razor
-└── vue/                     # Vue 3 SFC components
-    └── src/dashboard/
-        └── (matching components)
+Display KPIs with trends:
+
+```html
+<div class="metric-card">
+  <span class="metric-value">1,234</span>
+  <span class="metric-label">Total Users</span>
+  <span class="metric-trend-up">↑ 12.5%</span>
+</div>
+
+<!-- Mini variant -->
+<div class="metric-mini">
+  <span class="metric-mini-value">99.9%</span>
+  <span class="metric-mini-label">Uptime</span>
+</div>
 ```
 
-### Available Components
+### Status Pills
 
-| Component | Description |
-|-----------|-------------|
-| `MetricCard` | Display KPI with label, value, and optional trend indicator |
-| `ProgressBar` | Progress indicator with variants (success/warning/danger) |
-| `StatusPill` | Colored status badges (online/offline/pending/etc) |
-| `Alert` | Contextual feedback messages |
-| `Tabs` | Tab navigation with pill variant option |
-| `Pagination` | Page navigation with ellipsis support |
-| `Avatar` | User avatar with image or initials fallback |
-| `KeyValue` | List/grid container for key-value pairs |
-| `KeyValueItem` | Single key-value display row |
-| `Breadcrumbs` | Navigation breadcrumb trail |
+Semantic status indicators:
 
-### Usage - Blazor
-
-Reference the component library:
-
-```xml
-<!-- In your .csproj -->
-<ProjectReference Include="..\..\libs\components\blazor\HellArch.Components.csproj" />
+```html
+<span class="pill-success">Active</span>
+<span class="pill-warning">Pending</span>
+<span class="pill-danger">Failed</span>
+<span class="pill-online">Online</span>
+<span class="pill-offline">Offline</span>
 ```
 
-```razor
-@using HellArch.Components.Dashboard
+### Progress Bars
 
-<MetricCard Label="Total Users" Value="1,234" Trend="12.5" TrendDirection="TrendDirection.Up" />
-
-<StatusPill Variant="PillVariant.Online">Active</StatusPill>
-
-<ProgressBar Value="75" Variant="ProgressVariant.Success" ShowLabel="true" />
-
-<KeyValue>
-    <KeyValueItem Key="Status" Value="Running" />
-    <KeyValueItem Key="Uptime" Value="99.9%" />
-</KeyValue>
+```html
+<div class="progress-bar">
+  <div class="progress-fill-success" style="width: 75%"></div>
+</div>
 ```
 
-### Usage - Vue 3
+### Health Indicators
 
-Import components from the package:
-
-```typescript
-import { MetricCard, StatusPill, ProgressBar, KeyValue, KeyValueItem } from '@hellarch/components-vue'
+```html
+<div class="health-dot-healthy"></div>  <!-- Green with glow -->
+<div class="health-dot-warning"></div>  <!-- Yellow pulsing -->
+<div class="health-dot-danger"></div>   <!-- Red pulsing -->
 ```
 
-```vue
-<template>
-  <MetricCard label="Total Users" :value="1234" :trend="12.5" trend-direction="up" />
+### Key-Value Pairs
 
-  <StatusPill variant="online">Active</StatusPill>
+```html
+<div class="kv-list">
+  <div class="kv-row">
+    <span class="kv-key">Status</span>
+    <span class="kv-value">Running</span>
+  </div>
+</div>
 
-  <ProgressBar :value="75" variant="success" show-label />
-
-  <KeyValue>
-    <KeyValueItem label="Status" value="Running" />
-    <KeyValueItem label="Uptime" value="99.9%" />
-  </KeyValue>
-</template>
+<!-- Grid layout -->
+<div class="kv-grid">
+  <span class="kv-key">CPU</span>
+  <span class="kv-value">45%</span>
+</div>
 ```
 
-### CSS Classes Reference
+### Alerts
 
-All components use these UnoCSS shortcuts (from `uno.config.ts`):
+```html
+<div class="alert-success">
+  <span class="alert-icon">✓</span>
+  <div class="alert-content">
+    <div class="alert-title">Success</div>
+    Operation completed.
+  </div>
+</div>
+```
+
+### Data Tables
+
+```html
+<table class="data-table">
+  <thead>
+    <tr><th class="data-th">Name</th><th class="data-th">Status</th></tr>
+  </thead>
+  <tbody>
+    <tr class="data-row-clickable">
+      <td class="data-td">Service A</td>
+      <td class="data-td"><span class="pill-success">Active</span></td>
+    </tr>
+  </tbody>
+</table>
+```
+
+### Tabs
+
+```html
+<!-- Underline tabs -->
+<div class="tabs">
+  <button class="tab-active">Overview</button>
+  <button class="tab">Settings</button>
+</div>
+
+<!-- Pill tabs -->
+<div class="tabs-pills">
+  <button class="tab-pill-active">Day</button>
+  <button class="tab-pill">Week</button>
+</div>
+```
+
+### Navigation
+
+```html
+<!-- Sidebar nav -->
+<a class="nav-link nav-link-active">
+  <span class="nav-icon">📊</span>
+  Dashboard
+</a>
+
+<!-- Breadcrumbs -->
+<nav class="breadcrumbs">
+  <a class="breadcrumb">Home</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="breadcrumb-current">Users</span>
+</nav>
+
+<!-- Pagination -->
+<div class="pagination">
+  <button class="page-btn">←</button>
+  <button class="page-btn-active">1</button>
+  <button class="page-btn">2</button>
+  <button class="page-btn">→</button>
+</div>
+```
+
+### Badges
+
+```html
+<span class="badge">Default</span>
+<span class="badge-success">Success</span>
+<span class="badge-warning">Warning</span>
+<span class="badge-danger">Error</span>
+```
+
+### Buttons
+
+```html
+<!-- Icon buttons -->
+<button class="btn-icon">✕</button>
+<button class="btn-icon-danger">🗑</button>
+
+<!-- Button groups -->
+<div class="btn-group">
+  <button class="btn-group-item-active">Grid</button>
+  <button class="btn-group-item">List</button>
+</div>
+```
+
+### Avatars
+
+```html
+<div class="avatar">JD</div>
+<div class="avatar-sm">J</div>
+<div class="avatar-lg"><img src="..." /></div>
+
+<!-- Avatar group -->
+<div class="avatar-group">
+  <div class="avatar avatar-ring">A</div>
+  <div class="avatar avatar-ring">B</div>
+</div>
+```
+
+### Layout Shortcuts
+
+```html
+<!-- Grid patterns -->
+<div class="grid-2">...</div>    <!-- 2-column responsive -->
+<div class="grid-3">...</div>    <!-- 3-column responsive -->
+<div class="grid-4">...</div>    <!-- 4-column for stats -->
+<div class="grid-sidebar">...</div>  <!-- Sidebar layout -->
+
+<!-- Spacing patterns -->
+<div class="stack">...</div>     <!-- Vertical spacing (24px) -->
+<div class="stack-sm">...</div>  <!-- Compact (16px) -->
+<div class="row">...</div>       <!-- Horizontal with gap -->
+<div class="row-between">...</div>
+
+<!-- Page containers -->
+<div class="page">...</div>      <!-- Standard max-width -->
+<div class="page-wide">...</div> <!-- Wider content -->
+```
+
+### Modals & Dropdowns
+
+```html
+<!-- Modal -->
+<div class="modal-overlay">
+  <div class="modal-panel">...</div>
+</div>
+
+<!-- Dropdown -->
+<div class="dropdown">
+  <button>Menu</button>
+  <div class="dropdown-menu">
+    <a class="dropdown-item">Option 1</a>
+    <div class="dropdown-divider"></div>
+    <a class="dropdown-item-danger">Delete</a>
+  </div>
+</div>
+```
+
+### Code Display
+
+```html
+<code class="code-inline">const x = 1</code>
+
+<pre class="code-block">
+function hello() {
+  console.log('world')
+}
+</pre>
+```
+
+## Prose Styles
+
+Typography for body content and documentation:
+
+```html
+<article class="prose">
+  <h1>Title</h1>
+  <p>Body text with <a href="#">links</a> and <code>inline code</code>.</p>
+  <blockquote>Quoted text with neon accent border</blockquote>
+</article>
+```
+
+Prose variants:
 
 ```css
-/* Metrics */
-.metric-card        /* Card container with flex column */
-.metric-value       /* Large bold value text */
-.metric-label       /* Muted label text */
-.metric-trend-up    /* Green upward trend */
-.metric-trend-down  /* Red downward trend */
-
-/* Status Pills */
-.pill               /* Base badge styling */
-.pill-success       /* Green for success/active */
-.pill-warning       /* Yellow for warnings */
-.pill-danger        /* Red for errors */
-.pill-online        /* Green dot + text for online */
-.pill-offline       /* Gray for offline */
-
-/* Progress */
-.progress-bar       /* Track container */
-.progress-fill      /* Animated fill bar */
-.progress-fill-success/warning/danger
-
-/* Key-Value */
-.kv-list            /* Vertical list layout */
-.kv-grid            /* Two-column grid */
-.kv-row             /* Single row flex container */
-.kv-key             /* Muted key label */
-.kv-value           /* Primary value text */
-
-/* Alerts */
-.alert              /* Base alert container */
-.alert-info/success/warning/danger
-
-/* Navigation */
-.breadcrumbs        /* Breadcrumb container */
-.pagination         /* Pagination container */
-.page-btn           /* Page button */
-.page-btn-active    /* Current page */
+.prose        /* Default prose styling */
+.prose-sm     /* Smaller text size */
+.prose-lg     /* Larger text size */
+.prose-invert /* Inverted for light backgrounds */
 ```
+
+Features:
+- Optimal line height (1.75) for readability
+- Max-width 65ch for comfortable reading
+- Heading hierarchy with proper spacing
+- Styled links, lists, blockquotes, tables
+- Code blocks with syntax highlighting support
+
+## Migration from Legacy Tokens
+
+Legacy aliases are available for backwards compatibility:
+
+| Legacy Token | Semantic Token | Notes |
+|--------------|----------------|-------|
+| `--color-bg-primary` | `--color-surface` | |
+| `--color-bg-secondary` | `--color-surface-raised` | |
+| `--color-bg-card` | `--color-surface-overlay` | |
+| `--color-bg-elevated` | `--color-surface-elevated` | |
+| `--color-text-primary` | `--color-text` | |
+| `--color-error` | `--color-danger` | |
+| `--color-accent` | `--color-primary` | |
+
+Legacy aliases will be removed in v2.0. Migrate to semantic tokens for new code.

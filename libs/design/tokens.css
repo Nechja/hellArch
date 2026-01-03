@@ -31,8 +31,8 @@
   /* Palette - Grays */
   --palette-gray-dark: #2a2a2a;
   --palette-gray: #3a3a3a;
-  --palette-gray-light: #555555;
-  --palette-gray-lighter: #888888;
+  --palette-gray-light: #737373;
+  --palette-gray-lighter: #9a9a9a;
 
   /* Palette - Neon (brand colors - use for intentional brand moments) */
   --palette-neon-pink: #D162A4;
@@ -58,6 +58,7 @@
   /* Surfaces - where content lives */
   --color-surface: var(--palette-black);
   --color-surface-raised: var(--palette-black-light);
+  --color-surface-tertiary: var(--palette-black-lighter);
   --color-surface-overlay: var(--palette-black-lighter);
   --color-surface-elevated: var(--palette-black-lightest);
   --color-surface-backdrop: rgba(0, 0, 0, 0.8);
@@ -106,10 +107,18 @@
 
   /* ============================================================================
      LEGACY ALIASES (for backwards compatibility during migration)
-     These map old names to new semantic tokens. Remove after full migration.
+     @deprecated These aliases will be removed in v2.0. Migrate to semantic tokens:
+     - bg-primary → surface
+     - bg-secondary → surface-raised
+     - bg-card → surface-overlay
+     - bg-elevated → surface-elevated
+     - bg-overlay → surface-backdrop
+     - text-primary → text
+     - error → danger
      ============================================================================ */
   --color-bg-primary: var(--color-surface);
   --color-bg-secondary: var(--color-surface-raised);
+  --color-bg-tertiary: var(--color-surface-tertiary);
   --color-bg-card: var(--color-surface-overlay);
   --color-bg-elevated: var(--color-surface-elevated);
   --color-bg-overlay: var(--color-surface-backdrop);
@@ -301,11 +310,43 @@ body {
   min-height: 100vh;
 }
 
-/* Focus styles */
+/* Focus styles - high visibility for keyboard navigation */
 :focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
-  box-shadow: var(--glow-primary);
+  box-shadow: 0 0 0 4px rgba(209, 98, 164, 0.3), var(--glow-primary);
+}
+
+/* Skip link for keyboard users */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-semibold);
+  z-index: var(--z-toast);
+  transition: top var(--duration-fast);
+}
+
+.skip-link:focus {
+  top: var(--space-2);
+}
+
+/* Screen reader only - visually hidden but accessible */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Scrollbar - sleek */

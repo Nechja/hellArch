@@ -52,10 +52,25 @@ docker_build(
     ignore=['**/bin', '**/obj'],
 )
 
+docker_build(
+    'hellarch-files-db',
+    '.',
+    dockerfile='infra/dbs/files-db/Dockerfile',
+    only=[
+        'src/schema/Schema/',
+        'src/schema/MigrationRunner/',
+        'libs/data_types/csharp/',
+        'infra/dbs/files-db/',
+    ],
+    ignore=['**/bin', '**/obj'],
+)
+
 # Label infrastructure resources
 dc_resource('auth-db', labels=['infra'])
 dc_resource('user-db', labels=['infra'])
 dc_resource('events-db', labels=['infra'])
+dc_resource('files-db', labels=['infra'])
+dc_resource('minio', labels=['infra'], links=['http://localhost:9001'])
 dc_resource('redis', labels=['infra'])
 dc_resource('rabbitmq', labels=['infra'])
 
@@ -79,6 +94,10 @@ dc_resource('webhooks-worker', labels=['workers'], resource_deps=['rabbitmq'])
 dc_resource('realtime-worker', labels=['workers'], resource_deps=['rabbitmq', 'gateway'], links=['http://localhost:5020/health'])
 dc_resource('infra-worker', labels=['workers'], resource_deps=['rabbitmq', 'health'])
 dc_resource('dlq-worker', labels=['workers'], resource_deps=['rabbitmq', 'realtime-worker'], links=['http://localhost:5025/health'])
+dc_resource('images-worker', labels=['workers'], resource_deps=['rabbitmq', 'minio', 'files'])
+
+# Files service
+dc_resource('files', labels=['services'], resource_deps=['files-db', 'minio', 'rabbitmq'], links=['http://localhost:5006'])
 
 # Frontend clients (design system + login + app)
 # Built to src/gateway/Gateway/wwwroot/ - volume mount picks up changes immediately

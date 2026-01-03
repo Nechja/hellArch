@@ -7,8 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	sharedconfig "github.com/nechja/hellarch/golibs/config"
+	"github.com/nechja/hellarch/golibs/events"
+	"github.com/nechja/hellarch/golibs/health"
 	"github.com/nechja/hellarch/golibs/telemetry"
-	"github.com/nechja/hellarch/workers/audit/internal/client"
 	"github.com/nechja/hellarch/workers/audit/internal/config"
 	"github.com/nechja/hellarch/workers/audit/internal/consumer"
 )
@@ -34,6 +36,11 @@ func run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	healthAddr := sharedconfig.GetEnv("HEALTH_ADDR", ":8080")
+	healthServer := health.NewServer(healthAddr)
+	healthServer.Start()
+	defer healthServer.Stop(ctx)
+
 	shutdownTelemetry, err := telemetry.Setup(ctx, "audit-worker")
 	if err != nil {
 		slog.Warn("failed to initialize telemetry", "error", err)
@@ -41,14 +48,19 @@ func run() error {
 		defer func() { _ = shutdownTelemetry(ctx) }()
 	}
 
-	eventsClient := client.NewEventsClient(cfg.EventsAPIURL)
+	eventsClient := events.NewClient(cfg.EventsAPIURL)
 	slog.Info("events API client initialized", "url", cfg.EventsAPIURL)
 
 	cons, err := consumer.New(ctx, cfg.RabbitMQURL, eventsClient)
 	if err != nil {
+		healthServer.SetHealthy(false)
 		return err
 	}
 	defer func() { _ = cons.Close() }()
+
+	healthServer.AddCheck("rabbitmq", func() bool {
+		return cons.IsHealthy()
+	})
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -59,6 +71,6 @@ func run() error {
 		cancel()
 	}()
 
-	slog.Info("audit worker starting")
+	slog.Info("audit worker starting", "health_addr", healthAddr)
 	return cons.Run(ctx)
 }

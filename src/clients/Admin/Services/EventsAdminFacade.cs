@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using HellArch.Http;
 
 namespace Admin.Services;
 
@@ -9,8 +10,6 @@ public sealed class EventsAdminFacade(
 {
     private readonly HttpClient _client = httpClientFactory.CreateClient("EventsService");
 
-    // Audit Logs
-
     public async Task<AuditLogsResponse> GetAuditLogs(
         int page = 1,
         int pageSize = 20,
@@ -18,179 +17,41 @@ public sealed class EventsAdminFacade(
         string? actorId = null,
         CancellationToken ct = default)
     {
-        try
+        var url = $"audit-logs?page={page}&page_size={pageSize}";
+        if (!string.IsNullOrEmpty(eventType))
         {
-            var url = $"audit-logs?page={page}&page_size={pageSize}";
-            if (!string.IsNullOrEmpty(eventType))
-            {
-                url += $"&event_type={Uri.EscapeDataString(eventType)}";
-            }
-            if (!string.IsNullOrEmpty(actorId))
-            {
-                url += $"&actor_id={Uri.EscapeDataString(actorId)}";
-            }
+            url += $"&event_type={Uri.EscapeDataString(eventType)}";
+        }
+        if (!string.IsNullOrEmpty(actorId))
+        {
+            url += $"&actor_id={Uri.EscapeDataString(actorId)}";
+        }
 
-            var response = await _client.GetFromJsonAsync<AuditLogsResponse>(url, ct);
-            return response ?? new AuditLogsResponse([], 0, page, pageSize);
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting audit logs");
-            return new AuditLogsResponse([], 0, page, pageSize);
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting audit logs");
-            return new AuditLogsResponse([], 0, page, pageSize);
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse audit logs response");
-            return new AuditLogsResponse([], 0, page, pageSize);
-        }
+        var response = await _client.GetJsonSafe<AuditLogsResponse>(url, logger, ct);
+        return response ?? new AuditLogsResponse([], 0, page, pageSize);
     }
 
-    public async Task<AuditLog?> GetAuditLog(string id, CancellationToken ct = default)
-    {
-        try
-        {
-            return await _client.GetFromJsonAsync<AuditLog>($"audit-logs/{id}", ct);
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting audit log {Id}", id);
-            return null;
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting audit log {Id}", id);
-            return null;
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse audit log response for {Id}", id);
-            return null;
-        }
-    }
-
-    // Webhooks
+    public async Task<AuditLog?> GetAuditLog(string id, CancellationToken ct = default) =>
+        await _client.GetJsonSafe<AuditLog>($"audit-logs/{id}", logger, ct);
 
     public async Task<WebhooksResponse> GetWebhooks(int page = 1, int pageSize = 20, CancellationToken ct = default)
     {
-        try
-        {
-            var response = await _client.GetFromJsonAsync<WebhooksResponse>(
-                $"webhooks?page={page}&page_size={pageSize}", ct);
-            return response ?? new WebhooksResponse([], 0, page, pageSize);
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting webhooks");
-            return new WebhooksResponse([], 0, page, pageSize);
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting webhooks");
-            return new WebhooksResponse([], 0, page, pageSize);
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse webhooks response");
-            return new WebhooksResponse([], 0, page, pageSize);
-        }
+        var response = await _client.GetJsonSafe<WebhooksResponse>(
+            $"webhooks?page={page}&page_size={pageSize}", logger, ct);
+        return response ?? new WebhooksResponse([], 0, page, pageSize);
     }
 
-    public async Task<Webhook?> GetWebhook(string id, CancellationToken ct = default)
-    {
-        try
-        {
-            return await _client.GetFromJsonAsync<Webhook>($"webhooks/{id}", ct);
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting webhook {Id}", id);
-            return null;
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting webhook {Id}", id);
-            return null;
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse webhook response for {Id}", id);
-            return null;
-        }
-    }
+    public async Task<Webhook?> GetWebhook(string id, CancellationToken ct = default) =>
+        await _client.GetJsonSafe<Webhook>($"webhooks/{id}", logger, ct);
 
-    public async Task<Webhook?> CreateWebhook(CreateWebhookRequest request, CancellationToken ct = default)
-    {
-        try
-        {
-            var response = await _client.PostAsJsonAsync("webhooks", request, ct);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<Webhook>(ct);
-            }
-            logger.LogWarning("Failed to create webhook: {StatusCode}", response.StatusCode);
-            return null;
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error creating webhook");
-            return null;
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout creating webhook");
-            return null;
-        }
-    }
+    public async Task<Webhook?> CreateWebhook(CreateWebhookRequest request, CancellationToken ct = default) =>
+        await _client.PostJsonSafe<CreateWebhookRequest, Webhook>("webhooks", request, logger, ct);
 
-    public async Task<Webhook?> UpdateWebhook(string id, UpdateWebhookRequest request, CancellationToken ct = default)
-    {
-        try
-        {
-            var response = await _client.PutAsJsonAsync($"webhooks/{id}", request, ct);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<Webhook>(ct);
-            }
-            logger.LogWarning("Failed to update webhook {Id}: {StatusCode}", id, response.StatusCode);
-            return null;
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error updating webhook {Id}", id);
-            return null;
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout updating webhook {Id}", id);
-            return null;
-        }
-    }
+    public async Task<Webhook?> UpdateWebhook(string id, UpdateWebhookRequest request, CancellationToken ct = default) =>
+        await _client.PostJsonSafe<UpdateWebhookRequest, Webhook>($"webhooks/{id}", request, logger, ct);
 
-    public async Task<bool> DeleteWebhook(string id, CancellationToken ct = default)
-    {
-        try
-        {
-            var response = await _client.DeleteAsync($"webhooks/{id}", ct);
-            return response.IsSuccessStatusCode;
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error deleting webhook {Id}", id);
-            return false;
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout deleting webhook {Id}", id);
-            return false;
-        }
-    }
-
-    // Webhook Deliveries
+    public async Task<bool> DeleteWebhook(string id, CancellationToken ct = default) =>
+        await _client.DeleteSafe($"webhooks/{id}", logger, ct);
 
     public async Task<DeliveriesResponse> GetDeliveries(
         int page = 1,
@@ -199,63 +60,23 @@ public sealed class EventsAdminFacade(
         bool? success = null,
         CancellationToken ct = default)
     {
-        try
+        var url = $"webhook-deliveries?page={page}&page_size={pageSize}";
+        if (!string.IsNullOrEmpty(webhookId))
         {
-            var url = $"webhook-deliveries?page={page}&page_size={pageSize}";
-            if (!string.IsNullOrEmpty(webhookId))
-            {
-                url += $"&webhook_id={Uri.EscapeDataString(webhookId)}";
-            }
-            if (success.HasValue)
-            {
-                url += $"&success={success.Value.ToString().ToLowerInvariant()}";
-            }
+            url += $"&webhook_id={Uri.EscapeDataString(webhookId)}";
+        }
+        if (success.HasValue)
+        {
+            url += $"&success={success.Value.ToString().ToLowerInvariant()}";
+        }
 
-            var response = await _client.GetFromJsonAsync<DeliveriesResponse>(url, ct);
-            return response ?? new DeliveriesResponse([], 0, page, pageSize);
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting deliveries");
-            return new DeliveriesResponse([], 0, page, pageSize);
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting deliveries");
-            return new DeliveriesResponse([], 0, page, pageSize);
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse deliveries response");
-            return new DeliveriesResponse([], 0, page, pageSize);
-        }
+        var response = await _client.GetJsonSafe<DeliveriesResponse>(url, logger, ct);
+        return response ?? new DeliveriesResponse([], 0, page, pageSize);
     }
 
-    public async Task<WebhookDelivery?> GetDelivery(string id, CancellationToken ct = default)
-    {
-        try
-        {
-            return await _client.GetFromJsonAsync<WebhookDelivery>($"webhook-deliveries/{id}", ct);
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting delivery {Id}", id);
-            return null;
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting delivery {Id}", id);
-            return null;
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse delivery response for {Id}", id);
-            return null;
-        }
-    }
+    public async Task<WebhookDelivery?> GetDelivery(string id, CancellationToken ct = default) =>
+        await _client.GetJsonSafe<WebhookDelivery>($"webhook-deliveries/{id}", logger, ct);
 }
-
-// DTOs for Events API responses
 
 public sealed record AuditLogsResponse(
     IReadOnlyList<AuditLog> Data,
@@ -279,9 +100,6 @@ public sealed record WebhooksResponse(
     int Page,
     [property: JsonPropertyName("page_size")] int PageSize);
 
-/// <summary>
-/// Webhook payload format for delivery transformation.
-/// </summary>
 [JsonConverter(typeof(JsonStringEnumConverter<WebhookFormat>))]
 public enum WebhookFormat
 {

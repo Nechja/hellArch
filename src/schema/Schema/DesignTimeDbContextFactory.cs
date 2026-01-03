@@ -45,3 +45,17 @@ public sealed class EventsDbContextFactory : IDesignTimeDbContextFactory<EventsD
         return new EventsDbContext(optionsBuilder.Options);
     }
 }
+
+public sealed class FilesDbContextFactory : IDesignTimeDbContextFactory<FilesDbContext>
+{
+    public FilesDbContext CreateDbContext(string[] args)
+    {
+        var connectionString = Environment.GetEnvironmentVariable("FILES_DATABASE_URL")
+            ?? "Host=localhost;Port=5436;Database=files_db;Username=hellarch;Password=hellarch";
+
+        var optionsBuilder = new DbContextOptionsBuilder<FilesDbContext>();
+        optionsBuilder.UseNpgsql(connectionString);
+
+        return new FilesDbContext(optionsBuilder.Options);
+    }
+}

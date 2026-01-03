@@ -44,6 +44,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// Event publishing
 	mux.Handle("POST /api/events/publish", otelhttp.NewHandler(http.HandlerFunc(h.publishEvent), "publish_event"))
 
+	// Dead letters
+	mux.Handle("GET /api/dead-letters", otelhttp.NewHandler(http.HandlerFunc(h.listDeadLetters), "list_dead_letters"))
+	mux.Handle("POST /api/dead-letters", otelhttp.NewHandler(http.HandlerFunc(h.createDeadLetter), "create_dead_letter"))
+	mux.Handle("DELETE /api/dead-letters/{id}", otelhttp.NewHandler(http.HandlerFunc(h.deleteDeadLetter), "delete_dead_letter"))
+
 	// Workers status
 	mux.Handle("GET /api/workers/status", otelhttp.NewHandler(http.HandlerFunc(h.workersStatus), "workers_status"))
 

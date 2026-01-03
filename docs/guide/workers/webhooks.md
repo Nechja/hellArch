@@ -84,14 +84,24 @@ sequenceDiagram
 
 ```go
 type Webhook struct {
-    ID         string    // UUID
-    URL        string    // Endpoint URL
-    Secret     string    // HMAC signing key
-    EventTypes []string  // Subscribed event types
-    IsActive   bool      // Enable/disable
+    ID         string         // UUID
+    Name       string         // Display name
+    URL        string         // Endpoint URL
+    Secret     string         // HMAC signing key
+    EventTypes []string       // Subscribed event types
+    Format     WebhookFormat  // raw, discord, slack
+    IsActive   bool           // Enable/disable
     CreatedAt  time.Time
     UpdatedAt  time.Time
 }
+
+type WebhookFormat string
+
+const (
+    WebhookFormatRaw     WebhookFormat = "raw"
+    WebhookFormatDiscord WebhookFormat = "discord"
+    WebhookFormatSlack   WebhookFormat = "slack"
+)
 ```
 
 ### Webhook Delivery
@@ -139,6 +149,83 @@ CREATE TABLE webhook_deliveries (
 
 CREATE INDEX idx_webhook_deliveries_webhook_id ON webhook_deliveries(webhook_id);
 CREATE INDEX idx_webhook_deliveries_created_at ON webhook_deliveries(created_at DESC);
+```
+
+## Payload Formats
+
+Webhooks support three output formats to integrate with different services:
+
+### Raw (CloudEvents)
+
+Default format. Sends the original CloudEvents JSON:
+
+```json
+{
+  "specversion": "1.0",
+  "type": "hellarch.auth.user.created.v1",
+  "source": "auth-service",
+  "id": "evt_123",
+  "time": "2024-01-15T10:30:00Z",
+  "data": { "user_id": "..." }
+}
+```
+
+### Discord
+
+Transforms events into Discord webhook embeds with color-coded event types:
+
+```json
+{
+  "embeds": [{
+    "title": "User Created",
+    "color": 3066993,
+    "fields": [
+      { "name": "User Id", "value": "...", "inline": true }
+    ],
+    "footer": { "text": "Source: auth-service" },
+    "timestamp": "2024-01-15T10:30:00Z"
+  }]
+}
+```
+
+**Color Mapping:**
+| Event Type | Color |
+|------------|-------|
+| `*.created` | Green (#2ECC71) |
+| `*.deleted` | Red (#E74C3C) |
+| `*.updated` | Blue (#3498DB) |
+| `*.failed`, `*.unhealthy` | Red (#E74C3C) |
+| `*.recovered` | Green (#2ECC71) |
+| Other | Purple (#9B59B6) |
+
+### Slack
+
+Transforms events into Slack Block Kit format:
+
+```json
+{
+  "text": "User Created",
+  "blocks": [
+    {
+      "type": "header",
+      "text": { "type": "plain_text", "text": "User Created" }
+    },
+    {
+      "type": "section",
+      "text": { "type": "mrkdwn", "text": "*Source:* auth-service\n*Event ID:* evt_123" }
+    },
+    {
+      "type": "section",
+      "fields": [
+        { "type": "mrkdwn", "text": "*User Id:*\n..." }
+      ]
+    },
+    {
+      "type": "context",
+      "elements": [{ "type": "mrkdwn", "text": "Received at 2024-01-15T10:30:00Z" }]
+    }
+  ]
+}
 ```
 
 ## HTTP Delivery
@@ -241,7 +328,9 @@ src/workers/webhooks/
 ├── internal/
 │   ├── config/config.go            # Environment loading
 │   ├── consumer/consumer.go        # RabbitMQ consumer
-│   ├── dispatcher/dispatcher.go    # HTTP delivery + signing
+│   ├── dispatcher/
+│   │   ├── dispatcher.go           # HTTP delivery + signing
+│   │   └── transformer.go          # Discord/Slack payload transform
 │   ├── store/postgres.go           # Database operations
 │   └── telemetry/telemetry.go      # OpenTelemetry setup
 ├── go.mod
@@ -254,7 +343,14 @@ src/workers/webhooks/
 
 Webhooks are managed in the Admin Console at `/webhooks`:
 
-- Create/delete webhooks
+- Create/edit/delete webhooks
 - Enable/disable webhooks
-- View recent deliveries per webhook
-- See delivery status codes and errors
+- Select format (Raw, Discord, Slack)
+- Event type catalog with domain grouping
+- Select all / clear event subscriptions
+- View deliveries tab with filtering:
+  - Filter by webhook
+  - Filter by success/failed
+  - Pagination
+- Delivery detail modal with response body
+- Live updates via SignalR

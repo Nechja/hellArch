@@ -6,14 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nechja/hellarch/workers/webhooks/internal/client"
+	"github.com/nechja/hellarch/golibs/events"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
 
 var titleCaser = cases.Title(language.English)
 
-// CloudEvent represents the incoming CloudEvents format
 type CloudEvent struct {
 	SpecVersion     string          `json:"specversion"`
 	Type            string          `json:"type"`
@@ -25,7 +24,6 @@ type CloudEvent struct {
 	Data            json.RawMessage `json:"data,omitempty"`
 }
 
-// DiscordPayload represents Discord webhook format
 type DiscordPayload struct {
 	Content string         `json:"content,omitempty"`
 	Embeds  []DiscordEmbed `json:"embeds,omitempty"`
@@ -50,7 +48,6 @@ type DiscordEmbedFooter struct {
 	Text string `json:"text"`
 }
 
-// SlackPayload represents Slack webhook format
 type SlackPayload struct {
 	Text   string       `json:"text,omitempty"`
 	Blocks []SlackBlock `json:"blocks,omitempty"`
@@ -73,12 +70,11 @@ type SlackElement struct {
 	Text string `json:"text"`
 }
 
-// TransformPayload converts CloudEvents payload to the specified format
-func TransformPayload(payload []byte, format client.WebhookFormat) ([]byte, string, error) {
+func TransformPayload(payload []byte, format events.WebhookFormat) ([]byte, string, error) {
 	switch format {
-	case client.WebhookFormatDiscord:
+	case events.WebhookFormatDiscord:
 		return transformToDiscord(payload)
-	case client.WebhookFormatSlack:
+	case events.WebhookFormatSlack:
 		return transformToSlack(payload)
 	default:
 		return payload, "application/cloudevents+json", nil
@@ -206,20 +202,36 @@ func formatEventTitle(eventType string) string {
 
 func getColorForEventType(eventType string) int {
 	switch {
-	case strings.Contains(eventType, "created"):
-		return 0x2ECC71 // Green
-	case strings.Contains(eventType, "deleted"):
-		return 0xE74C3C // Red
-	case strings.Contains(eventType, "updated"):
-		return 0x3498DB // Blue
-	case strings.Contains(eventType, "failed"):
-		return 0xE74C3C // Red
-	case strings.Contains(eventType, "unhealthy"):
-		return 0xE74C3C // Red
-	case strings.Contains(eventType, "recovered"):
-		return 0x2ECC71 // Green
+	case strings.Contains(eventType, "created"),
+		strings.Contains(eventType, "completed"),
+		strings.Contains(eventType, "recovered"),
+		strings.Contains(eventType, "unlocked"),
+		strings.Contains(eventType, "linked"):
+		return 0x2ECC71
+
+	case strings.Contains(eventType, "deleted"),
+		strings.Contains(eventType, "failed"),
+		strings.Contains(eventType, "unhealthy"),
+		strings.Contains(eventType, "locked"),
+		strings.Contains(eventType, "suspicious"),
+		strings.Contains(eventType, "revoked"):
+		return 0xE74C3C
+
+	case strings.Contains(eventType, "expiring"),
+		strings.Contains(eventType, "threshold"),
+		strings.Contains(eventType, "exceeded"),
+		strings.Contains(eventType, "failing"),
+		strings.Contains(eventType, "rolledback"):
+		return 0xE67E22
+
+	case strings.Contains(eventType, "updated"),
+		strings.Contains(eventType, "changed"),
+		strings.Contains(eventType, "started"),
+		strings.Contains(eventType, "ended"):
+		return 0x3498DB
+
 	default:
-		return 0x9B59B6 // Purple
+		return 0x9B59B6
 	}
 }
 
@@ -306,7 +318,6 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen-3] + "..."
 }
 
-// GetCurrentTimestamp returns current time in RFC3339 format
 func GetCurrentTimestamp() string {
 	return time.Now().UTC().Format(time.RFC3339)
 }

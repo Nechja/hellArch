@@ -62,12 +62,5 @@ pub fn services() -> List(Service) {
       check_type: TcpConnect,
       critical: True,
     ),
-    // Workers - checked via events API
-    Service(
-      name: "workers",
-      url: "http://events:5005",
-      check_type: HttpGet("/api/workers/status"),
-      critical: False,
-    ),
   ]
 }
