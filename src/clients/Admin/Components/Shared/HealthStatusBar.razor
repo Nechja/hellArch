@@ -1,0 +1,26 @@
+<MudAlert Severity="@HealthHelpers.GetHealthSeverity(Status)" Class="mb-4" Variant="Variant.Outlined">
+    <div class="d-flex align-center">
+        <MudIcon Icon="@HealthHelpers.GetHealthIcon(Status)" Class="mr-2" />
+        <span>@Label: @Status.ToUpperInvariant()</span>
+        <MudSpacer />
+        @if (!string.IsNullOrEmpty(Timestamp))
+        {
+            <MudText Typo="Typo.caption">Last check: @FormatTime(Timestamp)</MudText>
+        }
+    </div>
+</MudAlert>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter, EditorRequired] public string Status { get; set; } = "";
+    [Parameter] public string? Timestamp { get; set; }
+
+    private static string FormatTime(string isoTime)
+    {
+        if (DateTime.TryParse(isoTime, out var dt))
+        {
+            return dt.ToLocalTime().ToString("HH:mm:ss");
+        }
+        return isoTime;
+    }
+}

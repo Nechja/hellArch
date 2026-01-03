@@ -86,7 +86,7 @@ fn publish_event(
   publisher: EventPublisher,
   event: json.Json,
 ) -> Result(Nil, String) {
-  let url = publisher.events_url <> "/api/events/publish"
+  let url = publisher.events_url <> "/publish"
   let body = json.to_string(event)
 
   case do_http_post(url, body, 5000) {

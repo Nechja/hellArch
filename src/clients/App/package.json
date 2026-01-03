@@ -11,13 +11,16 @@
   "dependencies": {
     "@hellarch/components-vue": "file:../../../libs/components/vue",
     "@hellarch/types": "file:../../../libs/data_types/typescript",
+    "@mdi/font": "^7.4.47",
+    "@microsoft/signalr": "^10.0.0",
+    "vite-plugin-vuetify": "^2.1.2",
     "vue": "^3.5.13",
-    "vue-router": "^4.5.0"
+    "vue-router": "^4.5.0",
+    "vuetify": "^3.11.6"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",
     "typescript": "^5.7.2",
-    "unocss": "^0.65.3",
     "vite": "^6.0.6",
     "vue-tsc": "^2.2.0"
   }

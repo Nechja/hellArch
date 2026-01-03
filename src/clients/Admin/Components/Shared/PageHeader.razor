@@ -1,0 +1,19 @@
+@* Reusable page header with gradient title and optional subtitle *@
+
+<MudText Typo="Typo.h4" Class="mb-2" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+    @Title
+</MudText>
+@if (!string.IsNullOrEmpty(Subtitle))
+{
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+        @Subtitle
+    </MudText>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+}

@@ -1,86 +1,66 @@
 @inherits LayoutComponentBase
-@implements IAsyncDisposable
+@implements IDisposable
 @inject Admin.Services.RealtimeHubService RealtimeHub
 @inject Admin.Services.LiveUpdateService LiveUpdate
 @inject IHttpContextAccessor HttpContextAccessor
 
-<div class="grid md:grid-cols-[220px_1fr] min-h-screen">
-    <!-- Desktop Sidebar -->
-    <aside class="bg-bg-secondary border-r border-border sticky top-0 h-screen overflow-y-auto hidden md:block">
-        <div class="p-4 border-b border-border mb-4">
-            <h2 class="text-xl font-bold text-gradient">HellArch</h2>
-            <span class="text-xs text-text-muted uppercase tracking-wider">Admin Console</span>
-        </div>
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+        <MudText Typo="Typo.h6" Class="ml-3">
+            <span style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                HellArch
+            </span>
+        </MudText>
+        <MudText Typo="Typo.caption" Class="ml-2 mt-1" Style="color: var(--mud-palette-text-secondary);">Admin</MudText>
+        <MudSpacer />
+
+        <MudTooltip Text="@($"Realtime: {_connectionStatus}")">
+            <MudIcon Icon="@Icons.Material.Filled.Circle"
+                     Size="Size.Small"
+                     Style="@GetConnectionStyle()" />
+        </MudTooltip>
+
+        @if (_username is not null)
+        {
+            <MudText Typo="Typo.body2" Class="ml-4" Color="Color.Primary">@_username</MudText>
+            <MudButton Href="/api/auth/logout" Variant="Variant.Text" Color="Color.Default" Size="Size.Small" Class="ml-2">
+                Logout
+            </MudButton>
+        }
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+        <MudDrawerHeader>
+            <MudText Typo="Typo.subtitle2" Style="color: var(--mud-palette-text-secondary);">NAVIGATION</MudText>
+        </MudDrawerHeader>
         <NavMenu />
-    </aside>
+    </MudDrawer>
 
-    <!-- Mobile Nav Overlay -->
-    @if (_mobileNavOpen)
-    {
-        <div class="mobile-nav-overlay md:hidden" @onclick="CloseMobileNav"></div>
-        <aside class="mobile-nav-panel translate-x-0 md:hidden">
-            <div class="p-4 border-b border-border mb-4 flex-between">
-                <div>
-                    <h2 class="text-xl font-bold text-gradient">HellArch</h2>
-                    <span class="text-xs text-text-muted uppercase tracking-wider">Admin Console</span>
-                </div>
-                <button class="text-text-secondary hover:text-neon-pink p-2" @onclick="CloseMobileNav">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-            <NavMenu />
-        </aside>
-    }
-
-    <main class="flex flex-col min-h-screen">
-        <header class="flex-between px-6 py-3 bg-bg-secondary border-b border-border">
-            <!-- Hamburger (mobile only) -->
-            <button class="hamburger md:hidden" @onclick="ToggleMobileNav" aria-label="Toggle menu">
-                <span class="hamburger-line @(_mobileNavOpen ? "rotate-45 translate-y-2" : "")"></span>
-                <span class="hamburger-line @(_mobileNavOpen ? "opacity-0" : "")"></span>
-                <span class="hamburger-line @(_mobileNavOpen ? "-rotate-45 -translate-y-2" : "")"></span>
-            </button>
-
-            <div class="flex items-center gap-4 ml-auto">
-                <!-- Realtime connection status -->
-                <div class="flex items-center gap-1" title="Realtime: @_connectionStatus">
-                    <span class="@GetConnectionStatusClass() text-xs">●</span>
-                    <span class="text-xs text-text-muted hidden sm:inline">Live</span>
-                </div>
-
-                @if (Username is not null)
-                {
-                    <span class="text-sm text-neon-pink">@Username</span>
-                    <a href="/api/auth/logout" class="text-sm text-text-muted hover:text-neon-coral transition-colors">
-                        Logout
-                    </a>
-                }
-            </div>
-        </header>
-        <div class="flex-1 p-6 max-w-6xl">
+    <MudMainContent Class="pt-16 px-4">
+        <MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
             @Body
-        </div>
-    </main>
-</div>
-
-<ToastContainer />
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
 
 @code {
-    [CascadingParameter]
-    public HttpContext? HttpContext { get; set; }
-
-    private string? Username => HttpContext?.Items["Username"]?.ToString();
-    private string? SessionToken => HttpContext?.Items["SessionToken"]?.ToString()
-        ?? HttpContextAccessor.HttpContext?.Items["SessionToken"]?.ToString();
-
-    private bool _mobileNavOpen;
+    private bool _drawerOpen = true;
     private string _connectionStatus = "Connecting...";
+    private string? _username;
+    private string? _sessionToken;
     private bool _initialized;
 
     protected override void OnInitialized()
     {
+        // Capture HttpContext values during initial render (before SignalR takes over)
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext is not null)
+        {
+            _username = httpContext.Items["Username"]?.ToString();
+            _sessionToken = httpContext.Items["SessionToken"]?.ToString();
+        }
+
         RealtimeHub.OnConnectionStateChanged += HandleConnectionStateChanged;
         _connectionStatus = RealtimeHub.ConnectionStateText;
     }
@@ -91,14 +71,16 @@
         {
             _initialized = true;
 
-            // Connect to SignalR hub with session token
-            if (!string.IsNullOrEmpty(SessionToken))
-            {
-                await RealtimeHub.Connect(SessionToken);
-            }
-
-            // Start live updates
+            // Start live updates (idempotent - won't restart if already running)
             LiveUpdate.Start();
+
+            // Connect to realtime hub if we have a session token
+            if (!string.IsNullOrEmpty(_sessionToken))
+            {
+                await RealtimeHub.Connect(_sessionToken);
+                _connectionStatus = RealtimeHub.ConnectionStateText;
+                StateHasChanged();
+            }
         }
     }
 
@@ -111,20 +93,19 @@
         });
     }
 
-    private string GetConnectionStatusClass() => _connectionStatus switch
+    private string GetConnectionStyle() => _connectionStatus switch
     {
-        "Connected" => "text-neon-green",
-        "Reconnecting" => "text-neon-yellow animate-pulse",
-        "Disconnected" or "Failed" => "text-neon-red",
-        _ => "text-text-muted animate-pulse"
+        "Connected" => "color: #39ff14;",
+        "Reconnecting" => "color: #ffff00;",
+        "Disconnected" or "Failed" => "color: #ff0033;",
+        _ => "color: #737373;"
     };
 
-    private void ToggleMobileNav() => _mobileNavOpen = !_mobileNavOpen;
-    private void CloseMobileNav() => _mobileNavOpen = false;
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
-    public async ValueTask DisposeAsync()
+    public void Dispose()
     {
         RealtimeHub.OnConnectionStateChanged -= HandleConnectionStateChanged;
-        await LiveUpdate.DisposeAsync();
+        // Don't dispose LiveUpdate - it's a singleton shared across the app
     }
 }

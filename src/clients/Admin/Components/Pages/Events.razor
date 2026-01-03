@@ -1,8 +1,10 @@
 @page "/events"
 @using HellArch.CloudEvents
 @using Admin.Services
+@using Admin.Components.Shared.Panels
 @implements IDisposable
 @inject RabbitMqAdapter RabbitMq
+@inject EventsAdminFacade EventsApi
 @inject RealtimeHubService RealtimeHub
 @inject LiveUpdateService LiveUpdate
 @inject IHttpContextAccessor HttpContextAccessor
@@ -10,204 +12,95 @@
 
 <PageTitle>Events - HellArch Admin</PageTitle>
 
-<h1 class="text-display text-gradient mb-6">Events</h1>
+<PageHeader Title="Events" Subtitle="Real-time event monitoring, audit logs, webhooks, and infrastructure." />
 
-<p class="text-text-secondary mb-6">
-    View CloudEvents published through RabbitMQ and queue statistics.
-</p>
+@* Persistent Live Events Header *@
+<EventsLiveHeader Events="@_liveEvents" ConnectionStatus="@_connectionStatus" />
 
-<section class="mb-8">
-    <div class="flex items-center justify-between mb-4">
-        <h2 class="text-heading text-glitch">Live Events</h2>
-        <div class="flex items-center gap-2">
-            <span class="@GetConnectionStatusClass()">●</span>
-            <span class="text-sm text-text-secondary">@_connectionStatus</span>
+@* Tabbed Interface *@
+<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Class="mt-2" @bind-ActivePanelIndex="_activeTab">
+    <MudTabPanel Text="Audit Log" Icon="@Icons.Material.Filled.History">
+        <div class="pa-4">
+            <AuditPanel
+                AuditLogs="@_auditLogs"
+                TotalCount="@_auditTotalCount"
+                Page="@_auditPage"
+                PageSize="@AuditPageSize"
+                Loading="@_loadingAudit"
+                EventTypeFilter="@_eventTypeFilter"
+                EventTypeFilterChanged="@(v => _eventTypeFilter = v)"
+                ActorIdFilter="@_actorIdFilter"
+                ActorIdFilterChanged="@(v => _actorIdFilter = v)"
+                OnApplyFilters="ApplyAuditFilters"
+                OnClearFilters="ClearAuditFilters"
+                OnPrevious="PreviousAuditPage"
+                OnNext="NextAuditPage" />
         </div>
-    </div>
-    <div class="card-featured-green bg-bg-secondary">
-        @if (_liveEvents.Count == 0)
-        {
-            <p class="empty-state">Waiting for events... Events will appear here in real-time.</p>
-        }
-        else
-        {
-            <div class="flex flex-col gap-3 max-h-96 overflow-y-auto">
-                @foreach (var evt in _liveEvents)
-                {
-                    <div class="p-3 rounded-sm bg-bg-primary border border-border animate-pulse-once">
-                        <div class="flex items-center justify-between mb-1">
-                            <Badge Variant="BadgeVariant.Success" Size="BadgeSize.Small">@GetEventTypeName(evt.Type)</Badge>
-                            <span class="text-xs text-text-muted font-mono">@evt.Time.ToString("HH:mm:ss.fff")</span>
-                        </div>
-                        <div class="flex gap-4 text-xs text-text-muted">
-                            <span>Source: @evt.Source</span>
-                            @if (evt.GetUserId() is { } userId)
-                            {
-                                <span>User: @userId</span>
-                            }
-                        </div>
-                        @if (evt.Data.HasValue)
-                        {
-                            <details class="mt-2">
-                                <summary class="cursor-pointer text-xs text-neon-pink hover:underline">Data</summary>
-                                <pre class="mt-1 p-2 rounded-sm bg-bg-tertiary text-xs font-mono overflow-x-auto">@FormatJson(evt.Data.Value)</pre>
-                            </details>
-                        }
-                    </div>
-                }
-            </div>
-        }
-    </div>
-</section>
+    </MudTabPanel>
 
-<section class="mb-8">
-    <h2 class="section-header">RabbitMQ Overview</h2>
-    @if (_overview == null)
-    {
-        <div class="flex-center py-8">
-            <div class="spinner"></div>
+    <MudTabPanel Text="Webhooks" Icon="@Icons.Material.Filled.Webhook">
+        <div class="pa-4">
+            <WebhooksPanel
+                Webhooks="@_webhooks"
+                Loading="@_loadingWebhooks"
+                OnCreate="CreateWebhook"
+                OnUpdate="UpdateWebhook"
+                OnDelete="DeleteWebhook" />
         </div>
-    }
-    else
-    {
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <MetricCard Label="Messages" Value="@((_overview.QueueTotals?.Messages ?? 0).ToString())" />
-            <MetricCard Label="Queues" Value="@((_overview.ObjectTotals?.Queues ?? 0).ToString())" />
-            <MetricCard Label="Consumers" Value="@((_overview.ObjectTotals?.Consumers ?? 0).ToString())" />
-            <MetricCard Label="Connections" Value="@((_overview.ObjectTotals?.Connections ?? 0).ToString())" />
-        </div>
-    }
-</section>
+    </MudTabPanel>
 
-<section class="mb-8">
-    <h2 class="section-header">Queues</h2>
-    @if (_queues.Count == 0)
-    {
-        <p class="empty-state">No queues found</p>
-    }
-    else
-    {
-        <div class="overflow-x-auto">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th class="data-th">Queue</th>
-                        <th class="data-th">Messages</th>
-                        <th class="data-th">Ready</th>
-                        <th class="data-th">Unacked</th>
-                        <th class="data-th">Consumers</th>
-                        <th class="data-th">State</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var queue in _queues)
-                    {
-                        <tr class="data-row">
-                            <td class="data-td font-mono text-sm">@queue.Name</td>
-                            <td class="data-td">@queue.Messages</td>
-                            <td class="data-td">@queue.MessagesReady</td>
-                            <td class="data-td">@queue.MessagesUnacknowledged</td>
-                            <td class="data-td">@queue.Consumers</td>
-                            <td class="data-td"><span class="@GetStateClass(queue.State)">@queue.State</span></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+    <MudTabPanel Text="Event Types" Icon="@Icons.Material.Filled.Category">
+        <div class="pa-4">
+            <EventTypesPanel />
         </div>
-    }
-</section>
+    </MudTabPanel>
 
-<section class="mb-8">
-    <h2 class="section-header">Exchanges</h2>
-    @if (_exchanges.Count == 0)
-    {
-        <p class="empty-state">No custom exchanges found</p>
-    }
-    else
-    {
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            @foreach (var exchange in _exchanges)
-            {
-                <div class="card">
-                    <h3 class="font-bold text-neon-pink mb-2">@exchange.Name</h3>
-                    <p class="text-sm text-text-secondary">Type: @exchange.Type</p>
-                    <p class="text-xs text-text-muted mt-1">@(exchange.Durable ? "Durable" : "Transient")</p>
-                </div>
-            }
+    <MudTabPanel Text="Infrastructure" Icon="@Icons.Material.Filled.Storage">
+        <div class="pa-4">
+            <InfraPanel
+                Overview="@_overview"
+                Queues="@_queues"
+                Exchanges="@_exchanges"
+                Loading="@_loadingInfra" />
         </div>
-    }
-</section>
-
-<section class="mb-8">
-    <div class="flex items-center justify-between mb-4">
-        <h2 class="text-heading text-glitch">Recent Events</h2>
-        <Button Variant="ButtonVariant.Secondary" OnClick="LoadRecentEvents">Refresh</Button>
-    </div>
-    @if (_loadingEvents)
-    {
-        <div class="flex-center py-8">
-            <div class="spinner"></div>
-        </div>
-    }
-    else if (_recentEvents.Count == 0)
-    {
-        <p class="empty-state">No events in queue (events are consumed by workers)</p>
-    }
-    else
-    {
-        <div class="flex flex-col gap-4">
-            @foreach (var evt in _recentEvents)
-            {
-                <div class="card">
-                    <div class="flex items-center justify-between mb-2">
-                        <Badge Variant="BadgeVariant.Info">@evt.GetEventTypeName()</Badge>
-                        <span class="text-xs text-text-muted font-mono">@evt.Time</span>
-                    </div>
-                    <div class="flex gap-4 text-xs text-text-muted mb-2">
-                        <span>ID: @evt.Id</span>
-                        <span>Source: @evt.Source</span>
-                    </div>
-                    <details class="mt-2">
-                        <summary class="cursor-pointer text-sm text-neon-pink hover:underline">View Data</summary>
-                        <pre class="mt-2 code-block">@evt.GetFormattedData()</pre>
-                    </details>
-                </div>
-            }
-        </div>
-    }
-</section>
-
-<section class="card-featured">
-    <h2 class="text-subheading mb-3">External Tools</h2>
-    <div class="flex gap-4">
-        <a href="http://localhost:15672" target="_blank" rel="noopener" class="link">
-            RabbitMQ Management Console
-        </a>
-        <a href="http://localhost:16686" target="_blank" rel="noopener" class="link">
-            Jaeger Tracing
-        </a>
-    </div>
-</section>
+    </MudTabPanel>
+</MudTabs>
 
 @code {
+    private int _activeTab;
+    private readonly List<CloudEventDto> _liveEvents = [];
+    private string _connectionStatus = "Connecting...";
+    private const int MaxLiveEvents = 25;
+    private DateTime _lastHealthRefresh = DateTime.MinValue;
+    private static readonly TimeSpan HealthRefreshDebounce = TimeSpan.FromSeconds(5);
+
+    // Audit state
+    private IReadOnlyList<AuditLog> _auditLogs = [];
+    private int _auditTotalCount;
+    private int _auditPage = 1;
+    private const int AuditPageSize = 20;
+    private bool _loadingAudit;
+    private string? _eventTypeFilter;
+    private string? _actorIdFilter;
+
+    // Webhooks state
+    private IReadOnlyList<Webhook> _webhooks = [];
+    private bool _loadingWebhooks;
+
+    // Infrastructure state
     private RabbitMqOverview? _overview;
     private IReadOnlyList<QueueInfo> _queues = [];
     private IReadOnlyList<ExchangeInfo> _exchanges = [];
-    private IReadOnlyList<CloudEventMessage> _recentEvents = [];
-    private readonly List<CloudEventDto> _liveEvents = [];
-    private bool _loadingEvents;
-    private string _connectionStatus = "Connecting...";
-    private const int MaxLiveEvents = 25;
+    private bool _loadingInfra;
 
     protected override async Task OnInitializedAsync()
     {
-        // Subscribe to realtime events
         RealtimeHub.OnEventReceived += HandleEventReceived;
         RealtimeHub.OnConnectionStateChanged += HandleConnectionStateChanged;
         LiveUpdate.OnHealthUpdate += HandleHealthUpdate;
+        LiveUpdate.OnWebhookUpdate += HandleWebhookUpdate;
         _connectionStatus = RealtimeHub.ConnectionStateText;
 
-        // Connect to realtime hub with session token (lazy connect on first admin visit)
         var sessionToken = HttpContextAccessor.HttpContext?.Items["SessionToken"] as string;
         if (!string.IsNullOrEmpty(sessionToken))
         {
@@ -220,21 +113,18 @@
             _connectionStatus = "No Auth";
         }
 
-        // Load initial data from RabbitMQ
-        await LoadData();
+        await LoadAllData();
     }
 
-    private void HandleHealthUpdate(object? sender, EventArgs e)
+    private async Task LoadAllData()
     {
-        // Refresh RabbitMQ stats periodically
-        InvokeAsync(async () =>
-        {
-            _overview = await RabbitMq.GetOverview();
-            _queues = await RabbitMq.GetQueues();
-            StateHasChanged();
-        });
+        var auditTask = LoadAuditLogs();
+        var webhooksTask = LoadWebhooks();
+        var infraTask = LoadInfrastructure();
+        await Task.WhenAll(auditTask, webhooksTask, infraTask);
     }
 
+    // Live Events
     private void HandleEventReceived(object? sender, CloudEventReceivedEventArgs e)
     {
         InvokeAsync(() =>
@@ -257,57 +147,111 @@
         });
     }
 
-    private async Task LoadData()
+    private void HandleHealthUpdate(object? sender, EventArgs e)
     {
+        if (DateTime.UtcNow - _lastHealthRefresh < HealthRefreshDebounce) return;
+
+        InvokeAsync(async () =>
+        {
+            _lastHealthRefresh = DateTime.UtcNow;
+            await LoadInfrastructure();
+            StateHasChanged();
+        });
+    }
+
+    private void HandleWebhookUpdate(object? sender, UpdateEventArgs e)
+    {
+        InvokeAsync(async () => await LoadWebhooks());
+    }
+
+    // Audit
+    private async Task LoadAuditLogs()
+    {
+        _loadingAudit = true;
+        StateHasChanged();
+
+        var response = await EventsApi.GetAuditLogs(_auditPage, AuditPageSize, _eventTypeFilter, _actorIdFilter);
+        _auditLogs = response.Data;
+        _auditTotalCount = response.TotalCount;
+
+        _loadingAudit = false;
+        StateHasChanged();
+    }
+
+    private async Task ApplyAuditFilters()
+    {
+        _auditPage = 1;
+        await LoadAuditLogs();
+    }
+
+    private async Task ClearAuditFilters()
+    {
+        _eventTypeFilter = null;
+        _actorIdFilter = null;
+        _auditPage = 1;
+        await LoadAuditLogs();
+    }
+
+    private async Task NextAuditPage()
+    {
+        _auditPage++;
+        await LoadAuditLogs();
+    }
+
+    private async Task PreviousAuditPage()
+    {
+        if (_auditPage > 1)
+        {
+            _auditPage--;
+            await LoadAuditLogs();
+        }
+    }
+
+    // Webhooks
+    private async Task LoadWebhooks()
+    {
+        _loadingWebhooks = true;
+        StateHasChanged();
+
+        var response = await EventsApi.GetWebhooks(1, 100);
+        _webhooks = response.Data;
+
+        _loadingWebhooks = false;
+        StateHasChanged();
+    }
+
+    private async Task CreateWebhook(Webhook webhook)
+    {
+        var request = new CreateWebhookRequest(webhook.Name, webhook.Url, webhook.Secret, webhook.EventTypes.ToList(), webhook.Format, webhook.IsActive);
+        await EventsApi.CreateWebhook(request);
+        await LoadWebhooks();
+    }
+
+    private async Task UpdateWebhook(Webhook webhook)
+    {
+        var request = new UpdateWebhookRequest(webhook.Name, webhook.Url, webhook.Secret, webhook.EventTypes.ToList(), webhook.Format, webhook.IsActive);
+        await EventsApi.UpdateWebhook(webhook.Id, request);
+        await LoadWebhooks();
+    }
+
+    private async Task DeleteWebhook(string id)
+    {
+        await EventsApi.DeleteWebhook(id);
+        await LoadWebhooks();
+    }
+
+    // Infrastructure
+    private async Task LoadInfrastructure()
+    {
+        _loadingInfra = true;
+        StateHasChanged();
+
         _overview = await RabbitMq.GetOverview();
         _queues = await RabbitMq.GetQueues();
         _exchanges = await RabbitMq.GetExchanges();
-        await LoadRecentEvents();
-    }
 
-    private async Task LoadRecentEvents()
-    {
-        _loadingEvents = true;
+        _loadingInfra = false;
         StateHasChanged();
-
-        _recentEvents = await RabbitMq.GetRecentEvents(20);
-
-        _loadingEvents = false;
-        StateHasChanged();
-    }
-
-    private static string GetStateClass(string state) => state?.ToLower() switch
-    {
-        "running" => "badge-success",
-        "idle" => "badge-warning",
-        _ => "badge"
-    };
-
-    private string GetConnectionStatusClass() => _connectionStatus switch
-    {
-        "Connected" => "text-neon-green",
-        "Reconnecting" => "text-neon-yellow animate-pulse",
-        "Disconnected" or "Failed" => "text-neon-red",
-        _ => "text-text-muted animate-pulse"
-    };
-
-    private static string GetEventTypeName(string type)
-    {
-        // Extract short name from full type (e.g., "hellarch.user.created" -> "user.created")
-        var parts = type.Split('.');
-        return parts.Length > 1 ? string.Join(".", parts[1..]) : type;
-    }
-
-    private static string FormatJson(System.Text.Json.JsonElement element)
-    {
-        try
-        {
-            return System.Text.Json.JsonSerializer.Serialize(element, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-        }
-        catch
-        {
-            return element.ToString();
-        }
     }
 
     public void Dispose()
@@ -315,5 +259,6 @@
         RealtimeHub.OnEventReceived -= HandleEventReceived;
         RealtimeHub.OnConnectionStateChanged -= HandleConnectionStateChanged;
         LiveUpdate.OnHealthUpdate -= HandleHealthUpdate;
+        LiveUpdate.OnWebhookUpdate -= HandleWebhookUpdate;
     }
 }

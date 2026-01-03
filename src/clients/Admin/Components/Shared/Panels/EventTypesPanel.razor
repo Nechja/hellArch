@@ -1,0 +1,65 @@
+@using Admin.Services
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<MudButtonGroup Variant="Variant.Outlined" Size="Size.Small" Class="mb-4">
+    <MudButton Color="@(_selectedDomain == null ? Color.Primary : Color.Default)" OnClick="() => _selectedDomain = null">
+        All (@EventTypeCatalog.All.Count)
+    </MudButton>
+    @foreach (var domain in EventTypeCatalog.Domains)
+    {
+        var count = EventTypeCatalog.GetByDomain(domain).Count;
+        <MudButton Color="@(_selectedDomain == domain ? Color.Primary : Color.Default)" OnClick="() => _selectedDomain = domain">
+            @domain (@count)
+        </MudButton>
+    }
+</MudButtonGroup>
+
+@foreach (var domain in GetDisplayedDomains())
+{
+    <MudText Typo="Typo.subtitle1" Class="mb-3 mt-4" Color="Color.Primary">@domain</MudText>
+    <MudGrid Class="mb-4">
+        @foreach (var eventType in EventTypeCatalog.GetByDomain(domain))
+        {
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-3" Elevation="1">
+                    <div class="d-flex justify-space-between align-start">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-center gap-2 mb-1">
+                                <MonoText FontSize="0.8rem" WordBreak="true">
+                                    <span style="color: #D162A4;">@eventType.Type</span>
+                                </MonoText>
+                                <MudChip T="string" Size="Size.Small" Color="@GetSeverityColor(eventType.Severity)">
+                                    @eventType.Severity
+                                </MudChip>
+                            </div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@eventType.Description</MudText>
+                        </div>
+                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="() => CopyEventType(eventType.Type)" />
+                    </div>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private string? _selectedDomain;
+
+    private IEnumerable<string> GetDisplayedDomains() =>
+        _selectedDomain != null ? [_selectedDomain] : EventTypeCatalog.Domains;
+
+    private async Task CopyEventType(string eventType)
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", eventType);
+        Snackbar.Add($"Copied: {eventType}", Severity.Success);
+    }
+
+    private static Color GetSeverityColor(EventSeverity severity) => severity switch
+    {
+        EventSeverity.Critical => Color.Error,
+        EventSeverity.High => Color.Warning,
+        EventSeverity.Medium => Color.Info,
+        _ => Color.Default
+    };
+}

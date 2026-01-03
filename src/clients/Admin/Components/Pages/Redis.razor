@@ -3,84 +3,98 @@
 
 <PageTitle>Redis Browser - HellArch Admin</PageTitle>
 
-<h1 class="text-display text-gradient mb-6">Redis Browser</h1>
-
-<section class="mb-6">
-    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-sm @(_connectionInfo.IsConnected ? "bg-neon-green/10 text-neon-green" : "bg-neon-red/10 text-neon-red")">
-        <HealthDot Status="@(_connectionInfo.IsConnected ? HealthDot.HealthStatus.Healthy : HealthDot.HealthStatus.Danger)" />
-        <span class="text-sm font-medium">@(_connectionInfo.IsConnected ? "Connected" : "Disconnected")</span>
-    </div>
-</section>
-
-<section class="mb-6">
-    <div class="flex gap-2 mb-3">
-        <Input @bind-Value="_pattern" Placeholder="Pattern (e.g., session:*, oauth:*)" Class="flex-1" />
-        <Button Variant="ButtonVariant.Neon" OnClick="Search">Search</Button>
-    </div>
-    <div class="flex gap-2 flex-wrap">
-        <Button Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick='() => SearchPattern("session:*")'>Sessions</Button>
-        <Button Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick='() => SearchPattern("oauth:state:*")'>OAuth States</Button>
-        <Button Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick='() => SearchPattern("revoked:*")'>Revoked Tokens</Button>
-        <Button Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick='() => SearchPattern("*")'>All Keys</Button>
-    </div>
-</section>
-
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <section class="card">
-        <h2 class="text-heading mb-4 text-glitch">Keys (@_keys.Count)</h2>
-        @if (_keys.Count > 0)
-        {
-            <ul class="flex flex-col gap-1 max-h-96 overflow-y-auto">
-                @foreach (var key in _keys)
-                {
-                    <li class="flex items-center gap-2 p-2 rounded-sm cursor-pointer transition-colors @(_selectedKey == key.Key ? "bg-bg-secondary border border-neon-pink" : "hover:bg-bg-elevated")"
-                        @onclick="() => SelectKey(key.Key)">
-                        <span class="font-mono text-sm truncate flex-1">@key.Key</span>
-                        <span class="badge">@key.Type</span>
-                        @if (key.Ttl.HasValue)
-                        {
-                            <span class="text-xs text-text-muted">@FormatTtl(key.Ttl.Value)</span>
-                        }
-                    </li>
-                }
-            </ul>
-        }
-        else if (_searched)
-        {
-            <p class="text-text-muted text-center py-4 italic">No keys found matching "@_pattern"</p>
-        }
-        else
-        {
-            <p class="text-text-muted text-center py-4 italic">Enter a pattern and click Search</p>
-        }
-    </section>
-
-    <section class="card">
-        <h2 class="text-heading mb-4 text-glitch">Key Detail</h2>
-        @if (_keyDetail is not null)
-        {
-            <dl class="grid grid-cols-[80px_1fr] gap-2 mb-4">
-                <dt class="text-xs uppercase text-text-muted">Key</dt>
-                <dd class="font-mono text-sm break-all">@_keyDetail.Key</dd>
-                <dt class="text-xs uppercase text-text-muted">Type</dt>
-                <dd><Badge Variant="BadgeVariant.Info">@_keyDetail.Type</Badge></dd>
-                <dt class="text-xs uppercase text-text-muted">TTL</dt>
-                <dd>@(_keyDetail.Ttl.HasValue ? FormatTtl(_keyDetail.Ttl.Value) : "No expiry")</dd>
-            </dl>
-            <div class="mb-4">
-                <h3 class="text-sm font-semibold text-text-secondary mb-2">Value</h3>
-                <pre class="p-4 rounded-sm bg-bg-secondary border border-border overflow-x-auto font-mono text-sm max-h-64 overflow-y-auto">@_keyDetail.Value</pre>
-            </div>
-            <div class="pt-4 border-t border-border">
-                <Button Variant="ButtonVariant.Danger" OnClick="DeleteSelectedKey">Delete Key</Button>
-            </div>
-        }
-        else
-        {
-            <p class="text-text-muted text-center py-4 italic">Select a key to view details</p>
-        }
-    </section>
+<div class="d-flex align-center gap-2 mb-6">
+    <PageHeader Title="Redis Browser" />
+    <StatusChip Label="@(_connectionInfo.IsConnected ? "Connected" : "Disconnected")"
+               Status="@(_connectionInfo.IsConnected ? StatusChip.StatusType.Connected : StatusChip.StatusType.Disconnected)" />
 </div>
+
+<MudGrid Class="mb-6">
+    <MudItem xs="12" md="8">
+        <MudTextField @bind-Value="_pattern" Label="Pattern" Placeholder="e.g., session:*, oauth:*" Variant="Variant.Outlined" />
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search" FullWidth="true" Class="mt-2">Search</MudButton>
+    </MudItem>
+</MudGrid>
+
+<MudButtonGroup Variant="Variant.Outlined" Size="Size.Small" Class="mb-6">
+    <MudButton OnClick='() => SearchPattern("session:*")'>Sessions</MudButton>
+    <MudButton OnClick='() => SearchPattern("oauth:state:*")'>OAuth States</MudButton>
+    <MudButton OnClick='() => SearchPattern("revoked:*")'>Revoked Tokens</MudButton>
+    <MudButton OnClick='() => SearchPattern("*")'>All Keys</MudButton>
+</MudButtonGroup>
+
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-4">Keys (@_keys.Count)</MudText>
+            @if (_keys.Count > 0)
+            {
+                <MudList T="string" Dense="true" Style="max-height: 400px; overflow-y: auto;">
+                    @foreach (var key in _keys)
+                    {
+                        <MudListItem T="string" OnClick="() => SelectKey(key.Key)"
+                                     Style="@(_selectedKey == key.Key ? "background-color: var(--mud-palette-primary-darken);" : "")">
+                            <div class="d-flex justify-space-between align-center" style="width: 100%;">
+                                                <MonoText>@key.Key</MonoText>
+                                <div class="d-flex align-center gap-2">
+                                    <MudChip T="string" Size="Size.Small">@key.Type</MudChip>
+                                    @if (key.Ttl.HasValue)
+                                    {
+                                        <MudText Typo="Typo.caption">@FormatTtl(key.Ttl.Value)</MudText>
+                                    }
+                                </div>
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+            else if (_searched)
+            {
+                <MudText Color="Color.Secondary">No keys found matching "@_pattern"</MudText>
+            }
+            else
+            {
+                <MudText Color="Color.Secondary">Enter a pattern and click Search</MudText>
+            }
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-4">Key Detail</MudText>
+            @if (_keyDetail is not null)
+            {
+                <MudSimpleTable Dense="true" Class="mb-4">
+                    <tbody>
+                        <tr>
+                            <td><MudText Typo="Typo.caption">Key</MudText></td>
+                            <td><MonoText WordBreak="true">@_keyDetail.Key</MonoText></td>
+                        </tr>
+                        <tr>
+                            <td><MudText Typo="Typo.caption">Type</MudText></td>
+                            <td><MudChip T="string" Size="Size.Small" Color="Color.Info">@_keyDetail.Type</MudChip></td>
+                        </tr>
+                        <tr>
+                            <td><MudText Typo="Typo.caption">TTL</MudText></td>
+                            <td>@(_keyDetail.Ttl.HasValue ? FormatTtl(_keyDetail.Ttl.Value) : "No expiry")</td>
+                        </tr>
+                    </tbody>
+                </MudSimpleTable>
+
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Value</MudText>
+                <JsonViewer RawJson="@_keyDetail.Value" MaxHeight="250px" />
+
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="DeleteSelectedKey">Delete Key</MudButton>
+            }
+            else
+            {
+                <MudText Color="Color.Secondary">Select a key to view details</MudText>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
 
 @code {
     private string _pattern = "*";

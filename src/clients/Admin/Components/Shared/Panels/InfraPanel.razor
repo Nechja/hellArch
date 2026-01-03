@@ -1,0 +1,72 @@
+@using Admin.Services
+
+<SectionHeader Title="RabbitMQ Overview" />
+<MudGrid Class="mb-6">
+    <MudItem xs="6" md="3">
+        <MetricCard Value="@((Overview?.QueueTotals?.Messages ?? 0).ToString())" Label="Messages" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MetricCard Value="@((Overview?.ObjectTotals?.Queues ?? 0).ToString())" Label="Queues" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MetricCard Value="@((Overview?.ObjectTotals?.Consumers ?? 0).ToString())" Label="Consumers" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MetricCard Value="@((Overview?.ObjectTotals?.Connections ?? 0).ToString())" Label="Connections" />
+    </MudItem>
+</MudGrid>
+
+<SectionHeader Title="Queues" />
+@if (Loading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudTable Items="@Queues" Hover="true" Striped="true" Dense="true" T="QueueInfo" Class="mb-6">
+        <HeaderContent>
+            <MudTh>Queue</MudTh>
+            <MudTh>Messages</MudTh>
+            <MudTh>Ready</MudTh>
+            <MudTh>Unacked</MudTh>
+            <MudTh>Consumers</MudTh>
+            <MudTh>State</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd><MonoText>@context.Name</MonoText></MudTd>
+            <MudTd>@context.Messages</MudTd>
+            <MudTd>@context.MessagesReady</MudTd>
+            <MudTd>@context.MessagesUnacknowledged</MudTd>
+            <MudTd>@context.Consumers</MudTd>
+            <MudTd>
+                <StatusChip Label="@context.State" Status="@(context.State == "running" ? StatusChip.StatusType.Success : StatusChip.StatusType.Warning)" />
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@if (Exchanges.Count > 0)
+{
+    <SectionHeader Title="Exchanges" />
+    <MudGrid>
+        @foreach (var exchange in Exchanges)
+        {
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-3" Elevation="1">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="mb-1">@exchange.Name</MudText>
+                    <div class="d-flex gap-2">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@exchange.Type</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@(exchange.Durable ? "Durable" : "Transient")</MudText>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public RabbitMqOverview? Overview { get; set; }
+    [Parameter] public IReadOnlyList<QueueInfo> Queues { get; set; } = [];
+    [Parameter] public IReadOnlyList<ExchangeInfo> Exchanges { get; set; } = [];
+    [Parameter] public bool Loading { get; set; }
+}

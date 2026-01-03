@@ -1,0 +1,36 @@
+@* Reusable pagination controls *@
+
+<div class="d-flex justify-space-between align-center">
+    <MudText Typo="Typo.body2" Color="Color.Secondary">
+        @SummaryText
+    </MudText>
+    <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+        <MudButton Disabled="@(Page <= 1)" OnClick="OnPrevious">Previous</MudButton>
+        <MudButton Disabled="true">Page @Page</MudButton>
+        <MudButton Disabled="@(!HasMore)" OnClick="OnNext">Next</MudButton>
+    </MudButtonGroup>
+</div>
+
+@code {
+    [Parameter]
+    public int Page { get; set; } = 1;
+
+    [Parameter]
+    public int PageSize { get; set; } = 20;
+
+    [Parameter]
+    public int TotalCount { get; set; }
+
+    [Parameter]
+    public int DisplayedCount { get; set; }
+
+    [Parameter]
+    public EventCallback OnPrevious { get; set; }
+
+    [Parameter]
+    public EventCallback OnNext { get; set; }
+
+    private bool HasMore => Page * PageSize < TotalCount;
+
+    private string SummaryText => $"Showing {DisplayedCount} of {TotalCount}";
+}

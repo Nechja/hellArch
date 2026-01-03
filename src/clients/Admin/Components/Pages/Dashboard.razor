@@ -7,110 +7,75 @@
 
 <PageTitle>Dashboard - HellArch Admin</PageTitle>
 
-<h1 class="text-display text-gradient mb-8">Dashboard</h1>
+<PageHeader Title="Dashboard" />
 
-<section class="mb-12">
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard Label="Users" Value="@_stats.UserCount.ToString()" />
-        <MetricCard Label="Active Sessions" Value="@_stats.SessionCount.ToString()" />
-        <MetricCard Label="Linked Accounts" Value="@_stats.LinkedAccountCount.ToString()" />
-        <MetricCard Label="Queued Messages" Value="@QueuedMessages.ToString()" />
-    </div>
-</section>
+<MudGrid Class="mb-8">
+    <MudItem xs="6" md="3">
+        <MetricCard Value="@_stats.UserCount.ToString()" Label="Users" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MetricCard Value="@_stats.SessionCount.ToString()" Label="Active Sessions" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MetricCard Value="@_stats.LinkedAccountCount.ToString()" Label="Linked Accounts" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MetricCard Value="@QueuedMessages.ToString()" Label="Queued Messages" />
+    </MudItem>
+</MudGrid>
 
-<section class="mb-12">
-    <h2 class="text-heading mb-6 text-glitch">Service Health</h2>
-    @if (_healthStatus != null)
+<SectionHeader Title="Service Health" />
+@if (_healthStatus != null)
+{
+    <HealthStatusBar Label="System" Status="@_healthStatus.Overall" Timestamp="@_healthStatus.CheckedAt" />
+
+    <MudGrid Class="mb-8">
+        @foreach (var (name, info) in _healthStatus.Services.OrderBy(s => s.Key))
+        {
+            <MudItem xs="6" md="3">
+                <ServiceHealthCard
+                    Name="@HealthHelpers.FormatServiceName(name)"
+                    Status="@info.Status"
+                    LatencyMs="@info.LatencyMs"
+                    HasError="@(!string.IsNullOrEmpty(info.Error))" />
+            </MudItem>
+        }
+    </MudGrid>
+}
+else
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-8">Health service unavailable</MudAlert>
+}
+
+<SectionHeader Title="Worker Status" />
+@if (_workersStatus != null)
+{
+    <HealthStatusBar Label="Workers" Status="@_workersStatus.Overall" />
+
+    @if (_workersStatus.Workers.Count > 0)
     {
-        <div class="flex items-center gap-3 p-4 rounded-sm bg-bg-card border mb-4 @GetOverallBorderClass(_healthStatus.Overall)">
-            <HealthDot Status="@GetHealthStatus(_healthStatus.Overall)" />
-            <span class="font-semibold">System: @_healthStatus.Overall.ToUpperInvariant()</span>
-            <span class="ml-auto text-xs text-text-muted font-mono">Last check: @FormatTime(_healthStatus.CheckedAt)</span>
-        </div>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
-            @{ var serviceIndex = 0; }
-            @foreach (var (name, info) in _healthStatus.Services.OrderBy(s => s.Key))
+        <MudGrid Class="mb-8">
+            @foreach (var worker in _workersStatus.Workers.OrderBy(w => w.Name))
             {
-                <div class="card flex items-center gap-3 enter-up stagger-@(Math.Min(serviceIndex + 1, 8))">
-                    <HealthDot Status="@GetHealthStatus(info.Status)" />
-                    <div class="flex-1">
-                        <span class="font-medium block">@FormatServiceName(name)</span>
-                        <span class="text-xs text-text-muted">@info.Status</span>
-                    </div>
-                    <span class="text-xs font-mono text-text-muted">@info.LatencyMs ms</span>
-                    @if (!string.IsNullOrEmpty(info.Error))
-                    {
-                        <Badge Variant="BadgeVariant.Danger" title="@info.Error">Error</Badge>
-                    }
-                </div>
-                serviceIndex++;
+                <MudItem xs="12" md="4">
+                    <WorkerCard
+                        Name="@HealthHelpers.FormatWorkerName(worker.Name)"
+                        Status="@worker.Status"
+                        Consumers="@worker.Consumers"
+                        Messages="@worker.Messages" />
+                </MudItem>
             }
-        </div>
+        </MudGrid>
     }
     else
     {
-        <Alert Variant="AlertVariant.Warning" Title="Health service unavailable">
-            Cannot display service health status
-        </Alert>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-8">No queues found</MudText>
     }
-</section>
-
-<section class="mb-12">
-    <h2 class="text-heading mb-6 text-glitch">Worker Status</h2>
-    @if (_workersStatus != null)
-    {
-        <div class="flex items-center gap-3 p-4 rounded-sm bg-bg-card border mb-4 @GetOverallBorderClass(_workersStatus.Overall)">
-            <HealthDot Status="@GetHealthStatus(_workersStatus.Overall)" />
-            <span class="font-semibold">Workers: @_workersStatus.Overall.ToUpperInvariant()</span>
-        </div>
-        @if (_workersStatus.Workers.Count > 0)
-        {
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                @{ var workerIndex = 0; }
-                @foreach (var worker in _workersStatus.Workers.OrderBy(w => w.Name))
-                {
-                    <div class="card enter-up stagger-@(Math.Min(workerIndex + 1, 8))">
-                        <div class="flex items-center gap-3 mb-2">
-                            <HealthDot Status="@GetHealthStatus(worker.Status)" />
-                            <span class="font-medium">@FormatWorkerName(worker.Name)</span>
-                        </div>
-                        <KeyValue>
-                            <KeyValueItem Key="Consumers" Value="@worker.Consumers.ToString()" />
-                            <KeyValueItem Key="Messages" Value="@worker.Messages.ToString()" />
-                        </KeyValue>
-                    </div>
-                    workerIndex++;
-                }
-            </div>
-        }
-        else
-        {
-            <p class="text-text-muted text-center p-4">No queues found</p>
-        }
-    }
-    else
-    {
-        <Alert Variant="AlertVariant.Warning" Title="Worker status unavailable" />
-    }
-</section>
-
-<section class="mb-12">
-    <h2 class="text-heading mb-6 text-glitch">Quick Links</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
-        <a href="http://localhost:16686" target="_blank" rel="noopener" class="card-glow block">
-            <h3 class="font-bold text-neon-pink mb-1">Jaeger Tracing</h3>
-            <p class="text-sm text-text-secondary">View distributed traces</p>
-        </a>
-        <a href="http://localhost:15672" target="_blank" rel="noopener" class="card-glow block">
-            <h3 class="font-bold text-neon-rose mb-1">RabbitMQ Management</h3>
-            <p class="text-sm text-text-secondary">Message queue dashboard</p>
-        </a>
-        <a href="http://localhost:5004/status" target="_blank" rel="noopener" class="card-glow block">
-            <h3 class="font-bold text-neon-peach mb-1">Health API</h3>
-            <p class="text-sm text-text-secondary">Raw health status JSON</p>
-        </a>
-    </div>
-</section>
+}
+else
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-8">Worker status unavailable</MudAlert>
+}
 
 @code {
     private AdminStats _stats = new(0, 0, 0);
@@ -121,11 +86,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Subscribe to live updates
         LiveUpdate.OnHealthUpdate += HandleHealthUpdate;
         LiveUpdate.OnStatsUpdate += HandleStatsUpdate;
 
-        // Load initial data
         await Task.WhenAll(
             LoadStats(),
             LoadHealth()
@@ -183,44 +146,6 @@
         {
             Logger.LogWarning(ex, "Failed to load health status");
         }
-    }
-
-    private static HealthDot.HealthStatus GetHealthStatus(string status) => status.ToLower() switch
-    {
-        "healthy" => HealthDot.HealthStatus.Healthy,
-        "degraded" => HealthDot.HealthStatus.Warning,
-        _ => HealthDot.HealthStatus.Danger
-    };
-
-    private static string GetOverallBorderClass(string status) => status.ToLower() switch
-    {
-        "healthy" => "border-neon-green",
-        "degraded" => "border-neon-yellow",
-        _ => "border-neon-red"
-    };
-
-    private static string FormatServiceName(string name) => name switch
-    {
-        "auth-db" => "Auth DB",
-        "user-db" => "User DB",
-        "rabbitmq" => "RabbitMQ",
-        _ => char.ToUpper(name[0]) + name[1..]
-    };
-
-    private static string FormatWorkerName(string queueName)
-    {
-        // Convert queue names like "audit.events" to "Audit Events"
-        var parts = queueName.Split('.', '_', '-');
-        return string.Join(" ", parts.Select(p => char.ToUpper(p[0]) + p[1..]));
-    }
-
-    private static string FormatTime(string isoTime)
-    {
-        if (DateTime.TryParse(isoTime, out var dt))
-        {
-            return dt.ToLocalTime().ToString("HH:mm:ss");
-        }
-        return isoTime;
     }
 
     public void Dispose()

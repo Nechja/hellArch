@@ -142,7 +142,6 @@ app.UseRouting();
 app.UseWebSockets();
 
 // SPA fallback routes - serve index.html for client-side routing
-app.MapFallbackToFile("/login/{**path}", "login/index.html");
 app.MapFallbackToFile("/app/{**path}", "app/index.html");
 
 app.MapReverseProxy();

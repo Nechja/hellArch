@@ -1,92 +1,152 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { SectionHeader, UserAvatar } from '../components/atoms'
+import { ActionCard } from '../components/molecules'
 import type { UserProfile } from '@hellarch/types'
 
-defineProps<{
+const props = defineProps<{
   user: UserProfile | null
 }>()
+
+const greeting = computed(() => {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
+})
+
+const displayName = computed(() => {
+  if (props.user?.display_name) {
+    return props.user.display_name.split(' ')[0]
+  }
+  return null
+})
 </script>
 
 <template>
-  <div class="space-y-8">
-    <!-- Welcome Section -->
-    <section class="card-featured">
-      <h1 class="text-display text-gradient mb-2">
-        Welcome{{ user?.display_name ? `, ${user.display_name}` : '' }}
-      </h1>
-      <p class="text-text-secondary text-lg">
-        This is your HellArch dashboard. A reusable microservices template for building modern web applications.
-      </p>
-    </section>
+  <div class="landing-page">
+    <!-- Hero Section -->
+    <div class="hero-section mb-10">
+      <div class="hero-bg" />
+      <div class="hero-content">
+        <div class="d-flex align-center ga-4 mb-4">
+          <UserAvatar
+            v-if="user"
+            :avatar-url="user.avatar_url"
+            :display-name="user.display_name"
+            :email="user.email"
+            :size="56"
+          />
+          <div>
+            <h1 class="text-h4 font-weight-bold mb-1">
+              {{ greeting }}<template v-if="displayName">, {{ displayName }}</template>
+            </h1>
+            <p class="text-body-1 text-medium-emphasis">
+              Here's what's happening with your account
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Quick Actions -->
-    <section>
-      <h2 class="section-header">Quick Actions</h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <RouterLink to="/settings" class="card-glow group enter-up stagger-1">
-          <div class="flex items-start gap-4">
-            <div class="icon-box-pink group-hover:shadow-glow-pink group-hover:scale-110 transition-all duration-normal">
-              <div class="i-carbon-settings text-2xl" />
+    <SectionHeader title="Quick Actions" />
+    <v-row class="mb-8">
+      <v-col cols="12" sm="6" md="4">
+        <ActionCard
+          title="Account Settings"
+          description="Manage your profile and preferences"
+          icon="mdi-account-cog"
+          to="/settings"
+        />
+      </v-col>
+      <v-col cols="12" sm="6" md="4">
+        <ActionCard
+          title="Linked Accounts"
+          description="Connect your social accounts"
+          icon="mdi-link-variant"
+          to="/settings"
+        />
+      </v-col>
+      <v-col cols="12" sm="6" md="4">
+        <ActionCard
+          title="Add Module"
+          description="Extend your dashboard"
+          icon="mdi-plus-circle-outline"
+          disabled
+        />
+      </v-col>
+    </v-row>
+
+    <!-- Stats Preview -->
+    <SectionHeader title="Overview" />
+    <v-row>
+      <v-col v-for="stat in [
+        { label: 'Connected Services', value: '1', icon: 'mdi-link' },
+        { label: 'Active Sessions', value: '1', icon: 'mdi-devices' },
+        { label: 'Account Age', value: 'New', icon: 'mdi-calendar' },
+      ]" :key="stat.label" cols="12" sm="4">
+        <v-card class="stat-card">
+          <v-card-text class="d-flex align-center ga-4 pa-5">
+            <div class="stat-icon">
+              <v-icon size="24">{{ stat.icon }}</v-icon>
             </div>
             <div>
-              <h3 class="font-bold text-text group-hover:text-neon-pink transition-colors">
-                Settings
-              </h3>
-              <p class="text-caption">Manage your account preferences</p>
+              <div class="text-h5 font-weight-bold">{{ stat.value }}</div>
+              <div class="text-caption text-medium-emphasis">{{ stat.label }}</div>
             </div>
-          </div>
-        </RouterLink>
-
-        <a href="/admin" class="card-glow group enter-up stagger-2">
-          <div class="flex items-start gap-4">
-            <div class="icon-box-rose group-hover:shadow-glow-rose group-hover:scale-110 transition-all duration-normal">
-              <div class="i-carbon-dashboard text-2xl" />
-            </div>
-            <div>
-              <h3 class="font-bold text-text group-hover:text-neon-rose transition-colors">
-                Admin Panel
-              </h3>
-              <p class="text-caption">Access administrative tools</p>
-            </div>
-          </div>
-        </a>
-
-        <div class="card opacity-50 cursor-not-allowed enter-up stagger-3">
-          <div class="flex items-start gap-4">
-            <div class="w-12 h-12 rounded-sm bg-surface-elevated flex-center text-text-muted">
-              <div class="i-carbon-add text-2xl" />
-            </div>
-            <div>
-              <h3 class="font-bold text-text-muted">
-                Your Feature
-              </h3>
-              <p class="text-caption">Add your own modules here</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Architecture Info -->
-    <section class="card">
-      <h2 class="section-header">Architecture</h2>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-        <div class="p-4 rounded-sm bg-surface-raised border border-border hover:border-neon-pink/50 card-lift enter-up stagger-1">
-          <div class="text-heading text-neon-pink">Vue 3</div>
-          <div class="text-caption">This app</div>
-        </div>
-        <div class="p-4 rounded-sm bg-surface-raised border border-border hover:border-neon-rose/50 card-lift enter-up stagger-2">
-          <div class="text-heading text-neon-rose">Blazor</div>
-          <div class="text-caption">Login & Admin</div>
-        </div>
-        <div class="p-4 rounded-sm bg-surface-raised border border-border hover:border-neon-peach/50 card-lift enter-up stagger-3">
-          <div class="text-heading text-neon-peach">Go</div>
-          <div class="text-caption">Auth Service</div>
-        </div>
-        <div class="p-4 rounded-sm bg-surface-raised border border-border hover:border-neon-orange/50 card-lift enter-up stagger-4">
-          <div class="text-heading text-neon-orange">F#</div>
-          <div class="text-caption">User Service</div>
-        </div>
-      </div>
-    </section>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
   </div>
 </template>
+
+<style scoped>
+.landing-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.hero-section {
+  position: relative;
+  padding: 32px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 77, 141, 0.1) 0%, rgba(255, 138, 101, 0.05) 100%);
+  border: 1px solid rgba(255, 77, 141, 0.15);
+  border-radius: 16px;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.stat-card {
+  background: rgba(22, 22, 30, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  border-color: rgba(255, 77, 141, 0.2);
+  transform: translateY(-2px);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 77, 141, 0.1);
+  color: #ff4d8d;
+}
+</style>

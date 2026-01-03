@@ -1,0 +1,17 @@
+@* Section header with optional action button *@
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <MudText Typo="Typo.h6">@Title</MudText>
+    @if (ActionContent is not null)
+    {
+        @ActionContent
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    public RenderFragment? ActionContent { get; set; }
+}

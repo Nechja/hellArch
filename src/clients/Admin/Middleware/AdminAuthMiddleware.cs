@@ -33,6 +33,12 @@ public sealed class AdminAuthMiddleware(
             context.Items["Permissions"] = context.Request.Headers["X-Permissions"].FirstOrDefault();
             context.Items["IsAuthenticated"] = true;
 
+            // Still capture session token for SignalR connection
+            if (context.Request.Cookies.TryGetValue(SessionCookieName, out var gatewaySessionToken))
+            {
+                context.Items["SessionToken"] = gatewaySessionToken;
+            }
+
             logger.LogDebug("Trusted gateway auth for user {UserId}", gatewayUserId);
             await next(context);
             return;

@@ -1,60 +1,23 @@
-<nav class="flex flex-col gap-1 px-2">
-    <NavLink href="" Match="NavLinkMatch.All" class="nav-link" ActiveClass="nav-link-active">
-        <span class="text-neon-pink">&#9632;</span>
-        <span>Dashboard</span>
-    </NavLink>
+<MudNavMenu>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+        Dashboard
+    </MudNavLink>
 
-    <NavLink href="users" class="nav-link" ActiveClass="nav-link-active">
-        <span class="text-neon-rose">&#9679;</span>
-        <span>Users</span>
-    </NavLink>
+    <MudNavLink Href="users" Icon="@Icons.Material.Filled.People">
+        Users
+    </MudNavLink>
 
-    <NavLink href="sessions" class="nav-link" ActiveClass="nav-link-active">
-        <span class="text-neon-peach">&#9670;</span>
-        <span>Sessions</span>
-    </NavLink>
+    <MudNavLink Href="redis" Icon="@Icons.Material.Filled.Storage">
+        Redis
+    </MudNavLink>
 
-    <NavLink href="redis" class="nav-link" ActiveClass="nav-link-active">
-        <span class="text-neon-orange">&#9830;</span>
-        <span>Redis</span>
-    </NavLink>
+    <MudNavLink Href="events" Icon="@Icons.Material.Filled.Bolt">
+        Events
+    </MudNavLink>
 
-    <NavLink href="events" class="nav-link" ActiveClass="nav-link-active">
-        <span class="text-neon-coral">&#9733;</span>
-        <span>Events</span>
-    </NavLink>
+    <MudDivider Class="my-2" />
 
-    <NavLink href="audit" class="nav-link" ActiveClass="nav-link-active">
-        <span class="text-neon-dusty">&#9998;</span>
-        <span>Audit Logs</span>
-    </NavLink>
-
-    <NavLink href="webhooks" class="nav-link" ActiveClass="nav-link-active">
-        <span class="text-neon-rose">&#10132;</span>
-        <span>Webhooks</span>
-    </NavLink>
-
-    <NavLink href="event-types" class="nav-link" ActiveClass="nav-link-active">
-        <span class="text-neon-purple">&#9881;</span>
-        <span>Event Types</span>
-    </NavLink>
-
-    <div class="h-px bg-border my-3"></div>
-
-    <NavLink href="settings" class="nav-link" ActiveClass="nav-link-active">
-        <span class="text-neon-dusty">&#9881;</span>
-        <span>Settings</span>
-    </NavLink>
-
-    <div class="h-px bg-border my-3"></div>
-
-    <a href="http://localhost:16686" target="_blank" rel="noopener" class="nav-link">
-        <span class="text-text-muted">&#8599;</span>
-        <span>Jaeger</span>
-    </a>
-
-    <a href="http://localhost:15672" target="_blank" rel="noopener" class="nav-link">
-        <span class="text-text-muted">&#8599;</span>
-        <span>RabbitMQ</span>
-    </a>
-</nav>
+    <MudNavLink Href="settings" Icon="@Icons.Material.Filled.Settings">
+        Settings
+    </MudNavLink>
+</MudNavMenu>

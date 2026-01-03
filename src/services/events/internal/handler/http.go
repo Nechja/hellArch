@@ -26,31 +26,31 @@ func New(store *store.Store, publisher *rabbitmq.Publisher, mgmt *rabbitmq.Manag
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// Audit logs
-	mux.Handle("GET /api/audit-logs", otelhttp.NewHandler(http.HandlerFunc(h.listAuditLogs), "list_audit_logs"))
-	mux.Handle("POST /api/audit-logs", otelhttp.NewHandler(http.HandlerFunc(h.createAuditLog), "create_audit_log"))
+	mux.Handle("GET /audit-logs", otelhttp.NewHandler(http.HandlerFunc(h.listAuditLogs), "list_audit_logs"))
+	mux.Handle("POST /audit-logs", otelhttp.NewHandler(http.HandlerFunc(h.createAuditLog), "create_audit_log"))
 
 	// Webhooks
-	mux.Handle("GET /api/webhooks", otelhttp.NewHandler(http.HandlerFunc(h.listWebhooks), "list_webhooks"))
-	mux.Handle("POST /api/webhooks", otelhttp.NewHandler(http.HandlerFunc(h.createWebhook), "create_webhook"))
-	mux.Handle("GET /api/webhooks/{id}", otelhttp.NewHandler(http.HandlerFunc(h.getWebhook), "get_webhook"))
-	mux.Handle("PUT /api/webhooks/{id}", otelhttp.NewHandler(http.HandlerFunc(h.updateWebhook), "update_webhook"))
-	mux.Handle("DELETE /api/webhooks/{id}", otelhttp.NewHandler(http.HandlerFunc(h.deleteWebhook), "delete_webhook"))
-	mux.Handle("GET /api/webhooks/by-event/{type...}", otelhttp.NewHandler(http.HandlerFunc(h.getWebhooksByEventType), "get_webhooks_by_event"))
+	mux.Handle("GET /webhooks", otelhttp.NewHandler(http.HandlerFunc(h.listWebhooks), "list_webhooks"))
+	mux.Handle("POST /webhooks", otelhttp.NewHandler(http.HandlerFunc(h.createWebhook), "create_webhook"))
+	mux.Handle("GET /webhooks/{id}", otelhttp.NewHandler(http.HandlerFunc(h.getWebhook), "get_webhook"))
+	mux.Handle("PUT /webhooks/{id}", otelhttp.NewHandler(http.HandlerFunc(h.updateWebhook), "update_webhook"))
+	mux.Handle("DELETE /webhooks/{id}", otelhttp.NewHandler(http.HandlerFunc(h.deleteWebhook), "delete_webhook"))
+	mux.Handle("GET /webhooks/by-event/{type...}", otelhttp.NewHandler(http.HandlerFunc(h.getWebhooksByEventType), "get_webhooks_by_event"))
 
 	// Webhook deliveries
-	mux.Handle("GET /api/webhook-deliveries", otelhttp.NewHandler(http.HandlerFunc(h.listDeliveries), "list_deliveries"))
-	mux.Handle("POST /api/webhook-deliveries", otelhttp.NewHandler(http.HandlerFunc(h.createDelivery), "create_delivery"))
+	mux.Handle("GET /webhook-deliveries", otelhttp.NewHandler(http.HandlerFunc(h.listDeliveries), "list_deliveries"))
+	mux.Handle("POST /webhook-deliveries", otelhttp.NewHandler(http.HandlerFunc(h.createDelivery), "create_delivery"))
 
 	// Event publishing
-	mux.Handle("POST /api/events/publish", otelhttp.NewHandler(http.HandlerFunc(h.publishEvent), "publish_event"))
+	mux.Handle("POST /publish", otelhttp.NewHandler(http.HandlerFunc(h.publishEvent), "publish_event"))
 
 	// Dead letters
-	mux.Handle("GET /api/dead-letters", otelhttp.NewHandler(http.HandlerFunc(h.listDeadLetters), "list_dead_letters"))
-	mux.Handle("POST /api/dead-letters", otelhttp.NewHandler(http.HandlerFunc(h.createDeadLetter), "create_dead_letter"))
-	mux.Handle("DELETE /api/dead-letters/{id}", otelhttp.NewHandler(http.HandlerFunc(h.deleteDeadLetter), "delete_dead_letter"))
+	mux.Handle("GET /dead-letters", otelhttp.NewHandler(http.HandlerFunc(h.listDeadLetters), "list_dead_letters"))
+	mux.Handle("POST /dead-letters", otelhttp.NewHandler(http.HandlerFunc(h.createDeadLetter), "create_dead_letter"))
+	mux.Handle("DELETE /dead-letters/{id}", otelhttp.NewHandler(http.HandlerFunc(h.deleteDeadLetter), "delete_dead_letter"))
 
 	// Workers status
-	mux.Handle("GET /api/workers/status", otelhttp.NewHandler(http.HandlerFunc(h.workersStatus), "workers_status"))
+	mux.Handle("GET /workers/status", otelhttp.NewHandler(http.HandlerFunc(h.workersStatus), "workers_status"))
 
 	// Health
 	mux.HandleFunc("GET /health", h.health)

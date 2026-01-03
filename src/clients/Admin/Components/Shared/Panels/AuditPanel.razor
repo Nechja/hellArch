@@ -1,0 +1,148 @@
+@using Admin.Services
+
+<MudGrid Class="mb-4">
+    <MudItem xs="12" md="4">
+        <MudTextField @bind-Value="EventTypeFilter" Label="Event Type" Placeholder="e.g. hellarch.auth.user.created.v1" Variant="Variant.Outlined" Immediate="true" />
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudTextField @bind-Value="ActorIdFilter" Label="Actor ID" Placeholder="User ID" Variant="Variant.Outlined" Immediate="true" />
+    </MudItem>
+    <MudItem xs="12" md="4" Class="d-flex align-end gap-2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters">Filter</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="ClearFilters">Clear</MudButton>
+    </MudItem>
+</MudGrid>
+
+@if (Loading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudTable Items="@AuditLogs" Hover="true" Striped="true" Dense="true" T="AuditLog" Class="mb-4">
+        <HeaderContent>
+            <MudTh>Time</MudTh>
+            <MudTh>Event Type</MudTh>
+            <MudTh>Source</MudTh>
+            <MudTh>Actor</MudTh>
+            <MudTh>Target</MudTh>
+            <MudTh>Details</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd><MonoText FontSize="0.75rem">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</MonoText></MudTd>
+            <MudTd>
+                <EventTypeChip EventType="@context.EventType" OnClick="FilterByEventType" />
+            </MudTd>
+            <MudTd>@context.Source</MudTd>
+            <MudTd><MonoText FontSize="0.75rem">@(context.ActorId ?? "-")</MonoText></MudTd>
+            <MudTd><MonoText FontSize="0.75rem">@(context.TargetId ?? "-")</MonoText></MudTd>
+            <MudTd>
+                @if (context.Metadata.HasValue)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="() => ShowDetails(context)">
+                        View
+                    </MudButton>
+                }
+                else
+                {
+                    <MudText Color="Color.Secondary">-</MudText>
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+
+    <Pagination Page="Page" PageSize="PageSize" TotalCount="TotalCount"
+                DisplayedCount="AuditLogs.Count" OnPrevious="OnPrevious" OnNext="OnNext" />
+}
+
+<MudDialog @bind-Visible="_showDetails" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true }">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Audit Log Details</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_selectedLog is not null)
+        {
+            <MudSimpleTable Dense="true" Hover="false" Class="mb-4">
+                <tbody>
+                    <tr>
+                        <td style="width: 120px;"><MudText Typo="Typo.caption">ID</MudText></td>
+                        <td><MonoText WordBreak="true">@_selectedLog.Id</MonoText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Event ID</MudText></td>
+                        <td><MonoText WordBreak="true">@_selectedLog.EventId</MonoText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Event Type</MudText></td>
+                        <td><EventTypeChip EventType="@_selectedLog.EventType" UseShortForm="false" /></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Source</MudText></td>
+                        <td>@_selectedLog.Source</td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Actor ID</MudText></td>
+                        <td><MonoText>@(_selectedLog.ActorId ?? "N/A")</MonoText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Target ID</MudText></td>
+                        <td><MonoText>@(_selectedLog.TargetId ?? "N/A")</MonoText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Created</MudText></td>
+                        <td>@_selectedLog.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss.fff")</td>
+                    </tr>
+                </tbody>
+            </MudSimpleTable>
+
+            @if (_selectedLog.Metadata.HasValue)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Metadata</MudText>
+                <JsonViewer Json="@_selectedLog.Metadata.Value" />
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDetails">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public IReadOnlyList<AuditLog> AuditLogs { get; set; } = [];
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int Page { get; set; } = 1;
+    [Parameter] public int PageSize { get; set; } = 20;
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string? EventTypeFilter { get; set; }
+    [Parameter] public EventCallback<string?> EventTypeFilterChanged { get; set; }
+    [Parameter] public string? ActorIdFilter { get; set; }
+    [Parameter] public EventCallback<string?> ActorIdFilterChanged { get; set; }
+    [Parameter] public EventCallback OnApplyFilters { get; set; }
+    [Parameter] public EventCallback OnClearFilters { get; set; }
+    [Parameter] public EventCallback OnPrevious { get; set; }
+    [Parameter] public EventCallback OnNext { get; set; }
+
+    private AuditLog? _selectedLog;
+    private bool _showDetails;
+
+    private async Task FilterByEventType(string eventType)
+    {
+        await EventTypeFilterChanged.InvokeAsync(eventType);
+        await OnApplyFilters.InvokeAsync();
+    }
+
+    private async Task ApplyFilters() => await OnApplyFilters.InvokeAsync();
+    private async Task ClearFilters() => await OnClearFilters.InvokeAsync();
+
+    private void ShowDetails(AuditLog log)
+    {
+        _selectedLog = log;
+        _showDetails = true;
+    }
+
+    private void CloseDetails()
+    {
+        _showDetails = false;
+        _selectedLog = null;
+    }
+}
