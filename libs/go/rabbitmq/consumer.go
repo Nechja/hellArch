@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"time"
 
 	cloudevents "github.com/nechja/hellarch/cloudevents"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -15,14 +16,11 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// Consumer consumes CloudEvents from RabbitMQ.
+// Consumer consumes CloudEvents from RabbitMQ with automatic reconnection.
 type Consumer struct {
-	conn         *Connection
-	queueName    string
-	routingKey   string
-	exchangeName string
-	consumerTag  string
-	tracer       trace.Tracer
+	cfg    ConsumerConfig
+	conn   *Connection
+	tracer trace.Tracer
 }
 
 // ConsumerConfig configures a Consumer.
@@ -33,6 +31,11 @@ type ConsumerConfig struct {
 	ExchangeName string
 	ConsumerTag  string
 	TracerName   string
+
+	// Reconnection settings
+	MaxReconnectAttempts int           // 0 = unlimited
+	InitialBackoff       time.Duration // default 1s
+	MaxBackoff           time.Duration // default 30s
 }
 
 // MessageHandler processes a CloudEvent message.
@@ -53,63 +56,172 @@ func NewConsumer(ctx context.Context, cfg ConsumerConfig) (*Consumer, error) {
 	if cfg.TracerName == "" {
 		cfg.TracerName = cfg.QueueName
 	}
+	if cfg.InitialBackoff == 0 {
+		cfg.InitialBackoff = time.Second
+	}
+	if cfg.MaxBackoff == 0 {
+		cfg.MaxBackoff = 30 * time.Second
+	}
 
+	consumer := &Consumer{
+		cfg:    cfg,
+		tracer: otel.Tracer(cfg.TracerName),
+	}
+
+	if err := consumer.connect(ctx); err != nil {
+		return nil, err
+	}
+
+	return consumer, nil
+}
+
+func (c *Consumer) connect(ctx context.Context) error {
 	conn, err := NewConnection(ConnectionConfig{
-		URL:          cfg.URL,
-		ExchangeName: cfg.ExchangeName,
+		URL:          c.cfg.URL,
+		ExchangeName: c.cfg.ExchangeName,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	ch := conn.Channel()
 
+	// Declare DLQ exchange
+	if err := ch.ExchangeDeclare(
+		"hellarch.events.dlq",
+		"fanout",
+		true,  // durable
+		false, // auto-deleted
+		false, // internal
+		false, // no-wait
+		nil,
+	); err != nil {
+		conn.Close()
+		return fmt.Errorf("failed to declare DLQ exchange: %w", err)
+	}
+
+	// Declare queue with DLQ routing
+	args := amqp.Table{
+		"x-dead-letter-exchange": "hellarch.events.dlq",
+	}
+
 	if _, err := ch.QueueDeclare(
-		cfg.QueueName,
+		c.cfg.QueueName,
 		true,  // durable
 		false, // auto-delete
 		false, // exclusive
 		false, // no-wait
-		nil,   // arguments
+		args,
 	); err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("failed to declare queue: %w", err)
+		return fmt.Errorf("failed to declare queue: %w", err)
 	}
 
 	if err := ch.QueueBind(
-		cfg.QueueName,
-		cfg.RoutingKey,
-		cfg.ExchangeName,
+		c.cfg.QueueName,
+		c.cfg.RoutingKey,
+		c.cfg.ExchangeName,
 		false,
 		nil,
 	); err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("failed to bind queue: %w", err)
+		return fmt.Errorf("failed to bind queue: %w", err)
 	}
 
-	slog.Info("consumer connected to RabbitMQ", "queue", cfg.QueueName, "routing_key", cfg.RoutingKey)
+	c.conn = conn
+	slog.Info("consumer connected to RabbitMQ",
+		"queue", c.cfg.QueueName,
+		"routing_key", c.cfg.RoutingKey,
+		"dlq_exchange", "hellarch.events.dlq")
 
-	return &Consumer{
-		conn:         conn,
-		queueName:    cfg.QueueName,
-		routingKey:   cfg.RoutingKey,
-		exchangeName: cfg.ExchangeName,
-		consumerTag:  cfg.ConsumerTag,
-		tracer:       otel.Tracer(cfg.TracerName),
-	}, nil
+	return nil
 }
 
 // Close closes the underlying connection.
 func (c *Consumer) Close() error {
-	return c.conn.Close()
+	if c.conn != nil {
+		return c.conn.Close()
+	}
+	return nil
 }
 
-// Run starts consuming messages and calls the handler for each.
+// IsHealthy returns true if the consumer has an active connection.
+func (c *Consumer) IsHealthy() bool {
+	if c.conn == nil {
+		return false
+	}
+	return !c.conn.IsClosed()
+}
+
+// Run starts consuming messages with automatic reconnection.
 // Blocks until the context is cancelled.
 func (c *Consumer) Run(ctx context.Context, handler MessageHandler) error {
+	backoff := c.cfg.InitialBackoff
+	attempts := 0
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		err := c.consume(ctx, handler)
+		if err == nil || ctx.Err() != nil {
+			return err
+		}
+
+		attempts++
+		if c.cfg.MaxReconnectAttempts > 0 && attempts >= c.cfg.MaxReconnectAttempts {
+			return fmt.Errorf("max reconnection attempts (%d) reached: %w", c.cfg.MaxReconnectAttempts, err)
+		}
+
+		slog.Warn("consumer disconnected, attempting reconnect",
+			"error", err,
+			"attempt", attempts,
+			"backoff", backoff)
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(backoff):
+		}
+
+		// Exponential backoff with cap
+		backoff = time.Duration(float64(backoff) * 1.5)
+		if backoff > c.cfg.MaxBackoff {
+			backoff = c.cfg.MaxBackoff
+		}
+
+		// Attempt reconnection
+		if err := c.reconnect(ctx); err != nil {
+			slog.Error("failed to reconnect", "error", err)
+			continue
+		}
+
+		// Reset backoff on successful reconnect
+		backoff = c.cfg.InitialBackoff
+		attempts = 0
+		slog.Info("consumer reconnected successfully", "queue", c.cfg.QueueName)
+	}
+}
+
+func (c *Consumer) reconnect(ctx context.Context) error {
+	if c.conn != nil {
+		c.conn.Close()
+		c.conn = nil
+	}
+	return c.connect(ctx)
+}
+
+func (c *Consumer) consume(ctx context.Context, handler MessageHandler) error {
+	if c.conn == nil {
+		return fmt.Errorf("not connected")
+	}
+
 	deliveries, err := c.conn.Channel().Consume(
-		c.queueName,
-		c.consumerTag,
+		c.cfg.QueueName,
+		c.cfg.ConsumerTag,
 		false, // auto-ack
 		false, // exclusive
 		false, // no-local
@@ -120,12 +232,12 @@ func (c *Consumer) Run(ctx context.Context, handler MessageHandler) error {
 		return fmt.Errorf("failed to start consuming: %w", err)
 	}
 
-	slog.Info("starting to consume events", "queue", c.queueName)
+	slog.Info("starting to consume events", "queue", c.cfg.QueueName)
 
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil
 		case delivery, ok := <-deliveries:
 			if !ok {
 				return fmt.Errorf("delivery channel closed")
@@ -137,6 +249,10 @@ func (c *Consumer) Run(ctx context.Context, handler MessageHandler) error {
 
 func (c *Consumer) handleDelivery(ctx context.Context, delivery amqp.Delivery, handler MessageHandler) {
 	eventType := ExtractHeader(delivery.Headers, "ce-type")
+
+	// Extract trace context from headers
+	propagator := otel.GetTextMapPropagator()
+	ctx = propagator.Extract(ctx, AMQPCarrier(delivery.Headers))
 
 	ctx, span := c.tracer.Start(ctx, "process_event",
 		trace.WithSpanKind(trace.SpanKindConsumer),

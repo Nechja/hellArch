@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import type { UserProfile } from '@hellarch/types'
 
 const props = defineProps<{
@@ -7,16 +7,72 @@ const props = defineProps<{
 }>()
 
 const mobileMenuOpen = ref(false)
+const mobileMenuRef = ref<HTMLElement | null>(null)
+const hamburgerRef = ref<HTMLButtonElement | null>(null)
 
 const initials = computed(() => {
   const name = props.user?.display_name || props.user?.email
   if (!name) return '?'
   return name.slice(0, 2).toUpperCase()
 })
+
+function closeMobileMenu() {
+  mobileMenuOpen.value = false
+  nextTick(() => hamburgerRef.value?.focus())
+}
+
+function handleEscapeKey(event: KeyboardEvent) {
+  if (event.key === 'Escape' && mobileMenuOpen.value) {
+    closeMobileMenu()
+  }
+}
+
+function trapFocus(event: KeyboardEvent) {
+  if (!mobileMenuOpen.value || event.key !== 'Tab') return
+
+  const focusableElements = mobileMenuRef.value?.querySelectorAll<HTMLElement>(
+    'a, button, input, [tabindex]:not([tabindex="-1"])'
+  )
+  if (!focusableElements?.length) return
+
+  const firstElement = focusableElements[0]
+  const lastElement = focusableElements[focusableElements.length - 1]
+
+  if (event.shiftKey && document.activeElement === firstElement) {
+    event.preventDefault()
+    lastElement.focus()
+  } else if (!event.shiftKey && document.activeElement === lastElement) {
+    event.preventDefault()
+    firstElement.focus()
+  }
+}
+
+watch(mobileMenuOpen, (isOpen) => {
+  if (isOpen) {
+    document.body.style.overflow = 'hidden'
+    nextTick(() => {
+      const firstLink = mobileMenuRef.value?.querySelector<HTMLElement>('a, button')
+      firstLink?.focus()
+    })
+  } else {
+    document.body.style.overflow = ''
+  }
+})
+
+onMounted(() => {
+  document.addEventListener('keydown', handleEscapeKey)
+  document.addEventListener('keydown', trapFocus)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleEscapeKey)
+  document.removeEventListener('keydown', trapFocus)
+  document.body.style.overflow = ''
+})
 </script>
 
 <template>
-  <nav class="bg-bg-secondary border-b border-border">
+  <nav class="bg-surface-raised border-b border-border">
     <div class="max-w-5xl mx-auto px-4">
       <div class="flex-between h-16">
         <!-- Logo -->
@@ -66,9 +122,12 @@ const initials = computed(() => {
 
         <!-- Mobile Hamburger -->
         <button
+          ref="hamburgerRef"
           class="hamburger md:hidden"
           @click="mobileMenuOpen = !mobileMenuOpen"
-          aria-label="Toggle menu"
+          :aria-expanded="mobileMenuOpen"
+          aria-controls="mobile-menu"
+          aria-label="Toggle navigation menu"
         >
           <span class="hamburger-line" :class="{ 'rotate-45 translate-y-2': mobileMenuOpen }" />
           <span class="hamburger-line" :class="{ 'opacity-0': mobileMenuOpen }" />
@@ -81,8 +140,18 @@ const initials = computed(() => {
 
   <!-- Mobile Menu Overlay -->
   <Teleport to="body">
-    <div v-if="mobileMenuOpen" class="mobile-nav-overlay md:hidden" @click="mobileMenuOpen = false" />
+    <div
+      v-if="mobileMenuOpen"
+      class="mobile-nav-overlay md:hidden"
+      @click="closeMobileMenu"
+      aria-hidden="true"
+    />
     <aside
+      id="mobile-menu"
+      ref="mobileMenuRef"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Navigation menu"
       class="mobile-nav-panel md:hidden"
       :class="mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'"
     >
@@ -93,8 +162,8 @@ const initials = computed(() => {
         </div>
         <button
           class="text-text-secondary hover:text-neon-pink p-2 transition-colors"
-          @click="mobileMenuOpen = false"
-          aria-label="Close menu"
+          @click="closeMobileMenu"
+          aria-label="Close navigation menu"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -102,23 +171,23 @@ const initials = computed(() => {
         </button>
       </div>
 
-      <nav class="flex flex-col gap-1 px-2">
+      <nav class="flex flex-col gap-1 px-2" aria-label="Main navigation">
         <RouterLink
           to="/"
           class="nav-link"
           active-class="nav-link-active"
-          @click="mobileMenuOpen = false"
+          @click="closeMobileMenu"
         >
-          <span class="text-neon-pink">&#9632;</span>
+          <span class="text-neon-pink" aria-hidden="true">&#9632;</span>
           <span>Dashboard</span>
         </RouterLink>
         <RouterLink
           to="/settings"
           class="nav-link"
           active-class="nav-link-active"
-          @click="mobileMenuOpen = false"
+          @click="closeMobileMenu"
         >
-          <span class="text-neon-rose">&#9679;</span>
+          <span class="text-neon-rose" aria-hidden="true">&#9679;</span>
           <span>Settings</span>
         </RouterLink>
 

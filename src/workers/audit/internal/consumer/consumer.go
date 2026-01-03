@@ -37,6 +37,10 @@ func (c *Consumer) Close() error {
 	return c.consumer.Close()
 }
 
+func (c *Consumer) IsHealthy() bool {
+	return c.consumer.IsHealthy()
+}
+
 func (c *Consumer) Run(ctx context.Context) error {
 	return c.consumer.Run(ctx, c.processEvent)
 }

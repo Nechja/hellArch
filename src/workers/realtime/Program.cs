@@ -216,6 +216,10 @@ builder.Services.AddCors(options =>
     });
 });
 
+// RabbitMQ consumer (singleton for health check access)
+builder.Services.AddSingleton<EventConsumer>();
+builder.Services.AddHostedService(provider => provider.GetRequiredService<EventConsumer>());
+
 // Health checks
 builder.Services.AddHealthChecks();
 
@@ -229,9 +233,6 @@ builder.Services.AddHttpClient("AuthService", client =>
     client.BaseAddress = new Uri(authServiceUrl);
     client.Timeout = TimeSpan.FromSeconds(5);
 });
-
-// RabbitMQ consumer
-builder.Services.AddHostedService<EventConsumer>();
 
 var app = builder.Build();
 

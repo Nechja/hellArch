@@ -33,8 +33,8 @@ const buttonClass = computed(() => {
 
   const sizeMap: Record<ButtonSize, string> = {
     default: '',
-    small: 'input-sm',
-    large: 'px-6 py-3 text-lg'
+    small: 'btn-sm',
+    large: 'btn-lg'
   }
 
   return [variantMap[props.variant], sizeMap[props.size]].filter(Boolean).join(' ')

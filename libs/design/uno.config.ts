@@ -98,7 +98,9 @@ export default defineConfig({
       google: 'var(--color-google)',
 
       // ========================================
-      // LEGACY ALIASES (remove after migration)
+      // LEGACY ALIASES
+      // @deprecated Will be removed in v2.0. Use semantic tokens instead:
+      // bg-primary → surface, bg-secondary → surface-raised, etc.
       // ========================================
       bg: {
         primary: 'var(--color-surface)',
@@ -215,12 +217,15 @@ export default defineConfig({
     // Cards (semantic)
     'card': 'bg-surface-overlay border border-border rounded-sm p-6 transition-all duration-normal',
     'card-elevated': 'bg-surface-elevated border border-border rounded-sm p-6 shadow-md transition-all duration-normal',
-    'card-glow': 'bg-surface-overlay border border-primary/30 rounded-sm p-6 hover:border-primary hover:shadow-glow-primary hover:-translate-y-0.5 transition-all duration-normal',
-    'card-interactive': 'card hover:border-primary/50 hover:bg-surface-elevated hover:-translate-y-0.5 cursor-pointer',
+    'card-glow': 'bg-surface-overlay border border-primary/30 rounded-sm p-6 hover:border-primary hover:shadow-glow-primary hover:-translate-y-0.5 focus-visible:border-primary focus-visible:shadow-glow-primary focus-visible:-translate-y-0.5 transition-all duration-normal',
+    'card-interactive': 'card hover:border-primary/50 hover:bg-surface-elevated hover:-translate-y-0.5 focus-visible:border-primary focus-visible:bg-surface-elevated focus-visible:-translate-y-0.5 cursor-pointer',
     'card-brutal': 'bg-surface-overlay border-2 border-text p-6',
+    'card-focusable': 'card focus-visible:border-primary focus-visible:shadow-glow-primary outline-none',
 
     // Buttons - base with active state
     'btn': 'inline-flex items-center justify-center gap-2 px-4 py-2 rounded-sm font-semibold transition-all duration-fast cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm active:scale-95',
+    'btn-sm': 'px-3 py-1.5 text-xs gap-1.5',
+    'btn-lg': 'px-6 py-3 text-base gap-3',
 
     // Buttons - brand variants (use neon primitives intentionally)
     'btn-neon': 'btn bg-transparent border border-neon-pink text-neon-pink hover:bg-neon-pink hover:text-surface hover:shadow-glow-pink active:shadow-none',
@@ -438,8 +443,8 @@ export default defineConfig({
     'icon-box-green': 'icon-box bg-neon-green/10 text-neon-green',
 
     // Code/data display
-    'code-block': 'p-3 rounded-sm bg-bg-secondary border border-border font-mono text-xs overflow-x-auto',
-    'code-inline': 'px-1.5 py-0.5 rounded-sm bg-bg-secondary font-mono text-sm',
+    'code-block': 'p-3 rounded-sm bg-surface-raised border border-border font-mono text-xs overflow-x-auto',
+    'code-inline': 'px-1.5 py-0.5 rounded-sm bg-surface-raised font-mono text-sm',
 
     // Modal overlay
     'modal-overlay': 'fixed inset-0 bg-black/50 flex-center z-modal backdrop-blur-sm',
@@ -691,10 +696,10 @@ export default defineConfig({
     'flex-center', 'flex-between', 'flex-col-center',
 
     // Shortcuts - cards
-    'card', 'card-elevated', 'card-glow', 'card-interactive', 'card-brutal',
+    'card', 'card-elevated', 'card-glow', 'card-interactive', 'card-brutal', 'card-focusable',
 
     // Shortcuts - buttons
-    'btn', 'btn-neon', 'btn-neon-solid', 'btn-neon-rose',
+    'btn', 'btn-sm', 'btn-lg', 'btn-neon', 'btn-neon-solid', 'btn-neon-rose',
     'btn-primary', 'btn-secondary', 'btn-ghost', 'btn-danger', 'btn-success',
     'btn-discord', 'btn-github', 'btn-google',
 

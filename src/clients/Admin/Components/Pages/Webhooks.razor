@@ -1,5 +1,8 @@
 @page "/webhooks"
-@inject Admin.Services.EventsAdminFacade EventsApi
+@using Admin.Services
+@implements IDisposable
+@inject EventsAdminFacade EventsApi
+@inject LiveUpdateService LiveUpdate
 @inject ILogger<Webhooks> Logger
 
 <PageTitle>Webhooks - HellArch Admin</PageTitle>
@@ -212,9 +215,9 @@ else
                 <div>
                     <Label>Format</Label>
                     <select @bind="_formFormat" class="input w-full">
-                        <option value="@Admin.Services.WebhookFormat.Raw">Raw (CloudEvents JSON)</option>
-                        <option value="@Admin.Services.WebhookFormat.Discord">Discord (Webhook with Embeds)</option>
-                        <option value="@Admin.Services.WebhookFormat.Slack">Slack (Blocks)</option>
+                        <option value="@WebhookFormat.Raw">Raw (CloudEvents JSON)</option>
+                        <option value="@WebhookFormat.Discord">Discord (Webhook with Embeds)</option>
+                        <option value="@WebhookFormat.Slack">Slack (Blocks)</option>
                     </select>
                 </div>
                 <div class="flex items-center gap-2">
@@ -279,10 +282,10 @@ else
     private enum Tab { Webhooks, Deliveries }
     private Tab _activeTab = Tab.Webhooks;
 
-    private IReadOnlyList<Admin.Services.Webhook> _webhooks = [];
+    private IReadOnlyList<Webhook> _webhooks = [];
     private bool _loadingWebhooks = true;
 
-    private IReadOnlyList<Admin.Services.WebhookDelivery> _deliveries = [];
+    private IReadOnlyList<WebhookDelivery> _deliveries = [];
     private int _deliveryTotalCount;
     private int _deliveryPage = 1;
     private bool _loadingDeliveries;
@@ -292,21 +295,34 @@ else
     private bool HasMoreDeliveryPages => _deliveryPage * 20 < _deliveryTotalCount;
 
     private bool _showForm;
-    private Admin.Services.Webhook? _editingWebhook;
+    private Webhook? _editingWebhook;
     private string _formName = "";
     private string _formUrl = "";
     private string _formSecret = "";
     private string _formEventTypes = "";
-    private Admin.Services.WebhookFormat _formFormat = Admin.Services.WebhookFormat.Raw;
+    private WebhookFormat _formFormat = WebhookFormat.Raw;
     private bool _formIsActive = true;
     private bool _saving;
 
-    private Admin.Services.Webhook? _webhookToDelete;
-    private Admin.Services.WebhookDelivery? _selectedDelivery;
+    private Webhook? _webhookToDelete;
+    private WebhookDelivery? _selectedDelivery;
 
     protected override async Task OnInitializedAsync()
     {
+        LiveUpdate.OnWebhookUpdate += HandleWebhookUpdate;
         await LoadWebhooks();
+    }
+
+    private void HandleWebhookUpdate(object? sender, UpdateEventArgs e)
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadWebhooks();
+            if (_activeTab == Tab.Deliveries)
+            {
+                await LoadDeliveries();
+            }
+        });
     }
 
     private async Task LoadWebhooks()
@@ -357,12 +373,12 @@ else
         _formUrl = "";
         _formSecret = "";
         _formEventTypes = "";
-        _formFormat = Admin.Services.WebhookFormat.Raw;
+        _formFormat = WebhookFormat.Raw;
         _formIsActive = true;
         _showForm = true;
     }
 
-    private void EditWebhook(Admin.Services.Webhook webhook)
+    private void EditWebhook(Webhook webhook)
     {
         _editingWebhook = webhook;
         _formName = webhook.Name;
@@ -396,7 +412,7 @@ else
 
         if (_editingWebhook == null)
         {
-            var request = new Admin.Services.CreateWebhookRequest(
+            var request = new CreateWebhookRequest(
                 _formName,
                 _formUrl,
                 _formSecret,
@@ -407,7 +423,7 @@ else
         }
         else
         {
-            var request = new Admin.Services.UpdateWebhookRequest(
+            var request = new UpdateWebhookRequest(
                 _formName,
                 _formUrl,
                 _formSecret,
@@ -422,7 +438,7 @@ else
         await LoadWebhooks();
     }
 
-    private void ConfirmDelete(Admin.Services.Webhook webhook)
+    private void ConfirmDelete(Webhook webhook)
     {
         _webhookToDelete = webhook;
     }
@@ -452,7 +468,7 @@ else
         }
     }
 
-    private void ShowDeliveryDetails(Admin.Services.WebhookDelivery delivery)
+    private void ShowDeliveryDetails(WebhookDelivery delivery)
     {
         _selectedDelivery = delivery;
     }
@@ -468,10 +484,15 @@ else
         return parts.Length >= 4 ? string.Join(".", parts[^3..]) : eventType;
     }
 
-    private static string GetFormatLabel(Admin.Services.WebhookFormat format) => format switch
+    private static string GetFormatLabel(WebhookFormat format) => format switch
     {
-        Admin.Services.WebhookFormat.Discord => "Discord",
-        Admin.Services.WebhookFormat.Slack => "Slack",
+        WebhookFormat.Discord => "Discord",
+        WebhookFormat.Slack => "Slack",
         _ => "Raw"
     };
+
+    public void Dispose()
+    {
+        LiveUpdate.OnWebhookUpdate -= HandleWebhookUpdate;
+    }
 }

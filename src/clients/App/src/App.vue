@@ -21,11 +21,12 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-bg-primary">
+  <div class="min-h-screen bg-surface">
     <NavBar :user="user" />
     <main class="max-w-5xl mx-auto px-4 py-8">
-      <div v-if="loading" class="flex-center min-h-[50vh]">
-        <div class="spinner-lg"></div>
+      <div v-if="loading" class="flex-center min-h-[50vh]" role="status" aria-live="polite">
+        <div class="spinner-lg" aria-hidden="true"></div>
+        <span class="sr-only">Loading application...</span>
       </div>
       <RouterView v-else :user="user" />
     </main>

@@ -8,6 +8,7 @@ public sealed class EventsDbContext(DbContextOptions<EventsDbContext> options) :
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Webhook> Webhooks => Set<Webhook>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
+    public DbSet<DeadLetter> DeadLetters => Set<DeadLetter>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -62,6 +63,24 @@ public sealed class EventsDbContext(DbContextOptions<EventsDbContext> options) :
             entity.HasIndex(e => e.WebhookId);
             entity.HasIndex(e => e.EventId);
             entity.HasOne(e => e.Webhook).WithMany(w => w.Deliveries).HasForeignKey(e => e.WebhookId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DeadLetter>(entity =>
+        {
+            entity.ToTable("dead_letters");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.EventType).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.EventId).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Source).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.OriginalQueue).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.DeathReason).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Body).HasColumnType("jsonb");
+            entity.Property(e => e.ErrorMessage).HasColumnType("text");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+            entity.HasIndex(e => e.EventType);
+            entity.HasIndex(e => e.EventId);
+            entity.HasIndex(e => e.CreatedAt);
         });
     }
 }

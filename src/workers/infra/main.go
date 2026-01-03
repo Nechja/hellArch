@@ -12,6 +12,7 @@ import (
 
 	cloudevents "github.com/nechja/hellarch/cloudevents"
 	"github.com/nechja/hellarch/cloudevents/infra"
+	"github.com/nechja/hellarch/golibs/health"
 	"github.com/nechja/hellarch/golibs/rabbitmq"
 	"github.com/nechja/hellarch/golibs/telemetry"
 	"github.com/nechja/hellarch/infra-worker/internal/handlers"
@@ -32,6 +33,12 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Start health server
+	healthAddr := getEnvOrDefault("HEALTH_ADDR", ":8080")
+	healthServer := health.NewServer(healthAddr)
+	healthServer.Start()
+	defer healthServer.Stop(ctx)
+
 	// Setup OpenTelemetry
 	serviceName := getEnvOrDefault("OTEL_SERVICE_NAME", "infra-worker")
 	shutdown, err := telemetry.Setup(ctx, serviceName)
@@ -46,6 +53,7 @@ func main() {
 	orch, err := orchestrator.New(backend)
 	if err != nil {
 		logger.Error("failed to create orchestrator", "backend", backend, "error", err)
+		healthServer.SetHealthy(false)
 		os.Exit(1)
 	}
 	defer orch.Close()
@@ -70,9 +78,18 @@ func main() {
 	})
 	if err != nil {
 		logger.Error("failed to create rabbitmq consumer", "error", err)
+		healthServer.SetHealthy(false)
 		os.Exit(1)
 	}
 	defer consumer.Close()
+
+	// Add health checks
+	healthServer.AddCheck("rabbitmq", func() bool {
+		return consumer.IsHealthy()
+	})
+	healthServer.AddCheck("orchestrator", func() bool {
+		return orch != nil
+	})
 
 	// Setup graceful shutdown
 	sigCh := make(chan os.Signal, 1)
@@ -85,7 +102,7 @@ func main() {
 	}()
 
 	// Start consuming
-	logger.Info("infra-worker ready, consuming events")
+	logger.Info("infra-worker ready, consuming events", "health_addr", healthAddr)
 	if err := consumer.Run(ctx, createMessageHandler(h, logger)); err != nil {
 		if ctx.Err() != nil {
 			logger.Info("consumer stopped due to context cancellation")

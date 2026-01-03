@@ -1,6 +1,8 @@
 @inherits LayoutComponentBase
-@implements IDisposable
+@implements IAsyncDisposable
 @inject Admin.Services.RealtimeHubService RealtimeHub
+@inject Admin.Services.LiveUpdateService LiveUpdate
+@inject IHttpContextAccessor HttpContextAccessor
 
 <div class="grid md:grid-cols-[220px_1fr] min-h-screen">
     <!-- Desktop Sidebar -->
@@ -70,14 +72,34 @@
     public HttpContext? HttpContext { get; set; }
 
     private string? Username => HttpContext?.Items["Username"]?.ToString();
+    private string? SessionToken => HttpContext?.Items["SessionToken"]?.ToString()
+        ?? HttpContextAccessor.HttpContext?.Items["SessionToken"]?.ToString();
 
     private bool _mobileNavOpen;
     private string _connectionStatus = "Connecting...";
+    private bool _initialized;
 
     protected override void OnInitialized()
     {
         RealtimeHub.OnConnectionStateChanged += HandleConnectionStateChanged;
         _connectionStatus = RealtimeHub.ConnectionStateText;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_initialized)
+        {
+            _initialized = true;
+
+            // Connect to SignalR hub with session token
+            if (!string.IsNullOrEmpty(SessionToken))
+            {
+                await RealtimeHub.Connect(SessionToken);
+            }
+
+            // Start live updates
+            LiveUpdate.Start();
+        }
     }
 
     private void HandleConnectionStateChanged(object? sender, Admin.Services.ConnectionStateChangedEventArgs e)
@@ -100,8 +122,9 @@
     private void ToggleMobileNav() => _mobileNavOpen = !_mobileNavOpen;
     private void CloseMobileNav() => _mobileNavOpen = false;
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         RealtimeHub.OnConnectionStateChanged -= HandleConnectionStateChanged;
+        await LiveUpdate.DisposeAsync();
     }
 }

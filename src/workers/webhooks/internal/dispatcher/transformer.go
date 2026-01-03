@@ -206,18 +206,38 @@ func formatEventTitle(eventType string) string {
 
 func getColorForEventType(eventType string) int {
 	switch {
-	case strings.Contains(eventType, "created"):
+	// Success/Recovery events - Green
+	case strings.Contains(eventType, "created"),
+		strings.Contains(eventType, "completed"),
+		strings.Contains(eventType, "recovered"),
+		strings.Contains(eventType, "unlocked"),
+		strings.Contains(eventType, "linked"):
 		return 0x2ECC71 // Green
-	case strings.Contains(eventType, "deleted"):
+
+	// Critical/Failure events - Red
+	case strings.Contains(eventType, "deleted"),
+		strings.Contains(eventType, "failed"),
+		strings.Contains(eventType, "unhealthy"),
+		strings.Contains(eventType, "locked"),
+		strings.Contains(eventType, "suspicious"),
+		strings.Contains(eventType, "revoked"):
 		return 0xE74C3C // Red
-	case strings.Contains(eventType, "updated"):
+
+	// Warning events - Orange
+	case strings.Contains(eventType, "expiring"),
+		strings.Contains(eventType, "threshold"),
+		strings.Contains(eventType, "exceeded"),
+		strings.Contains(eventType, "failing"),
+		strings.Contains(eventType, "rolledback"):
+		return 0xE67E22 // Orange
+
+	// Info/Update events - Blue
+	case strings.Contains(eventType, "updated"),
+		strings.Contains(eventType, "changed"),
+		strings.Contains(eventType, "started"),
+		strings.Contains(eventType, "ended"):
 		return 0x3498DB // Blue
-	case strings.Contains(eventType, "failed"):
-		return 0xE74C3C // Red
-	case strings.Contains(eventType, "unhealthy"):
-		return 0xE74C3C // Red
-	case strings.Contains(eventType, "recovered"):
-		return 0x2ECC71 // Green
+
 	default:
 		return 0x9B59B6 // Purple
 	}

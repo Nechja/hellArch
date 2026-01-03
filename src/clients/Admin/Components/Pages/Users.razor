@@ -1,7 +1,10 @@
 @page "/users"
 @page "/users/{UserId}"
+@using Admin.Services
+@implements IDisposable
 @inject AuthAdminFacade AuthAdmin
 @inject NavigationManager Navigation
+@inject LiveUpdateService LiveUpdate
 
 <PageTitle>Users - HellArch Admin</PageTitle>
 
@@ -211,6 +214,12 @@ else
     private const int PageSize = 20;
     private string _newPermission = "";
 
+    protected override void OnInitialized()
+    {
+        LiveUpdate.OnUserUpdate += HandleUserUpdate;
+        LiveUpdate.OnSessionUpdate += HandleSessionUpdate;
+    }
+
     protected override async Task OnParametersSetAsync()
     {
         if (UserId is null)
@@ -221,6 +230,34 @@ else
         {
             await LoadUserDetail();
         }
+    }
+
+    private void HandleUserUpdate(object? sender, UpdateEventArgs e)
+    {
+        InvokeAsync(async () =>
+        {
+            if (UserId is null)
+            {
+                await LoadUsers();
+            }
+            else
+            {
+                await LoadUserDetail();
+            }
+            StateHasChanged();
+        });
+    }
+
+    private void HandleSessionUpdate(object? sender, UpdateEventArgs e)
+    {
+        InvokeAsync(async () =>
+        {
+            if (UserId is not null)
+            {
+                _sessions = await AuthAdmin.GetUserSessions(UserId);
+                StateHasChanged();
+            }
+        });
     }
 
     private async Task LoadUsers()
@@ -313,5 +350,11 @@ else
         {
             await LoadUserDetail();
         }
+    }
+
+    public void Dispose()
+    {
+        LiveUpdate.OnUserUpdate -= HandleUserUpdate;
+        LiveUpdate.OnSessionUpdate -= HandleSessionUpdate;
     }
 }

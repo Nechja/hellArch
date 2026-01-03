@@ -56,9 +56,11 @@ async function saveProfile() {
             type="email"
             :value="user?.email"
             disabled
+            aria-disabled="true"
+            aria-describedby="email-hint"
             class="input opacity-50 cursor-not-allowed"
           />
-          <p class="text-caption mt-1">Email cannot be changed</p>
+          <p id="email-hint" class="text-caption mt-1">Email cannot be changed</p>
         </div>
 
         <div>
@@ -77,13 +79,17 @@ async function saveProfile() {
         <!-- Message -->
         <div
           v-if="message"
+          role="alert"
+          aria-live="polite"
           :class="[
-            'p-3 rounded-sm text-sm border-l-2',
+            'p-3 rounded-sm text-sm border-l-2 flex items-center gap-2',
             message.type === 'success'
-              ? 'bg-neon-peach/10 text-neon-peach border-neon-peach'
-              : 'bg-neon-coral/10 text-neon-coral border-neon-coral'
+              ? 'bg-success/10 text-success border-success'
+              : 'bg-danger/10 text-danger border-danger'
           ]"
         >
+          <span v-if="message.type === 'success'" class="i-carbon-checkmark-filled" aria-hidden="true" />
+          <span v-else class="i-carbon-warning-filled" aria-hidden="true" />
           {{ message.text }}
         </div>
 
@@ -100,7 +106,7 @@ async function saveProfile() {
       <h2 class="text-subheading mb-6 text-glitch">Linked Accounts</h2>
 
       <div class="space-y-4">
-        <div class="flex-between p-4 rounded-sm bg-bg-secondary border border-discord/30">
+        <div class="flex-between p-4 rounded-sm bg-surface-raised border border-discord/30">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-sm bg-discord flex-center">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.14 96.36" class="w-5 h-5 text-white">
@@ -115,9 +121,9 @@ async function saveProfile() {
           <span class="badge-success">Connected</span>
         </div>
 
-        <div class="flex-between p-4 rounded-sm bg-bg-secondary border border-border opacity-50">
+        <div class="flex-between p-4 rounded-sm bg-surface-raised border border-border opacity-50">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-sm bg-bg-elevated flex-center">
+            <div class="w-10 h-10 rounded-sm bg-surface-elevated flex-center">
               <div class="i-carbon-logo-github text-xl text-text-muted" />
             </div>
             <div>

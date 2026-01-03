@@ -84,7 +84,10 @@ public sealed class EventConsumer(
 
         var factory = new ConnectionFactory
         {
-            Uri = new Uri(rabbitUrl)
+            Uri = new Uri(rabbitUrl),
+            AutomaticRecoveryEnabled = true,
+            NetworkRecoveryInterval = TimeSpan.FromSeconds(5),
+            TopologyRecoveryEnabled = true
         };
 
         _connection = await factory.CreateConnectionAsync(ct);
@@ -158,46 +161,66 @@ public sealed class EventConsumer(
         var eventType = cloudEvent.Type;
         var userId = cloudEvent.GetUserId();
 
-        // Send to event-type specific subscribers
-        await hubContext.Clients
-            .Group($"event:{eventType}")
-            .ReceiveEvent(cloudEvent);
+        // Collect all target groups to send to (avoids duplicate delivery)
+        var groups = new HashSet<string> { $"event:{eventType}" };
 
-        // Send to user-specific group if userId is present
+        // User-specific group if userId is present
         if (userId is not null)
         {
-            await hubContext.Clients
-                .Group($"{EventsHub.UserGroupPrefix}{userId}")
-                .ReceiveEvent(cloudEvent);
-
-            // Handle specific event types with dedicated methods
-            if (eventType.Contains("session.ended", StringComparison.OrdinalIgnoreCase))
-            {
-                var reason = GetSessionEndReason(cloudEvent);
-                await hubContext.Clients
-                    .Group($"{EventsHub.UserGroupPrefix}{userId}")
-                    .SessionInvalidated(reason);
-            }
-
-            if (eventType.Contains("user.updated", StringComparison.OrdinalIgnoreCase))
-            {
-                await hubContext.Clients
-                    .Group($"{EventsHub.UserGroupPrefix}{userId}")
-                    .UserUpdated();
-            }
+            groups.Add($"{EventsHub.UserGroupPrefix}{userId}");
         }
 
         // Admin events go to admin group
         if (IsAdminEvent(eventType))
         {
-            await hubContext.Clients
-                .Group(EventsHub.AdminGroup)
-                .ReceiveEvent(cloudEvent);
+            groups.Add(EventsHub.AdminGroup);
+        }
+
+        // Send to all groups at once - SignalR deduplicates connections
+        await SafeBroadcast(
+            () => hubContext.Clients.Groups(groups).ReceiveEvent(cloudEvent),
+            "ReceiveEvent",
+            eventType);
+
+        // Handle specific event types with dedicated methods (user-specific only)
+        if (userId is not null)
+        {
+            if (eventType.Contains("session.ended", StringComparison.OrdinalIgnoreCase))
+            {
+                var reason = GetSessionEndReason(cloudEvent);
+                await SafeBroadcast(
+                    () => hubContext.Clients.Group($"{EventsHub.UserGroupPrefix}{userId}").SessionInvalidated(reason),
+                    "SessionInvalidated",
+                    eventType);
+            }
+
+            if (eventType.Contains("user.updated", StringComparison.OrdinalIgnoreCase))
+            {
+                await SafeBroadcast(
+                    () => hubContext.Clients.Group($"{EventsHub.UserGroupPrefix}{userId}").UserUpdated(),
+                    "UserUpdated",
+                    eventType);
+            }
         }
 
         logger.LogDebug(
-            "Broadcasted event: {EventType} to groups",
-            eventType);
+            "Broadcasted event: {EventType} to {GroupCount} groups",
+            eventType,
+            groups.Count);
+    }
+
+    private async Task SafeBroadcast(Func<Task> broadcast, string method, string eventType)
+    {
+        try
+        {
+            await broadcast();
+        }
+#pragma warning disable CA1031 // Broadcast errors should not stop event processing
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            logger.LogWarning(ex, "Failed to broadcast {Method} for event {EventType}", method, eventType);
+        }
     }
 
     private static string GetSessionEndReason(CloudEventDto cloudEvent)
@@ -221,11 +244,22 @@ public sealed class EventConsumer(
 
     private static Activity? StartActivity(BasicDeliverEventArgs ea)
     {
+        // Extract trace context from message headers (W3C Trace Context)
+        var traceParent = RabbitMqHeaders.GetHeader(ea.BasicProperties.Headers, "traceparent");
+        var traceState = RabbitMqHeaders.GetHeader(ea.BasicProperties.Headers, "tracestate");
+
+        ActivityContext parentContext = default;
+        if (!string.IsNullOrEmpty(traceParent) && ActivityContext.TryParse(traceParent, traceState, out var parsed))
+        {
+            parentContext = parsed;
+        }
+
         var eventType = RabbitMqHeaders.GetHeader(ea.BasicProperties.Headers, RabbitMqHeaders.CloudEventType);
 
         var activity = ActivitySource.StartActivity(
             "realtime.process_event",
-            ActivityKind.Consumer);
+            ActivityKind.Consumer,
+            parentContext);
 
         activity?.SetTag("messaging.system", "rabbitmq");
         activity?.SetTag("messaging.operation.type", "process");

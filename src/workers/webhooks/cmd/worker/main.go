@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/nechja/hellarch/golibs/health"
 	"github.com/nechja/hellarch/golibs/telemetry"
 	"github.com/nechja/hellarch/workers/webhooks/internal/client"
 	"github.com/nechja/hellarch/workers/webhooks/internal/config"
@@ -35,6 +36,12 @@ func run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Start health server
+	healthAddr := getEnvOrDefault("HEALTH_ADDR", ":8080")
+	healthServer := health.NewServer(healthAddr)
+	healthServer.Start()
+	defer healthServer.Stop(ctx)
+
 	shutdownTelemetry, err := telemetry.Setup(ctx, "webhooks-worker")
 	if err != nil {
 		slog.Warn("failed to initialize telemetry", "error", err)
@@ -49,9 +56,15 @@ func run() error {
 
 	cons, err := consumer.New(ctx, cfg.RabbitMQURL, eventsClient, disp)
 	if err != nil {
+		healthServer.SetHealthy(false)
 		return err
 	}
 	defer func() { _ = cons.Close() }()
+
+	// Add RabbitMQ connection check
+	healthServer.AddCheck("rabbitmq", func() bool {
+		return cons.IsHealthy()
+	})
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -62,6 +75,13 @@ func run() error {
 		cancel()
 	}()
 
-	slog.Info("webhooks worker starting")
+	slog.Info("webhooks worker starting", "health_addr", healthAddr)
 	return cons.Run(ctx)
+}
+
+func getEnvOrDefault(key, defaultValue string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultValue
 }

@@ -75,3 +75,8 @@ func (c *Connection) Close() error {
 	}
 	return c.conn.Close()
 }
+
+// IsClosed returns true if the connection is closed.
+func (c *Connection) IsClosed() bool {
+	return c.conn.IsClosed()
+}

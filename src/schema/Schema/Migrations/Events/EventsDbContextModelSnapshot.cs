@@ -87,6 +87,78 @@ namespace Schema.Migrations.Events
                     b.ToTable("audit_logs", (string)null);
                 });
 
+            modelBuilder.Entity("HellArch.DataTypes.Events.DeadLetter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("body");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("DeathReason")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("death_reason");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text")
+                        .HasColumnName("error_message");
+
+                    b.Property<string>("EventId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("event_type");
+
+                    b.Property<string>("OriginalQueue")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("original_queue");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("retry_count");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("source");
+
+                    b.HasKey("Id")
+                        .HasName("pk_dead_letters");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_dead_letters_created_at");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_dead_letters_event_id");
+
+                    b.HasIndex("EventType")
+                        .HasDatabaseName("ix_dead_letters_event_type");
+
+                    b.ToTable("dead_letters", (string)null);
+                });
+
             modelBuilder.Entity("HellArch.DataTypes.Events.Webhook", b =>
                 {
                     b.Property<Guid>("Id")

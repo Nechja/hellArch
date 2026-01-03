@@ -1,5 +1,6 @@
 using System.Text.Json;
 using DlqWorker.Services;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
@@ -41,11 +42,28 @@ builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource.AddService(serviceName))
     .WithTracing(tracing => tracing
         .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
         .AddSource("dlq-worker")
+        .AddOtlpExporter(options => options.Endpoint = new Uri(otelEndpoint)))
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddMeter("dlq-worker")
         .AddOtlpExporter(options => options.Endpoint = new Uri(otelEndpoint)));
 
 // Health checks
 builder.Services.AddHealthChecks();
+
+// Events API client
+var eventsApiUrl = Environment.GetEnvironmentVariable("EVENTS_API_URL")
+    ?? builder.Configuration["EventsApi:Url"]
+    ?? "http://events-api:8080";
+
+builder.Services.AddHttpClient<EventsApiClient>(client =>
+{
+    client.BaseAddress = new Uri(eventsApiUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 // DLQ consumer
 builder.Services.AddHostedService<DlqConsumer>();

@@ -1,5 +1,8 @@
 @page "/sessions"
+@using Admin.Services
+@implements IDisposable
 @inject AuthAdminFacade AuthAdmin
+@inject LiveUpdateService LiveUpdate
 
 <PageTitle>Sessions - HellArch Admin</PageTitle>
 
@@ -25,6 +28,32 @@
 
     protected override async Task OnInitializedAsync()
     {
+        LiveUpdate.OnStatsUpdate += HandleStatsUpdate;
+        LiveUpdate.OnSessionUpdate += HandleSessionUpdate;
         _stats = await AuthAdmin.GetStats();
+    }
+
+    private void HandleStatsUpdate(object? sender, EventArgs e)
+    {
+        InvokeAsync(async () =>
+        {
+            _stats = await AuthAdmin.GetStats();
+            StateHasChanged();
+        });
+    }
+
+    private void HandleSessionUpdate(object? sender, UpdateEventArgs e)
+    {
+        InvokeAsync(async () =>
+        {
+            _stats = await AuthAdmin.GetStats();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        LiveUpdate.OnStatsUpdate -= HandleStatsUpdate;
+        LiveUpdate.OnSessionUpdate -= HandleSessionUpdate;
     }
 }
