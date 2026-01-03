@@ -328,7 +328,9 @@ src/workers/webhooks/
 ├── internal/
 │   ├── config/config.go            # Environment loading
 │   ├── consumer/consumer.go        # RabbitMQ consumer
-│   ├── dispatcher/dispatcher.go    # HTTP delivery + signing
+│   ├── dispatcher/
+│   │   ├── dispatcher.go           # HTTP delivery + signing
+│   │   └── transformer.go          # Discord/Slack payload transform
 │   ├── store/postgres.go           # Database operations
 │   └── telemetry/telemetry.go      # OpenTelemetry setup
 ├── go.mod
@@ -341,7 +343,14 @@ src/workers/webhooks/
 
 Webhooks are managed in the Admin Console at `/webhooks`:
 
-- Create/delete webhooks
+- Create/edit/delete webhooks
 - Enable/disable webhooks
-- View recent deliveries per webhook
-- See delivery status codes and errors
+- Select format (Raw, Discord, Slack)
+- Event type catalog with domain grouping
+- Select all / clear event subscriptions
+- View deliveries tab with filtering:
+  - Filter by webhook
+  - Filter by success/failed
+  - Pagination
+- Delivery detail modal with response body
+- Live updates via SignalR

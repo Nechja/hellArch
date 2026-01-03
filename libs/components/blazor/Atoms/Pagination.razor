@@ -1,0 +1,40 @@
+@namespace HellArch.Components.Atoms
+
+<div class="flex items-center gap-2 text-sm">
+    <button class="btn btn-sm @(_page <= 1 ? "btn-disabled" : "")" @onclick="PrevPage" disabled="@(_page <= 1)">
+        Prev
+    </button>
+    <span class="text-vapor-text-muted">@_page of @TotalPages</span>
+    <button class="btn btn-sm @(_page >= TotalPages ? "btn-disabled" : "")" @onclick="NextPage" disabled="@(_page >= TotalPages)">
+        Next
+    </button>
+</div>
+
+@code {
+    [Parameter] public int Page { get; set; } = 1;
+    [Parameter] public int TotalPages { get; set; } = 1;
+    [Parameter] public EventCallback<int> PageChanged { get; set; }
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+
+    private int _page => Page;
+
+    private async Task PrevPage()
+    {
+        if (Page > 1)
+        {
+            var newPage = Page - 1;
+            await PageChanged.InvokeAsync(newPage);
+            await OnPageChanged.InvokeAsync(newPage);
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (Page < TotalPages)
+        {
+            var newPage = Page + 1;
+            await PageChanged.InvokeAsync(newPage);
+            await OnPageChanged.InvokeAsync(newPage);
+        }
+    }
+}

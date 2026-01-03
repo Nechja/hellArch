@@ -114,8 +114,7 @@ func (s *Store) ListWebhooks(ctx context.Context, limit, offset int) ([]*Webhook
 	}
 
 	rows, err := s.pool.Query(ctx,
-		`SELECT id, name, url, secret, event_types, COALESCE(format, 'raw') as format, is_active, created_at, updated_at
-		 FROM webhooks ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+		`SELECT `+webhookColumns+` FROM webhooks ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
 		limit, offset,
 	)
 	if err != nil {
@@ -125,20 +124,18 @@ func (s *Store) ListWebhooks(ctx context.Context, limit, offset int) ([]*Webhook
 
 	var webhooks []*Webhook
 	for rows.Next() {
-		var webhook Webhook
-		if err := rows.Scan(&webhook.ID, &webhook.Name, &webhook.URL, &webhook.Secret,
-			&webhook.EventTypes, &webhook.Format, &webhook.IsActive, &webhook.CreatedAt, &webhook.UpdatedAt); err != nil {
+		webhook, err := scanWebhook(rows)
+		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan webhook: %w", err)
 		}
-		webhooks = append(webhooks, &webhook)
+		webhooks = append(webhooks, webhook)
 	}
 	return webhooks, total, nil
 }
 
 func (s *Store) GetWebhooksForEventType(ctx context.Context, eventType string) ([]*Webhook, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT id, name, url, secret, event_types, COALESCE(format, 'raw') as format, is_active, created_at, updated_at
-		 FROM webhooks WHERE is_active = true AND $1 = ANY(event_types)`,
+		`SELECT `+webhookColumns+` FROM webhooks WHERE is_active = true AND $1 = ANY(event_types)`,
 		eventType,
 	)
 	if err != nil {
@@ -148,12 +145,11 @@ func (s *Store) GetWebhooksForEventType(ctx context.Context, eventType string) (
 
 	var webhooks []*Webhook
 	for rows.Next() {
-		var webhook Webhook
-		if err := rows.Scan(&webhook.ID, &webhook.Name, &webhook.URL, &webhook.Secret,
-			&webhook.EventTypes, &webhook.Format, &webhook.IsActive, &webhook.CreatedAt, &webhook.UpdatedAt); err != nil {
+		webhook, err := scanWebhook(rows)
+		if err != nil {
 			return nil, fmt.Errorf("failed to scan webhook: %w", err)
 		}
-		webhooks = append(webhooks, &webhook)
+		webhooks = append(webhooks, webhook)
 	}
 	return webhooks, nil
 }

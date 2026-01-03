@@ -19,9 +19,13 @@ public sealed class EventsAdminFacade(
     {
         var url = $"audit-logs?page={page}&page_size={pageSize}";
         if (!string.IsNullOrEmpty(eventType))
+        {
             url += $"&event_type={Uri.EscapeDataString(eventType)}";
+        }
         if (!string.IsNullOrEmpty(actorId))
+        {
             url += $"&actor_id={Uri.EscapeDataString(actorId)}";
+        }
 
         var response = await _client.GetJsonSafe<AuditLogsResponse>(url, logger, ct);
         return response ?? new AuditLogsResponse([], 0, page, pageSize);
@@ -58,9 +62,13 @@ public sealed class EventsAdminFacade(
     {
         var url = $"webhook-deliveries?page={page}&page_size={pageSize}";
         if (!string.IsNullOrEmpty(webhookId))
+        {
             url += $"&webhook_id={Uri.EscapeDataString(webhookId)}";
+        }
         if (success.HasValue)
+        {
             url += $"&success={success.Value.ToString().ToLowerInvariant()}";
+        }
 
         var response = await _client.GetJsonSafe<DeliveriesResponse>(url, logger, ct);
         return response ?? new DeliveriesResponse([], 0, page, pageSize);
