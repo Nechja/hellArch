@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
@@ -9,94 +10,50 @@ public sealed class RabbitMqAdapter(
     IConfiguration configuration,
     ILogger<RabbitMqAdapter> logger)
 {
-    private HttpClient? _client;
-
-    private HttpClient GetClient()
+    private readonly Lazy<HttpClient> _client = new(() =>
     {
-        if (_client is not null)
-        {
-            return _client;
-        }
-
-        _client = httpClientFactory.CreateClient("RabbitMQ");
-
+        var client = httpClientFactory.CreateClient("RabbitMQ");
         var user = configuration["RABBITMQ_USER"] ?? "hellarch";
         var password = configuration["RABBITMQ_PASSWORD"] ?? "hellarch";
         var credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{user}:{password}"));
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+        return client;
+    });
 
-        return _client;
-    }
+    private HttpClient Client => _client.Value;
 
     public async Task<RabbitMqOverview?> GetOverview(CancellationToken ct = default)
     {
         try
         {
-            return await GetClient().GetFromJsonAsync<RabbitMqOverview>("api/overview", ct);
+            return await Client.GetFromJsonAsync<RabbitMqOverview>("api/overview", ct);
         }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting RabbitMQ overview");
-            return null;
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting RabbitMQ overview");
-            return null;
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse RabbitMQ overview response");
-            return null;
-        }
+        catch (HttpRequestException) { return null; }
+        catch (TaskCanceledException) { return null; }
+        catch (JsonException) { return null; }
     }
 
     public async Task<IReadOnlyList<QueueInfo>> GetQueues(CancellationToken ct = default)
     {
         try
         {
-            var queues = await GetClient().GetFromJsonAsync<List<QueueInfo>>("api/queues", ct);
-            return queues ?? [];
+            return await Client.GetFromJsonAsync<List<QueueInfo>>("api/queues", ct) ?? [];
         }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting RabbitMQ queues");
-            return [];
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting RabbitMQ queues");
-            return [];
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse RabbitMQ queues response");
-            return [];
-        }
+        catch (HttpRequestException) { return []; }
+        catch (TaskCanceledException) { return []; }
+        catch (JsonException) { return []; }
     }
 
     public async Task<IReadOnlyList<ExchangeInfo>> GetExchanges(CancellationToken ct = default)
     {
         try
         {
-            var exchanges = await GetClient().GetFromJsonAsync<List<ExchangeInfo>>("api/exchanges", ct);
+            var exchanges = await Client.GetFromJsonAsync<List<ExchangeInfo>>("api/exchanges", ct);
             return exchanges?.Where(e => !string.IsNullOrEmpty(e.Name)).ToList() ?? [];
         }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting RabbitMQ exchanges");
-            return [];
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting RabbitMQ exchanges");
-            return [];
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse RabbitMQ exchanges response");
-            return [];
-        }
+        catch (HttpRequestException) { return []; }
+        catch (TaskCanceledException) { return []; }
+        catch (JsonException) { return []; }
     }
 
     public async Task<IReadOnlyList<RabbitMqMessage>> GetMessages(
@@ -106,43 +63,22 @@ public sealed class RabbitMqAdapter(
     {
         try
         {
-            var request = new
-            {
-                count,
-                ackmode = "ack_requeue_true",
-                encoding = "auto"
-            };
-
-            var response = await GetClient().PostAsJsonAsync(
+            var request = new { count, ackmode = "ack_requeue_true", encoding = "auto" };
+            var response = await Client.PostAsJsonAsync(
                 $"api/queues/%2F/{Uri.EscapeDataString(queueName)}/get",
                 request,
                 ct);
 
             if (!response.IsSuccessStatusCode)
             {
-                logger.LogWarning("Failed to get messages from queue {Queue}: {Status}",
-                    queueName, response.StatusCode);
                 return [];
             }
 
-            var messages = await response.Content.ReadFromJsonAsync<List<RabbitMqMessage>>(ct);
-            return messages ?? [];
+            return await response.Content.ReadFromJsonAsync<List<RabbitMqMessage>>(ct) ?? [];
         }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error getting messages from queue {Queue}", queueName);
-            return [];
-        }
-        catch (TaskCanceledException ex)
-        {
-            logger.LogWarning(ex, "Request timeout getting messages from queue {Queue}", queueName);
-            return [];
-        }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse messages from queue {Queue}", queueName);
-            return [];
-        }
+        catch (HttpRequestException) { return []; }
+        catch (TaskCanceledException) { return []; }
+        catch (JsonException) { return []; }
     }
 
     public async Task<IReadOnlyList<CloudEventMessage>> GetRecentEvents(
@@ -175,7 +111,7 @@ public sealed class RabbitMqAdapter(
 
     public RabbitMqConnectionInfo GetConnectionInfo()
     {
-        var baseAddress = GetClient().BaseAddress?.ToString() ?? "unknown";
+        var baseAddress = Client.BaseAddress?.ToString() ?? "unknown";
         return new RabbitMqConnectionInfo(baseAddress);
     }
 }

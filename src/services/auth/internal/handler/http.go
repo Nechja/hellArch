@@ -22,33 +22,6 @@ func NewHTTPHandler(auth *AuthHandler, cfg *config.Config) *HTTPHandler {
 	return &HTTPHandler{auth: auth, config: cfg}
 }
 
-func (h *HTTPHandler) isAllowedRedirectURI(redirectURI string) bool {
-	if redirectURI == "" {
-		return true
-	}
-
-	// Allow relative paths
-	if strings.HasPrefix(redirectURI, "/") && !strings.HasPrefix(redirectURI, "//") {
-		return true
-	}
-
-	parsed, err := url.Parse(redirectURI)
-	if err != nil {
-		return false
-	}
-
-	// Check against allowed origins
-	redirectOrigin := parsed.Scheme + "://" + parsed.Host
-	for _, allowed := range h.config.AllowedRedirectURIs {
-		if strings.EqualFold(redirectOrigin, allowed) {
-			return true
-		}
-	}
-
-	slog.Warn("rejected redirect URI", "uri", redirectURI, "allowed", h.config.AllowedRedirectURIs)
-	return false
-}
-
 func (h *HTTPHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/{provider}/login", h.handleOAuthLogin)
 	mux.HandleFunc("GET /auth/{provider}/callback", h.handleOAuthCallback)

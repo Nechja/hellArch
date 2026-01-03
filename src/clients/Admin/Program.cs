@@ -2,6 +2,7 @@ using System.Text.Json;
 using Admin.Components;
 using Admin.Middleware;
 using Admin.Services;
+using HellArch.Http;
 using MudBlazor.Services;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
@@ -10,6 +11,9 @@ using OpenTelemetry.Trace;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add resilient HTTP handling to all HttpClients
+builder.Services.AddResilientHttpClients();
 
 // Configure W3C TraceContext propagation for distributed tracing
 Sdk.SetDefaultTextMapPropagator(new CompositeTextMapPropagator([

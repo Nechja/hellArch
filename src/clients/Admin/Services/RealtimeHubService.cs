@@ -13,7 +13,7 @@ public sealed class RealtimeHubService : IAsyncDisposable
     private readonly IConfiguration _configuration;
     private readonly ILogger<RealtimeHubService> _logger;
     private readonly List<CloudEventDto> _recentEvents = [];
-    private readonly object _eventsLock = new();
+    private readonly Lock _eventsLock = new();
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private const int MaxRecentEvents = 50;
 
@@ -31,7 +31,7 @@ public sealed class RealtimeHubService : IAsyncDisposable
     {
         get
         {
-            lock (_eventsLock)
+            using (_eventsLock.EnterScope())
             {
                 return _recentEvents.ToList();
             }
@@ -191,43 +191,61 @@ public sealed class RealtimeHubService : IAsyncDisposable
         OnConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs("Disconnected"));
     }
 
-    public async Task SubscribeToEventType(string eventType)
+    public async Task SubscribeToEventType(string eventType, CancellationToken cancellationToken = default)
     {
-        if (_hubConnection?.State != HubConnectionState.Connected)
+        await _connectionLock.WaitAsync(cancellationToken);
+        try
         {
-            _logger.LogWarning("Cannot subscribe - not connected to hub");
-            return;
-        }
+            if (_hubConnection?.State != HubConnectionState.Connected)
+            {
+                _logger.LogWarning("Cannot subscribe - not connected to hub");
+                return;
+            }
 
-        await _hubConnection.InvokeAsync("SubscribeToEventType", eventType);
-        _logger.LogDebug("Subscribed to event type: {EventType}", eventType);
+            await _hubConnection.InvokeAsync("SubscribeToEventType", eventType, cancellationToken);
+            _logger.LogDebug("Subscribed to event type: {EventType}", eventType);
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
     }
 
-    public async Task UnsubscribeFromEventType(string eventType)
+    public async Task UnsubscribeFromEventType(string eventType, CancellationToken cancellationToken = default)
     {
-        if (_hubConnection?.State != HubConnectionState.Connected)
+        await _connectionLock.WaitAsync(cancellationToken);
+        try
         {
-            return;
-        }
+            if (_hubConnection?.State != HubConnectionState.Connected)
+            {
+                return;
+            }
 
-        await _hubConnection.InvokeAsync("UnsubscribeFromEventType", eventType);
-        _logger.LogDebug("Unsubscribed from event type: {EventType}", eventType);
+            await _hubConnection.InvokeAsync("UnsubscribeFromEventType", eventType, cancellationToken);
+            _logger.LogDebug("Unsubscribed from event type: {EventType}", eventType);
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
     }
 
     private void HandleEvent(CloudEventDto cloudEvent)
     {
         _logger.LogDebug("Received event: {Type} from {Source}", cloudEvent.Type, cloudEvent.Source);
 
-        lock (_eventsLock)
+        EventHandler<CloudEventReceivedEventArgs>? handler;
+        using (_eventsLock.EnterScope())
         {
             _recentEvents.Insert(0, cloudEvent);
             if (_recentEvents.Count > MaxRecentEvents)
             {
                 _recentEvents.RemoveAt(_recentEvents.Count - 1);
             }
+            handler = OnEventReceived;
         }
 
-        OnEventReceived?.Invoke(this, new CloudEventReceivedEventArgs(cloudEvent));
+        handler?.Invoke(this, new CloudEventReceivedEventArgs(cloudEvent));
     }
 
     private void HandleSessionInvalidated(string reason)

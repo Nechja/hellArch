@@ -14,17 +14,40 @@ public abstract class RabbitMqConsumerBase(
     ILogger logger) : BackgroundService
 {
     private readonly SemaphoreSlim _reconnectLock = new(1, 1);
+    private readonly Lock _connectionLock = new();
+    private IConnection? _connection;
+    private IChannel? _channel;
 
     protected IConfiguration Configuration { get; } = configuration;
     protected ILogger Logger { get; } = logger;
-    protected IConnection? Connection { get; set; }
-    protected IChannel? Channel { get; set; }
+
+    protected IConnection? Connection
+    {
+        get { using (_connectionLock.EnterScope()) { return _connection; } }
+        set { using (_connectionLock.EnterScope()) { _connection = value; } }
+    }
+
+    protected IChannel? Channel
+    {
+        get { using (_connectionLock.EnterScope()) { return _channel; } }
+        set { using (_connectionLock.EnterScope()) { _channel = value; } }
+    }
+
     protected string QueueName { get; set; } = null!;
 
     /// <summary>
     /// Gets whether the RabbitMQ connection and channel are open.
     /// </summary>
-    public bool IsConnected => Connection?.IsOpen == true && Channel?.IsOpen == true;
+    public bool IsConnected
+    {
+        get
+        {
+            using (_connectionLock.EnterScope())
+            {
+                return _connection?.IsOpen == true && _channel?.IsOpen == true;
+            }
+        }
+    }
 
     /// <summary>
     /// Gets the RabbitMQ URL from configuration or environment variables.
@@ -144,13 +167,23 @@ public abstract class RabbitMqConsumerBase(
 
     private async Task CloseConnectionsAsync()
     {
+        IChannel? channelToClose;
+        IConnection? connectionToClose;
+
+        using (_connectionLock.EnterScope())
+        {
+            channelToClose = _channel;
+            connectionToClose = _connection;
+            _channel = null;
+            _connection = null;
+        }
+
         try
         {
-            if (Channel is not null)
+            if (channelToClose is not null)
             {
-                await Channel.CloseAsync();
-                Channel.Dispose();
-                Channel = null;
+                await channelToClose.CloseAsync();
+                channelToClose.Dispose();
             }
         }
 #pragma warning disable CA1031 // Cleanup must ignore all exceptions
@@ -159,11 +192,10 @@ public abstract class RabbitMqConsumerBase(
 
         try
         {
-            if (Connection is not null)
+            if (connectionToClose is not null)
             {
-                await Connection.CloseAsync();
-                Connection.Dispose();
-                Connection = null;
+                await connectionToClose.CloseAsync();
+                connectionToClose.Dispose();
             }
         }
 #pragma warning disable CA1031 // Cleanup must ignore all exceptions
@@ -179,8 +211,11 @@ public abstract class RabbitMqConsumerBase(
 
     public override void Dispose()
     {
-        Channel?.Dispose();
-        Connection?.Dispose();
+        using (_connectionLock.EnterScope())
+        {
+            _channel?.Dispose();
+            _connection?.Dispose();
+        }
         _reconnectLock.Dispose();
         base.Dispose();
         GC.SuppressFinalize(this);

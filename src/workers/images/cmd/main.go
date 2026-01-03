@@ -101,10 +101,12 @@ func main() {
 	healthServer.AddCheck("consumer", cons.IsHealthy)
 	healthServer.Start()
 
+	// Register signal handler BEFORE starting goroutine to avoid race
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
 	// Handle shutdown signals
 	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
 
 		slog.Info("shutting down...")

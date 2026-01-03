@@ -3,7 +3,7 @@ namespace Admin.Services;
 public sealed class ToastService
 {
     private readonly List<Toast> _toasts = [];
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private int _nextId;
 
     public event EventHandler? OnChange;
@@ -12,7 +12,7 @@ public sealed class ToastService
     {
         get
         {
-            lock (_lock)
+            using (_lock.EnterScope())
             {
                 return _toasts.ToList();
             }
@@ -22,13 +22,15 @@ public sealed class ToastService
     public void Show(string message, ToastType type = ToastType.Info, int durationMs = 5000)
     {
         var toast = new Toast(Interlocked.Increment(ref _nextId), message, type, durationMs);
+        EventHandler? handler;
 
-        lock (_lock)
+        using (_lock.EnterScope())
         {
             _toasts.Add(toast);
+            handler = OnChange;
         }
 
-        OnChange?.Invoke(this, EventArgs.Empty);
+        handler?.Invoke(this, EventArgs.Empty);
 
         // Auto-dismiss after duration
         if (durationMs > 0)
@@ -69,26 +71,30 @@ public sealed class ToastService
 
     public void Dismiss(int id)
     {
-        lock (_lock)
+        EventHandler? handler;
+        using (_lock.EnterScope())
         {
             var toast = _toasts.FirstOrDefault(t => t.Id == id);
             if (toast is not null)
             {
                 _toasts.Remove(toast);
             }
+            handler = OnChange;
         }
 
-        OnChange?.Invoke(this, EventArgs.Empty);
+        handler?.Invoke(this, EventArgs.Empty);
     }
 
     public void Clear()
     {
-        lock (_lock)
+        EventHandler? handler;
+        using (_lock.EnterScope())
         {
             _toasts.Clear();
+            handler = OnChange;
         }
 
-        OnChange?.Invoke(this, EventArgs.Empty);
+        handler?.Invoke(this, EventArgs.Empty);
     }
 
     private static string GetShortEventType(string eventType)

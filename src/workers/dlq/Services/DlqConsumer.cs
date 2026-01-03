@@ -43,8 +43,10 @@ public sealed class DlqConsumer(
 
     private readonly int _maxRetries = configuration.GetValue("DLQ:MaxRetries", 3);
     private readonly int _baseDelaySeconds = configuration.GetValue("DLQ:BaseDelaySeconds", 5);
+    private readonly Lock _publishChannelLock = new();
 
     private IChannel? _publishChannel;
+    private volatile bool _stopping;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -245,7 +247,24 @@ public sealed class DlqConsumer(
 
         var mainExchange = Configuration["RabbitMQ:MainExchange"] ?? "hellarch.events";
 
-        await _publishChannel!.BasicPublishAsync(
+        IChannel? channelToUse;
+        using (_publishChannelLock.EnterScope())
+        {
+            if (_stopping)
+            {
+                Logger.LogWarning("Skipping retry - service is stopping");
+                return;
+            }
+            channelToUse = _publishChannel;
+        }
+
+        if (channelToUse is null)
+        {
+            Logger.LogError("Cannot retry message - publish channel is null");
+            return;
+        }
+
+        await channelToUse.BasicPublishAsync(
             exchange: mainExchange,
             routingKey: routingKey,
             mandatory: false,
@@ -302,10 +321,18 @@ public sealed class DlqConsumer(
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (_publishChannel is not null)
+        IChannel? channelToClose;
+        using (_publishChannelLock.EnterScope())
         {
-            await _publishChannel.CloseAsync(cancellationToken);
-            _publishChannel.Dispose();
+            _stopping = true;
+            channelToClose = _publishChannel;
+            _publishChannel = null;
+        }
+
+        if (channelToClose is not null)
+        {
+            await channelToClose.CloseAsync(cancellationToken);
+            channelToClose.Dispose();
         }
         await base.StopAsync(cancellationToken);
     }
