@@ -1,0 +1,43 @@
+@using System.Text.Json
+
+@* Displays formatted JSON in a styled container *@
+
+<MudPaper Class="pa-3" Style="@ComputedStyle">
+    <pre style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; margin: 0; white-space: pre-wrap;">@FormattedJson</pre>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public JsonElement? Json { get; set; }
+
+    [Parameter]
+    public string? RawJson { get; set; }
+
+    [Parameter]
+    public string MaxHeight { get; set; } = "300px";
+
+    private string ComputedStyle => $"background-color: var(--mud-palette-background-gray); max-height: {MaxHeight}; overflow: auto;";
+
+    private string FormattedJson => FormatJson();
+
+    private string FormatJson()
+    {
+        try
+        {
+            if (Json.HasValue)
+            {
+                return JsonSerializer.Serialize(Json.Value, new JsonSerializerOptions { WriteIndented = true });
+            }
+            if (!string.IsNullOrEmpty(RawJson))
+            {
+                var doc = JsonDocument.Parse(RawJson);
+                return JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
+            }
+            return "{}";
+        }
+        catch
+        {
+            return RawJson ?? Json?.ToString() ?? "{}";
+        }
+    }
+}

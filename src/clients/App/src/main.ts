@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { createVuetify } from 'vuetify'
 import 'vuetify/styles'
 import '@mdi/font/css/materialdesignicons.css'
+import './styles/global.css'
 
 import App from './App.vue'
 import Landing from './pages/Landing.vue'
@@ -23,19 +24,41 @@ const vuetify = createVuetify({
     defaultTheme: 'dark',
     themes: {
       dark: {
+        dark: true,
         colors: {
           primary: '#ff4d8d',
+          'primary-darken-1': '#d93d75',
           secondary: '#ff6b9d',
           accent: '#ff8a65',
-          error: '#ff5252',
+          error: '#ef5350',
           warning: '#ffb74d',
           info: '#64b5f6',
-          success: '#4caf50',
-          background: '#0a0a0f',
-          surface: '#12121a',
-          'surface-variant': '#1a1a24',
+          success: '#66bb6a',
+          background: '#08080c',
+          surface: '#0f0f14',
+          'surface-bright': '#1a1a22',
+          'surface-variant': '#16161e',
+          'on-surface': '#e4e4e7',
+          'on-surface-variant': '#a1a1aa',
         },
       },
+    },
+  },
+  defaults: {
+    VCard: {
+      elevation: 0,
+      rounded: 'lg',
+    },
+    VBtn: {
+      rounded: 'lg',
+    },
+    VTextField: {
+      variant: 'outlined',
+      density: 'comfortable',
+      color: 'primary',
+    },
+    VList: {
+      bgColor: 'transparent',
     },
   },
 })

@@ -1,0 +1,47 @@
+@* Displays a status with appropriate color coding *@
+
+<MudChip T="string" Size="@Size" Color="@ResolvedColor">
+    @Label
+</MudChip>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = "";
+
+    [Parameter]
+    public StatusType Status { get; set; } = StatusType.Default;
+
+    [Parameter]
+    public Size Size { get; set; } = Size.Small;
+
+    [Parameter]
+    public Color? OverrideColor { get; set; }
+
+    private Color ResolvedColor => OverrideColor ?? Status switch
+    {
+        StatusType.Success => Color.Success,
+        StatusType.Warning => Color.Warning,
+        StatusType.Error => Color.Error,
+        StatusType.Info => Color.Info,
+        StatusType.Active => Color.Success,
+        StatusType.Inactive => Color.Error,
+        StatusType.Pending => Color.Warning,
+        StatusType.Connected => Color.Success,
+        StatusType.Disconnected => Color.Error,
+        _ => Color.Default
+    };
+
+    public enum StatusType
+    {
+        Default,
+        Success,
+        Warning,
+        Error,
+        Info,
+        Active,
+        Inactive,
+        Pending,
+        Connected,
+        Disconnected
+    }
+}

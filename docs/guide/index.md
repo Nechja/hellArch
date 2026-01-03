@@ -18,9 +18,8 @@ hellArch/
 │   │   ├── Schema.Codegen/# Legacy reflection codegen
 │   │   └── MigrationRunner/# Migration runner
 │   └── clients/
-│       ├── Admin/         # Blazor Admin Console
-│       ├── App/           # Vue.js Main App
-│       └── Login/         # Blazor Login Portal
+│       ├── Admin/         # Blazor Admin Console (MudBlazor)
+│       └── App/           # Vue.js Main App (Vuetify)
 ├── libs/
 │   ├── protos/            # gRPC definitions
 │   ├── data_types/        # Entity types (persistence)
@@ -38,7 +37,7 @@ hellArch/
 │   │   └── Codegen/       # Roslyn codegen
 │   └── design/            # Shared design system
 │       ├── tokens.css     # CSS custom properties
-│       └── uno.config.ts  # UnoCSS config
+│       └── colors.json    # Color palette reference
 ├── tests/                 # pytest test suite
 │   ├── api/               # API tests
 │   ├── integration/       # Integration tests

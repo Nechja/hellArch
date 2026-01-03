@@ -1,0 +1,30 @@
+@* Displays text in monospace font, useful for IDs, codes, timestamps *@
+
+<MudText Style="@ComputedStyle">@ChildContent</MudText>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string FontSize { get; set; } = "0.875rem";
+
+    [Parameter]
+    public bool WordBreak { get; set; }
+
+    [Parameter]
+    public Color Color { get; set; } = Color.Default;
+
+    private string ComputedStyle
+    {
+        get
+        {
+            var style = $"font-family: 'JetBrains Mono', monospace; font-size: {FontSize};";
+            if (WordBreak)
+            {
+                style += " word-break: break-all;";
+            }
+            return style;
+        }
+    }
+}

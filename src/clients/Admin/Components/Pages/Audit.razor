@@ -8,49 +8,34 @@
 
 <PageTitle>Audit Logs - HellArch Admin</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-6" Style="background: linear-gradient(90deg, #D162A4, #FF9A56); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-    Audit Logs
-</MudText>
+<PageHeader Title="Audit Logs" Subtitle="View system audit logs for all events processed by the platform." />
 
-<MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
-    View system audit logs for all events processed by the platform.
-</MudText>
-
-@*
-TODO: Rebuild this page with MudBlazor
-Original functionality:
-- Event Type Categories grid: Clickable buttons organized by category
-  - Auth - Users: Created, Updated, Deleted
-  - Auth - Sessions: Created, Ended
-  - Auth - Accounts: Linked, Unlinked
-  - Infrastructure: Unhealthy, Recovered
-  - Clicking a button filters the table by that event type
-
-- Filters section:
-  - Event Type text input (e.g. hellarch.auth.user.created.v1)
-  - Actor ID text input (User ID)
-  - Filter/Clear buttons
-
-- Audit Logs table: Time, Event Type (clickable badge), Source, Actor, Target, Details
-  - Details column has "View" link that opens modal with full log info
-  - Pagination: Previous/Next buttons, page number, total count
-
-- Detail Modal shows:
-  - ID, Event ID, Event Type badge, Source
-  - Actor ID, Target ID, Created timestamp
-  - Formatted JSON metadata
-*@
-
-<MudAlert Severity="Severity.Info" Class="mb-6">
-    This page is being rebuilt with MudBlazor. See source comments for original functionality.
-</MudAlert>
+<MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-3">Quick Filters</MudText>
+<MudGrid Class="mb-6">
+    @foreach (var category in EventCategories)
+    {
+        <MudItem xs="12" md="6" lg="3">
+            <MudPaper Class="pa-3" Elevation="1">
+                <MudText Typo="Typo.caption" Color="Color.Primary" Class="mb-2">@category.Name</MudText>
+                <div class="d-flex flex-wrap gap-1">
+                    @foreach (var evt in category.Events)
+                    {
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(_eventTypeFilter == evt.Type ? Color.Primary : Color.Default)"
+                                 OnClick="() => FilterByEventType(evt.Type)">@evt.Label</MudChip>
+                    }
+                </div>
+            </MudPaper>
+        </MudItem>
+    }
+</MudGrid>
 
 <MudGrid Class="mb-6">
     <MudItem xs="12" md="4">
-        <MudTextField @bind-Value="_eventTypeFilter" Label="Event Type" Placeholder="e.g. hellarch.auth.user.created.v1" Variant="Variant.Outlined" />
+        <MudTextField @bind-Value="_eventTypeFilter" Label="Event Type" Placeholder="e.g. hellarch.auth.user.created.v1" Variant="Variant.Outlined" Immediate="true" />
     </MudItem>
     <MudItem xs="12" md="4">
-        <MudTextField @bind-Value="_actorIdFilter" Label="Actor ID" Placeholder="User ID" Variant="Variant.Outlined" />
+        <MudTextField @bind-Value="_actorIdFilter" Label="Actor ID" Placeholder="User ID" Variant="Variant.Outlined" Immediate="true" />
     </MudItem>
     <MudItem xs="12" md="4" Class="d-flex align-end gap-2">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters">Filter</MudButton>
@@ -71,31 +56,86 @@ else
             <MudTh>Source</MudTh>
             <MudTh>Actor</MudTh>
             <MudTh>Target</MudTh>
+            <MudTh>Details</MudTh>
         </HeaderContent>
         <RowTemplate>
-            <MudTd Style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</MudTd>
+            <MudTd><MonoText FontSize="0.75rem">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</MonoText></MudTd>
             <MudTd>
-                <MudChip T="string" Size="Size.Small" Color="Color.Info" OnClick="() => FilterByEventType(context.EventType)">
-                    @GetShortEventType(context.EventType)
-                </MudChip>
+                <EventTypeChip EventType="@context.EventType" OnClick="FilterByEventType" />
             </MudTd>
             <MudTd>@context.Source</MudTd>
-            <MudTd Style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;">@(context.ActorId ?? "-")</MudTd>
-            <MudTd Style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;">@(context.TargetId ?? "-")</MudTd>
+            <MudTd><MonoText FontSize="0.75rem">@(context.ActorId ?? "-")</MonoText></MudTd>
+            <MudTd><MonoText FontSize="0.75rem">@(context.TargetId ?? "-")</MonoText></MudTd>
+            <MudTd>
+                @if (context.Metadata.HasValue)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="() => ShowDetails(context)">
+                        View
+                    </MudButton>
+                }
+                else
+                {
+                    <MudText Color="Color.Secondary">-</MudText>
+                }
+            </MudTd>
         </RowTemplate>
     </MudTable>
 
-    <div class="d-flex justify-space-between align-center">
-        <MudText Typo="Typo.body2" Color="Color.Secondary">
-            Showing @_auditLogs.Count of @_totalCount logs
-        </MudText>
-        <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
-            <MudButton Disabled="@(_page <= 1)" OnClick="PreviousPage">Previous</MudButton>
-            <MudButton Disabled="true">Page @_page</MudButton>
-            <MudButton Disabled="@(!HasMorePages)" OnClick="NextPage">Next</MudButton>
-        </MudButtonGroup>
-    </div>
+    <Pagination Page="_page" PageSize="PageSize" TotalCount="_totalCount"
+                DisplayedCount="_auditLogs.Count" OnPrevious="PreviousPage" OnNext="NextPage" />
 }
+
+<MudDialog @bind-Visible="_showDetails" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true }">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Audit Log Details</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_selectedLog is not null)
+        {
+            <MudSimpleTable Dense="true" Hover="false" Class="mb-4">
+                <tbody>
+                    <tr>
+                        <td style="width: 120px;"><MudText Typo="Typo.caption">ID</MudText></td>
+                        <td><MonoText WordBreak="true">@_selectedLog.Id</MonoText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Event ID</MudText></td>
+                        <td><MonoText WordBreak="true">@_selectedLog.EventId</MonoText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Event Type</MudText></td>
+                        <td><EventTypeChip EventType="@_selectedLog.EventType" UseShortForm="false" /></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Source</MudText></td>
+                        <td>@_selectedLog.Source</td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Actor ID</MudText></td>
+                        <td><MonoText>@(_selectedLog.ActorId ?? "N/A")</MonoText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Target ID</MudText></td>
+                        <td><MonoText>@(_selectedLog.TargetId ?? "N/A")</MonoText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Created</MudText></td>
+                        <td>@_selectedLog.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss.fff")</td>
+                    </tr>
+                </tbody>
+            </MudSimpleTable>
+
+            @if (_selectedLog.Metadata.HasValue)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Metadata</MudText>
+                <JsonViewer Json="@_selectedLog.Metadata.Value" />
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDetails">Close</MudButton>
+    </DialogActions>
+</MudDialog>
 
 @code {
     private IReadOnlyList<Admin.Services.AuditLog> _auditLogs = [];
@@ -105,8 +145,33 @@ else
     private bool _loading = true;
     private string? _eventTypeFilter;
     private string? _actorIdFilter;
+    private Admin.Services.AuditLog? _selectedLog;
+    private bool _showDetails;
 
-    private bool HasMorePages => _page * PageSize < _totalCount;
+
+    private static readonly EventCategory[] EventCategories =
+    [
+        new("Auth - Users", [
+            new("hellarch.auth.user.created.v1", "Created"),
+            new("hellarch.auth.user.updated.v1", "Updated"),
+            new("hellarch.auth.user.deleted.v1", "Deleted")
+        ]),
+        new("Auth - Sessions", [
+            new("hellarch.auth.session.created.v1", "Created"),
+            new("hellarch.auth.session.ended.v1", "Ended")
+        ]),
+        new("Auth - Accounts", [
+            new("hellarch.auth.account.linked.v1", "Linked"),
+            new("hellarch.auth.account.unlinked.v1", "Unlinked")
+        ]),
+        new("Infrastructure", [
+            new("hellarch.infra.service.unhealthy.v1", "Unhealthy"),
+            new("hellarch.infra.service.recovered.v1", "Recovered")
+        ])
+    ];
+
+    private record EventCategory(string Name, EventTypeInfo[] Events);
+    private record EventTypeInfo(string Type, string Label);
 
     protected override async Task OnInitializedAsync()
     {
@@ -168,10 +233,16 @@ else
         }
     }
 
-    private static string GetShortEventType(string eventType)
+    private void ShowDetails(Admin.Services.AuditLog log)
     {
-        var parts = eventType.Split('.');
-        return parts.Length >= 4 ? string.Join(".", parts[^3..]) : eventType;
+        _selectedLog = log;
+        _showDetails = true;
+    }
+
+    private void CloseDetails()
+    {
+        _showDetails = false;
+        _selectedLog = null;
     }
 
     public void Dispose()

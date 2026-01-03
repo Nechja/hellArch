@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import AppLogo from '../components/atoms/AppLogo.vue'
+import OAuthProviderButton from '../components/molecules/OAuthProviderButton.vue'
 
 const route = useRoute()
 
@@ -21,23 +23,16 @@ function loginWithDiscord() {
       <v-col cols="12" sm="8" md="4">
         <v-card class="elevation-12" color="surface-variant">
           <v-card-text class="text-center pa-8">
-            <h1 class="text-h3 font-weight-bold mb-2 text-primary">
-              HellArch
-            </h1>
+            <AppLogo size="lg" class="mb-2" />
             <p class="text-subtitle-2 text-medium-emphasis text-uppercase tracking-wide mb-8">
               Sign in to continue
             </p>
 
-            <v-btn
-              color="#5865F2"
-              size="large"
-              block
+            <OAuthProviderButton
+              provider="discord"
               class="mb-4"
               @click="loginWithDiscord"
-            >
-              <v-icon start>mdi-discord</v-icon>
-              Continue with Discord
-            </v-btn>
+            />
 
             <p class="text-caption text-disabled mt-8">
               More providers coming soon

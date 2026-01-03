@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import PageTitle from '../components/atoms/PageTitle.vue'
+import LinkedAccountItem from '../components/molecules/LinkedAccountItem.vue'
 import type { UserProfile } from '@hellarch/types'
 
 const props = defineProps<{
@@ -42,10 +44,10 @@ async function saveProfile() {
 
 <template>
   <div style="max-width: 720px;">
-    <div class="mb-8">
-      <h1 class="text-h3 font-weight-bold text-primary mb-2">Settings</h1>
-      <p class="text-body-1 text-medium-emphasis">Manage your account settings and preferences.</p>
-    </div>
+    <PageTitle
+      title="Settings"
+      subtitle="Manage your account settings and preferences."
+    />
 
     <!-- Profile Section -->
     <v-card class="mb-6">
@@ -87,33 +89,9 @@ async function saveProfile() {
       <v-card-title class="text-h6 font-weight-bold">Linked Accounts</v-card-title>
       <v-card-text>
         <v-list>
-          <v-list-item class="px-0">
-            <template #prepend>
-              <v-avatar color="#5865F2" size="40">
-                <v-icon color="white">mdi-discord</v-icon>
-              </v-avatar>
-            </template>
-            <v-list-item-title>Discord</v-list-item-title>
-            <v-list-item-subtitle>Connected</v-list-item-subtitle>
-            <template #append>
-              <v-chip color="success" size="small">Connected</v-chip>
-            </template>
-          </v-list-item>
-
+          <LinkedAccountItem provider="discord" connected />
           <v-divider class="my-2" />
-
-          <v-list-item class="px-0" disabled>
-            <template #prepend>
-              <v-avatar color="grey-darken-3" size="40">
-                <v-icon>mdi-github</v-icon>
-              </v-avatar>
-            </template>
-            <v-list-item-title class="text-disabled">GitHub</v-list-item-title>
-            <v-list-item-subtitle class="text-disabled">Coming soon</v-list-item-subtitle>
-            <template #append>
-              <v-btn variant="outlined" size="small" disabled>Connect</v-btn>
-            </template>
-          </v-list-item>
+          <LinkedAccountItem provider="github" coming-soon />
         </v-list>
       </v-card-text>
     </v-card>
@@ -131,7 +109,6 @@ async function saveProfile() {
       </v-card-text>
     </v-card>
 
-    <!-- Snackbar for feedback -->
     <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000">
       {{ snackbarText }}
       <template #actions>

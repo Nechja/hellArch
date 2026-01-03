@@ -1,0 +1,17 @@
+@* Displays a single metric value with label *@
+
+<MudPaper Class="pa-4" Elevation="2">
+    <MudText Typo="Typo.h4" Color="@ValueColor">@Value</MudText>
+    <MudText Typo="Typo.caption">@Label</MudText>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Value { get; set; } = "0";
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = "";
+
+    [Parameter]
+    public Color ValueColor { get; set; } = Color.Primary;
+}

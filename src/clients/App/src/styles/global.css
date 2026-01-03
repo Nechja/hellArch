@@ -1,0 +1,187 @@
+/* Global Design System */
+
+:root {
+  --gradient-primary: linear-gradient(135deg, #ff4d8d 0%, #ff6b9d 50%, #ff8a65 100%);
+  --gradient-subtle: linear-gradient(135deg, rgba(255, 77, 141, 0.1) 0%, rgba(255, 138, 101, 0.05) 100%);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 77, 141, 0.3);
+  --glow-primary: 0 0 20px rgba(255, 77, 141, 0.15);
+  --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Better focus states */
+*:focus-visible {
+  outline: 2px solid #ff4d8d;
+  outline-offset: 2px;
+}
+
+/* Card enhancements */
+.v-card {
+  border: 1px solid var(--border-subtle);
+  transition: var(--transition-smooth);
+}
+
+.v-card:hover:not(.v-card--disabled) {
+  border-color: var(--border-hover);
+}
+
+.v-card--link:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glow-primary);
+}
+
+/* App bar styling */
+.v-app-bar {
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+/* Navigation drawer */
+.v-navigation-drawer {
+  border-right: 1px solid var(--border-subtle) !important;
+}
+
+/* Text field enhancements */
+.v-field--focused {
+  box-shadow: 0 0 0 1px rgba(255, 77, 141, 0.3);
+}
+
+/* List item hover states */
+.v-list-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.v-list-item--active {
+  background: rgba(255, 77, 141, 0.1) !important;
+}
+
+/* Button refinements */
+.v-btn--variant-outlined {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.v-btn--variant-outlined:hover {
+  border-color: currentColor;
+  background: rgba(255, 77, 141, 0.08);
+}
+
+/* Menu/dropdown styling */
+.v-menu > .v-overlay__content {
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+.v-menu .v-list {
+  padding: 8px;
+  background: #16161e;
+  border: 1px solid var(--border-subtle);
+}
+
+.v-menu .v-list-item {
+  border-radius: 8px;
+  margin-bottom: 2px;
+  min-height: 40px;
+}
+
+.v-menu .v-list-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Chip styling */
+.v-chip {
+  font-weight: 500;
+}
+
+/* Avatar refinements */
+.v-avatar {
+  font-weight: 600;
+}
+
+/* Divider styling */
+.v-divider {
+  opacity: 0.08;
+}
+
+/* Snackbar styling */
+.v-snackbar__wrapper {
+  border-radius: 12px !important;
+}
+
+/* Progress circular */
+.v-progress-circular {
+  filter: drop-shadow(0 0 8px rgba(255, 77, 141, 0.3));
+}
+
+/* Custom utility classes */
+.gradient-text {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-border {
+  position: relative;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--gradient-primary);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.glow-hover:hover {
+  box-shadow: var(--glow-primary);
+}
+
+/* Section spacing */
+.section {
+  margin-bottom: 3rem;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+/* Typography refinements */
+.text-gradient {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Subtle animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Responsive container max-width */
+@media (min-width: 1280px) {
+  .v-container {
+    max-width: 1100px;
+  }
+}

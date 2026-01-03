@@ -1,0 +1,35 @@
+@* Clickable chip for event types with optional short form display *@
+
+<MudChip T="string" Size="Size.Small" Color="@ChipColor" OnClick="HandleClick">
+    @DisplayText
+</MudChip>
+
+@code {
+    [Parameter, EditorRequired]
+    public string EventType { get; set; } = "";
+
+    [Parameter]
+    public bool UseShortForm { get; set; } = true;
+
+    [Parameter]
+    public Color ChipColor { get; set; } = Color.Info;
+
+    [Parameter]
+    public EventCallback<string> OnClick { get; set; }
+
+    private string DisplayText => UseShortForm ? GetShortForm(EventType) : EventType;
+
+    private static string GetShortForm(string eventType)
+    {
+        var parts = eventType.Split('.');
+        return parts.Length >= 3 ? string.Join(".", parts[^3..]) : eventType;
+    }
+
+    private async Task HandleClick()
+    {
+        if (OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync(EventType);
+        }
+    }
+}

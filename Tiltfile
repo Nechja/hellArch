@@ -99,14 +99,12 @@ dc_resource('images-worker', labels=['workers'], resource_deps=['rabbitmq', 'min
 # Files service
 dc_resource('files', labels=['services'], resource_deps=['files-db', 'minio', 'rabbitmq'], links=['http://localhost:5006'])
 
-# Frontend clients (design system for Admin + Vue app with Vuetify)
+# Frontend clients (Vue app with Vuetify)
 # Built to src/gateway/Gateway/wwwroot/ - volume mount picks up changes immediately
 local_resource(
     'clients',
     cmd='mise run clients:all',
     deps=[
-        'libs/design/tokens.css',
-        'libs/design/uno.config.ts',
         'src/clients/App/src',
         'src/clients/App/index.html',
         'src/clients/App/package.json',
