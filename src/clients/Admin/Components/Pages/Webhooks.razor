@@ -209,7 +209,13 @@ else
                     <Input @bind-Value="_formSecret" Placeholder="webhook-secret-key" Class="w-full" />
                 </div>
                 <div>
-                    <Label>Event Types</Label>
+                    <div class="flex items-center justify-between mb-1">
+                        <Label>Event Types</Label>
+                        <div class="flex gap-2">
+                            <button type="button" class="text-xs text-neon-pink hover:underline" @onclick="SelectAllEvents">Select All</button>
+                            <button type="button" class="text-xs text-text-muted hover:underline" @onclick="ClearAllEvents">Clear</button>
+                        </div>
+                    </div>
                     <div class="border border-border rounded-lg max-h-48 overflow-y-auto bg-bg-secondary">
                         @foreach (var domain in Admin.Services.EventTypeCatalog.Domains)
                         {
@@ -430,6 +436,16 @@ else
         {
             _selectedEventTypes.Add(eventType);
         }
+    }
+
+    private void SelectAllEvents()
+    {
+        _selectedEventTypes = EventTypeCatalog.All.Select(e => e.Type).ToHashSet();
+    }
+
+    private void ClearAllEvents()
+    {
+        _selectedEventTypes = [];
     }
 
     private void CloseForm()
