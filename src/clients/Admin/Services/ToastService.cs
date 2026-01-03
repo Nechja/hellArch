@@ -1,6 +1,6 @@
 namespace Admin.Services;
 
-public sealed class ToastService
+public sealed class ToastService : IToastService
 {
     private readonly List<Toast> _toasts = [];
     private readonly Lock _lock = new();

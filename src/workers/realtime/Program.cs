@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using HellArch.RabbitMQ;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using OpenTelemetry.Resources;
@@ -215,6 +216,9 @@ builder.Services.AddCors(options =>
             .AllowCredentials();
     });
 });
+
+// RabbitMQ connection factory
+builder.Services.AddSingleton<IRabbitMqConnectionFactory, RabbitMqConnectionFactory>();
 
 // RabbitMQ consumer (singleton for health check access)
 builder.Services.AddSingleton<EventConsumer>();

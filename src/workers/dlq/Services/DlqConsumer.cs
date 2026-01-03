@@ -14,9 +14,10 @@ namespace DlqWorker.Services;
 /// Implements retry with backoff, storage for permanently failed events, and metrics.
 /// </summary>
 public sealed class DlqConsumer(
+    IRabbitMqConnectionFactory connectionFactory,
     IConfiguration configuration,
     EventsApiClient eventsApiClient,
-    ILogger<DlqConsumer> logger) : RabbitMqConsumerBase(configuration, logger)
+    ILogger<DlqConsumer> logger) : RabbitMqConsumerBase(connectionFactory, configuration, logger)
 {
     private static readonly ActivitySource ActivitySource = new("dlq-worker");
     private static readonly Meter Meter = new("dlq-worker");

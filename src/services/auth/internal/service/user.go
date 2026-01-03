@@ -82,12 +82,6 @@ func (u *User) FindByID(ctx context.Context, id string) (*store.User, error) {
 	return user, nil
 }
 
-func (u *User) FindByEmail(ctx context.Context, email string) (*store.User, error) {
-	// Note: This method would require adding a GetUserByEmail to postgres store
-	// For now, this is a placeholder for future use
-	return nil, status.Error(codes.Unimplemented, "not implemented")
-}
-
 func (u *User) List(ctx context.Context, limit, offset int) ([]*store.User, int, error) {
 	return u.postgres.ListUsers(ctx, limit, offset)
 }

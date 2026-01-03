@@ -1,15 +1,13 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using Admin.Services;
 
 namespace Admin.Middleware;
 
 public sealed class AdminAuthMiddleware(
     RequestDelegate next,
-    IHttpClientFactory httpClientFactory,
+    ISessionValidator sessionValidator,
     ILogger<AdminAuthMiddleware> logger)
 {
     private const string SessionCookieName = "hellarch_session";
-    private const string AuthServiceName = "AuthService";
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -53,66 +51,33 @@ public sealed class AdminAuthMiddleware(
             return;
         }
 
-        try
+        var result = await sessionValidator.Validate(sessionToken);
+
+        if (result is null || !result.Valid)
         {
-            var client = httpClientFactory.CreateClient(AuthServiceName);
-            client.DefaultRequestHeaders.Add("X-Session-Token", sessionToken);
-
-            var response = await client.PostAsync("auth/validate", null);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                logger.LogDebug("Session validation failed with status {Status}", response.StatusCode);
-                RedirectToLogin(context);
-                return;
-            }
-
-            var result = await response.Content.ReadFromJsonAsync<ValidateResponse>();
-
-            if (result is null || !result.Valid)
-            {
-                logger.LogDebug("Session is not valid");
-                RedirectToLogin(context);
-                return;
-            }
-
-            // For direct access, check admin.panel permission
-            if (!HasPermission(result.Permissions, "admin.panel"))
-            {
-                logger.LogWarning("User {UserId} lacks admin.panel permission (direct access)", result.UserId);
-                context.Response.StatusCode = 403;
-                await context.Response.WriteAsync("Forbidden: admin.panel permission required");
-                return;
-            }
-
-            // Store user info in HttpContext for downstream use
-            context.Items["UserId"] = result.UserId;
-            context.Items["Email"] = result.Email;
-            context.Items["Username"] = result.Username;
-            context.Items["Permissions"] = result.Permissions;
-            context.Items["SessionToken"] = sessionToken;
-            context.Items["IsAuthenticated"] = true;
-
-            logger.LogDebug("Authenticated admin user {UserId} (direct access)", result.UserId);
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "HTTP error validating session");
+            logger.LogDebug("Session is not valid");
             RedirectToLogin(context);
             return;
         }
-        catch (TaskCanceledException ex)
+
+        // For direct access, check admin.panel permission
+        if (!HasPermission(result.Permissions, "admin.panel"))
         {
-            logger.LogWarning(ex, "Session validation timed out");
-            RedirectToLogin(context);
+            logger.LogWarning("User {UserId} lacks admin.panel permission (direct access)", result.UserId);
+            context.Response.StatusCode = 403;
+            await context.Response.WriteAsync("Forbidden: admin.panel permission required");
             return;
         }
-        catch (JsonException ex)
-        {
-            logger.LogWarning(ex, "Failed to parse session validation response");
-            RedirectToLogin(context);
-            return;
-        }
+
+        // Store user info in HttpContext for downstream use
+        context.Items["UserId"] = result.UserId;
+        context.Items["Email"] = result.Email;
+        context.Items["Username"] = result.Username;
+        context.Items["Permissions"] = result.Permissions;
+        context.Items["SessionToken"] = sessionToken;
+        context.Items["IsAuthenticated"] = true;
+
+        logger.LogDebug("Authenticated admin user {UserId} (direct access)", result.UserId);
 
         await next(context);
     }
@@ -144,11 +109,4 @@ public sealed class AdminAuthMiddleware(
         logger.LogDebug("Permission check: {Permission} = {HasPermission}", permission, hasPermission);
         return hasPermission;
     }
-
-    private sealed record ValidateResponse(
-        bool Valid,
-        [property: JsonPropertyName("user_id")] string? UserId,
-        string? Email,
-        string? Username,
-        Dictionary<string, bool>? Permissions);
 }

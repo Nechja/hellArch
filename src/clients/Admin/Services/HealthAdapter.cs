@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace Admin.Services;
 
-public class HealthAdapter(IHttpClientFactory httpClientFactory)
+public class HealthAdapter(IHttpClientFactory httpClientFactory) : IHealthAdapter
 {
     private readonly HttpClient _client = httpClientFactory.CreateClient("HealthService");
 

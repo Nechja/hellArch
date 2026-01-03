@@ -8,7 +8,7 @@ namespace Admin.Services;
 public sealed class RabbitMqAdapter(
     IHttpClientFactory httpClientFactory,
     IConfiguration configuration,
-    ILogger<RabbitMqAdapter> logger)
+    ILogger<RabbitMqAdapter> logger) : IRabbitMqAdapter
 {
     private readonly Lazy<HttpClient> _client = new(() =>
     {

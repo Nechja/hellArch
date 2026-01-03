@@ -2,7 +2,7 @@
 @page "/users/{UserId}"
 @using Admin.Services
 @implements IDisposable
-@inject AuthAdminFacade AuthAdmin
+@inject IAuthAdminFacade AuthAdmin
 @inject NavigationManager Navigation
 @inject LiveUpdateService LiveUpdate
 

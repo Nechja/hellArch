@@ -10,7 +10,7 @@ namespace Admin.Services;
 /// </summary>
 public sealed class RealtimeHubService : IAsyncDisposable
 {
-    private readonly IConfiguration _configuration;
+    private readonly IHubConnectionFactory _hubConnectionFactory;
     private readonly ILogger<RealtimeHubService> _logger;
     private readonly List<CloudEventDto> _recentEvents = [];
     private readonly Lock _eventsLock = new();
@@ -38,9 +38,9 @@ public sealed class RealtimeHubService : IAsyncDisposable
         }
     }
 
-    public RealtimeHubService(IConfiguration configuration, ILogger<RealtimeHubService> logger)
+    public RealtimeHubService(IHubConnectionFactory hubConnectionFactory, ILogger<RealtimeHubService> logger)
     {
-        _configuration = configuration;
+        _hubConnectionFactory = hubConnectionFactory;
         _logger = logger;
     }
 
@@ -110,23 +110,7 @@ public sealed class RealtimeHubService : IAsyncDisposable
 
     private HubConnection BuildConnection(string sessionToken)
     {
-        var gatewayUrl = Environment.GetEnvironmentVariable("GATEWAY_URL")
-            ?? _configuration.GetValue<string>("Gateway:Url")
-            ?? "http://localhost:5000";
-
-        var hubUrl = $"{gatewayUrl}/hubs/events";
-
-        var connection = new HubConnectionBuilder()
-            .WithUrl(hubUrl, options =>
-            {
-                options.AccessTokenProvider = () => Task.FromResult<string?>(null);
-                // Pass session token for authentication
-                options.Headers["X-Session-Token"] = sessionToken;
-                options.Url = new Uri($"{hubUrl}?session_token={Uri.EscapeDataString(sessionToken)}");
-            })
-            .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10) })
-            .Build();
-
+        var connection = _hubConnectionFactory.Create(sessionToken);
         ConfigureHandlers(connection);
         return connection;
     }

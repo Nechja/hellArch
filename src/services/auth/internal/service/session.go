@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,8 +28,7 @@ func NewSession(redis *store.Redis, cfg *config.Config) *Session {
 
 func (s *Session) Create(ctx context.Context, userID, ipAddress, userAgent string) (string, error) {
 	if err := s.redis.EnforceMaxSessions(ctx, userID, s.config.MaxSessionsPerUser); err != nil {
-		// Log but don't fail - session creation is more important
-		_ = err
+		slog.Warn("failed to enforce max sessions", "error", err, "user_id", userID)
 	}
 
 	token, err := generateSecureToken()
