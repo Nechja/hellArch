@@ -1,21 +1,19 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import SectionHeader from '../components/atoms/SectionHeader.vue'
-import LinkedAccountItem from '../components/molecules/LinkedAccountItem.vue'
-import UserAvatar from '../components/atoms/UserAvatar.vue'
-import Badge from '../components/atoms/Badge.vue'
+import { SectionHeader, Badge, UserAvatar } from '../components/atoms'
+import { LinkedAccountItem } from '../components/molecules'
+import { useNotifications } from '../composables'
 import type { UserProfile } from '@hellarch/types'
 
 const props = defineProps<{
   user: UserProfile | null
 }>()
 
+const { success, error: notifyError } = useNotifications()
+
 const displayName = ref(props.user?.display_name || '')
 const originalDisplayName = ref(props.user?.display_name || '')
 const saving = ref(false)
-const snackbar = ref(false)
-const snackbarColor = ref<'success' | 'error'>('success')
-const snackbarText = ref('')
 const deleteDialogOpen = ref(false)
 
 const hasChanges = computed(() => displayName.value !== originalDisplayName.value)
@@ -41,19 +39,15 @@ async function saveProfile() {
 
     if (res.ok) {
       originalDisplayName.value = displayName.value
-      snackbarColor.value = 'success'
-      snackbarText.value = 'Profile updated successfully'
+      success('Profile Updated', 'Your changes have been saved')
     } else {
-      const error = await res.json()
-      snackbarColor.value = 'error'
-      snackbarText.value = error.message || 'Failed to update profile'
+      const err = await res.json()
+      notifyError('Update Failed', err.message || 'Failed to update profile')
     }
   } catch {
-    snackbarColor.value = 'error'
-    snackbarText.value = 'Network error. Please try again.'
+    notifyError('Network Error', 'Please check your connection and try again')
   } finally {
     saving.value = false
-    snackbar.value = true
   }
 }
 </script>
@@ -162,14 +156,6 @@ async function saveProfile() {
         </v-card>
       </v-col>
     </v-row>
-
-    <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000" location="bottom right">
-      <v-icon start>{{ snackbarColor === 'success' ? 'mdi-check-circle' : 'mdi-alert-circle' }}</v-icon>
-      {{ snackbarText }}
-      <template #actions>
-        <v-btn variant="text" @click="snackbar = false">Close</v-btn>
-      </template>
-    </v-snackbar>
 
     <!-- Delete Account Dialog -->
     <v-dialog v-model="deleteDialogOpen" max-width="420">

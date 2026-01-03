@@ -74,7 +74,7 @@ fn service_status_response(
 
 fn workers_response() -> Response(ResponseData) {
   let events_url = config.get_events_url()
-  let url = events_url <> "/api/workers/status"
+  let url = events_url <> "/workers/status"
 
   case http_client.get(url, 5000) {
     http_client.HttpOk(status, body) if status >= 200 && status < 300 -> {

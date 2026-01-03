@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import NavBar from './components/organisms/NavBar.vue'
-import PageSkeleton from './components/molecules/PageSkeleton.vue'
-import ErrorState from './components/molecules/ErrorState.vue'
+import { NavBar, NotificationCenter } from './components/organisms'
+import { PageSkeleton, ErrorState } from './components/molecules'
+import { useSignalR } from './composables'
 import type { UserProfile } from '@hellarch/types'
 
 const route = useRoute()
+const { connect, disconnect, isConnected } = useSignalR()
+
 const user = ref<UserProfile | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -33,6 +35,10 @@ async function fetchUser() {
     const res = await fetch('/api/user/me')
     if (res.ok) {
       user.value = await res.json()
+      // Connect to SignalR once authenticated
+      if (!isConnected()) {
+        connect()
+      }
     } else if (res.status === 401) {
       // Not authenticated - redirect will happen via gateway
     } else {
@@ -45,7 +51,20 @@ async function fetchUser() {
   }
 }
 
-onMounted(fetchUser)
+// Listen for user-updated events from SignalR
+function handleUserUpdated() {
+  fetchUser()
+}
+
+onMounted(() => {
+  fetchUser()
+  window.addEventListener('user-updated', handleUserUpdated)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('user-updated', handleUserUpdated)
+  disconnect()
+})
 
 watch(() => route.path, () => {
   // Reset error state on navigation
@@ -56,6 +75,7 @@ watch(() => route.path, () => {
 <template>
   <v-app>
     <NavBar v-if="!hideNav && !loading" :user="user" />
+    <NotificationCenter />
     <v-main>
       <!-- Public routes (login) - no container -->
       <template v-if="hideNav">

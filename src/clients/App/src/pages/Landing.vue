@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import SectionHeader from '../components/atoms/SectionHeader.vue'
-import ActionCard from '../components/molecules/ActionCard.vue'
-import UserAvatar from '../components/atoms/UserAvatar.vue'
+import { SectionHeader, UserAvatar } from '../components/atoms'
+import { ActionCard } from '../components/molecules'
 import type { UserProfile } from '@hellarch/types'
 
 const props = defineProps<{

@@ -4,6 +4,7 @@
 @using System.Text.Json
 @implements IDisposable
 @inject RabbitMqAdapter RabbitMq
+@inject EventsAdminFacade EventsApi
 @inject RealtimeHubService RealtimeHub
 @inject LiveUpdateService LiveUpdate
 @inject IHttpContextAccessor HttpContextAccessor
@@ -93,81 +94,140 @@
     </RowTemplate>
 </MudTable>
 
-@if (_exchanges.Count > 0)
-{
-    <SectionHeader Title="Exchanges" />
-    <MudGrid Class="mb-6">
-        @foreach (var exchange in _exchanges)
-        {
-            <MudItem xs="12" md="4">
-                <MudPaper Class="pa-4" Elevation="2">
-                    <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="mb-2">@exchange.Name</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">Type: @exchange.Type</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">@(exchange.Durable ? "Durable" : "Transient")</MudText>
-                </MudPaper>
-            </MudItem>
-        }
-    </MudGrid>
-}
-
-<SectionHeader Title="Recent Events">
+<SectionHeader Title="Audit Logs">
     <ActionContent>
-        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="LoadRecentEvents" Disabled="@_loadingEvents">
-            @(_loadingEvents ? "Loading..." : "Refresh")
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="LoadAuditLogs" Disabled="@_loadingAudit">
+            @(_loadingAudit ? "Loading..." : "Refresh")
         </MudButton>
     </ActionContent>
 </SectionHeader>
-@if (_loadingEvents)
+
+<MudGrid Class="mb-4">
+    <MudItem xs="12" md="4">
+        <MudTextField @bind-Value="_eventTypeFilter" Label="Event Type" Placeholder="e.g. hellarch.auth.user.created.v1" Variant="Variant.Outlined" Immediate="true" />
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudTextField @bind-Value="_actorIdFilter" Label="Actor ID" Placeholder="User ID" Variant="Variant.Outlined" Immediate="true" />
+    </MudItem>
+    <MudItem xs="12" md="4" Class="d-flex align-end gap-2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters">Filter</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="ClearFilters">Clear</MudButton>
+    </MudItem>
+</MudGrid>
+
+@if (_loadingAudit)
 {
     <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
 }
-else if (_recentEvents.Count == 0)
-{
-    <MudText Color="Color.Secondary" Class="mb-6">No events in queue (events are consumed by workers)</MudText>
-}
 else
 {
-    <MudGrid Class="mb-6">
-        @foreach (var evt in _recentEvents)
-        {
-            <MudItem xs="12">
-                <MudPaper Class="pa-4" Elevation="2">
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <MudChip T="string" Size="Size.Small" Color="Color.Info">@evt.GetEventTypeName()</MudChip>
-                        <MudText Typo="Typo.caption" Style="font-family: 'JetBrains Mono', monospace;">@evt.Time</MudText>
-                    </div>
-                    <div class="d-flex gap-4 mb-2">
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">ID: @evt.Id</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Source: @evt.Source</MudText>
-                    </div>
-                    <MudExpansionPanels Elevation="0">
-                        <MudExpansionPanel Text="View Data" Dense="true" Style="background: transparent;">
-                            <pre style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; margin: 0; white-space: pre-wrap;">@evt.GetFormattedData()</pre>
-                        </MudExpansionPanel>
-                    </MudExpansionPanels>
-                </MudPaper>
-            </MudItem>
-        }
-    </MudGrid>
+    <MudTable Items="@_auditLogs" Hover="true" Striped="true" Dense="true" T="AuditLog" Class="mb-4">
+        <HeaderContent>
+            <MudTh>Time</MudTh>
+            <MudTh>Event Type</MudTh>
+            <MudTh>Source</MudTh>
+            <MudTh>Actor</MudTh>
+            <MudTh>Target</MudTh>
+            <MudTh>Details</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd><MonoText FontSize="0.75rem">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</MonoText></MudTd>
+            <MudTd>
+                <EventTypeChip EventType="@context.EventType" OnClick="FilterByEventType" />
+            </MudTd>
+            <MudTd>@context.Source</MudTd>
+            <MudTd><MonoText FontSize="0.75rem">@(context.ActorId ?? "-")</MonoText></MudTd>
+            <MudTd><MonoText FontSize="0.75rem">@(context.TargetId ?? "-")</MonoText></MudTd>
+            <MudTd>
+                @if (context.Metadata.HasValue)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="() => ShowAuditDetails(context)">
+                        View
+                    </MudButton>
+                }
+                else
+                {
+                    <MudText Color="Color.Secondary">-</MudText>
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+
+    <Pagination Page="_auditPage" PageSize="AuditPageSize" TotalCount="_auditTotalCount"
+                DisplayedCount="_auditLogs.Count" OnPrevious="PreviousAuditPage" OnNext="NextAuditPage" />
 }
 
-<SectionHeader Title="External Tools" />
-<MudButtonGroup Variant="Variant.Outlined">
-    <MudButton Href="http://localhost:15672" Target="_blank" StartIcon="@Icons.Material.Filled.OpenInNew">RabbitMQ Management</MudButton>
-    <MudButton Href="http://localhost:16686" Target="_blank" StartIcon="@Icons.Material.Filled.OpenInNew">Jaeger Tracing</MudButton>
-</MudButtonGroup>
+<MudDialog @bind-Visible="_showAuditDetails" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true }">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Audit Log Details</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_selectedAuditLog is not null)
+        {
+            <MudSimpleTable Dense="true" Hover="false" Class="mb-4">
+                <tbody>
+                    <tr>
+                        <td style="width: 120px;"><MudText Typo="Typo.caption">ID</MudText></td>
+                        <td><MonoText WordBreak="true">@_selectedAuditLog.Id</MonoText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Event ID</MudText></td>
+                        <td><MonoText WordBreak="true">@_selectedAuditLog.EventId</MonoText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Event Type</MudText></td>
+                        <td><EventTypeChip EventType="@_selectedAuditLog.EventType" UseShortForm="false" /></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Source</MudText></td>
+                        <td>@_selectedAuditLog.Source</td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Actor ID</MudText></td>
+                        <td><MonoText>@(_selectedAuditLog.ActorId ?? "N/A")</MonoText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Target ID</MudText></td>
+                        <td><MonoText>@(_selectedAuditLog.TargetId ?? "N/A")</MonoText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">Created</MudText></td>
+                        <td>@_selectedAuditLog.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss.fff")</td>
+                    </tr>
+                </tbody>
+            </MudSimpleTable>
+
+            @if (_selectedAuditLog.Metadata.HasValue)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Metadata</MudText>
+                <JsonViewer Json="@_selectedAuditLog.Metadata.Value" />
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseAuditDetails">Close</MudButton>
+    </DialogActions>
+</MudDialog>
 
 @code {
     private RabbitMqOverview? _overview;
     private IReadOnlyList<QueueInfo> _queues = [];
-    private IReadOnlyList<ExchangeInfo> _exchanges = [];
-    private IReadOnlyList<CloudEventMessage> _recentEvents = [];
     private readonly List<CloudEventDto> _liveEvents = [];
-    private bool _loadingEvents;
     private string _connectionStatus = "Connecting...";
     private const int MaxLiveEvents = 25;
     private DateTime _lastHealthRefresh = DateTime.MinValue;
     private static readonly TimeSpan HealthRefreshDebounce = TimeSpan.FromSeconds(5);
+
+    // Audit logs state
+    private IReadOnlyList<AuditLog> _auditLogs = [];
+    private int _auditTotalCount;
+    private int _auditPage = 1;
+    private const int AuditPageSize = 20;
+    private bool _loadingAudit;
+    private string? _eventTypeFilter;
+    private string? _actorIdFilter;
+    private AuditLog? _selectedAuditLog;
+    private bool _showAuditDetails;
 
     protected override async Task OnInitializedAsync()
     {
@@ -193,7 +253,6 @@ else
 
     private void HandleHealthUpdate(object? sender, EventArgs e)
     {
-        // Debounce health updates
         if (DateTime.UtcNow - _lastHealthRefresh < HealthRefreshDebounce) return;
 
         InvokeAsync(async () =>
@@ -231,19 +290,68 @@ else
     {
         _overview = await RabbitMq.GetOverview();
         _queues = await RabbitMq.GetQueues();
-        _exchanges = await RabbitMq.GetExchanges();
-        await LoadRecentEvents();
+        await LoadAuditLogs();
     }
 
-    private async Task LoadRecentEvents()
+    private async Task LoadAuditLogs()
     {
-        _loadingEvents = true;
+        _loadingAudit = true;
         StateHasChanged();
 
-        _recentEvents = await RabbitMq.GetRecentEvents(20);
+        var response = await EventsApi.GetAuditLogs(_auditPage, AuditPageSize, _eventTypeFilter, _actorIdFilter);
+        _auditLogs = response.Data;
+        _auditTotalCount = response.TotalCount;
 
-        _loadingEvents = false;
+        _loadingAudit = false;
         StateHasChanged();
+    }
+
+    private async Task FilterByEventType(string eventType)
+    {
+        _eventTypeFilter = eventType;
+        _auditPage = 1;
+        await LoadAuditLogs();
+    }
+
+    private async Task ApplyFilters()
+    {
+        _auditPage = 1;
+        await LoadAuditLogs();
+    }
+
+    private async Task ClearFilters()
+    {
+        _eventTypeFilter = null;
+        _actorIdFilter = null;
+        _auditPage = 1;
+        await LoadAuditLogs();
+    }
+
+    private async Task NextAuditPage()
+    {
+        _auditPage++;
+        await LoadAuditLogs();
+    }
+
+    private async Task PreviousAuditPage()
+    {
+        if (_auditPage > 1)
+        {
+            _auditPage--;
+            await LoadAuditLogs();
+        }
+    }
+
+    private void ShowAuditDetails(AuditLog log)
+    {
+        _selectedAuditLog = log;
+        _showAuditDetails = true;
+    }
+
+    private void CloseAuditDetails()
+    {
+        _showAuditDetails = false;
+        _selectedAuditLog = null;
     }
 
     private StatusChip.StatusType GetConnectionStatus() => _connectionStatus switch

@@ -19,7 +19,7 @@ public sealed class EventsApiClient(HttpClient httpClient, ILogger<EventsApiClie
 
         try
         {
-            var response = await httpClient.PostAsJsonAsync("/api/dead-letters", request, ct);
+            var response = await httpClient.PostAsJsonAsync("/dead-letters", request, ct);
 
             if (response.IsSuccessStatusCode)
             {

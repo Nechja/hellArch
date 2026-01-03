@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import AppLogo from '../components/atoms/AppLogo.vue'
-import OAuthProviderButton from '../components/molecules/OAuthProviderButton.vue'
+import { AppLogo } from '../components/atoms'
+import { OAuthProviderButton } from '../components/molecules'
 
 const route = useRoute()
 const loading = ref(false)
