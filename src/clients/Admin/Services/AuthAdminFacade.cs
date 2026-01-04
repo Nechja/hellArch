@@ -5,7 +5,7 @@ namespace Admin.Services;
 
 public sealed class AuthAdminFacade(
     IHttpClientFactory httpClientFactory,
-    ILogger<AuthAdminFacade> logger)
+    ILogger<AuthAdminFacade> logger) : IAuthAdminFacade
 {
     private readonly HttpClient _client = httpClientFactory.CreateClient("AuthService");
 

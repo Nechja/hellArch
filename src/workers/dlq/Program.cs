@@ -1,5 +1,6 @@
 using System.Text.Json;
 using DlqWorker.Services;
+using HellArch.RabbitMQ;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -64,6 +65,9 @@ builder.Services.AddHttpClient<EventsApiClient>(client =>
     client.BaseAddress = new Uri(eventsApiUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+
+// RabbitMQ connection factory
+builder.Services.AddSingleton<IRabbitMqConnectionFactory, RabbitMqConnectionFactory>();
 
 // DLQ consumer
 builder.Services.AddHostedService<DlqConsumer>();

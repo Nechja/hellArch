@@ -15,6 +15,7 @@ namespace Realtime.Services;
 /// and broadcasts them to connected SignalR clients.
 /// </summary>
 public sealed class EventConsumer(
+    IRabbitMqConnectionFactory connectionFactory,
     IHubContext<EventsHub, IEventsClient> hubContext,
     IConfiguration configuration,
     ILogger<EventConsumer> logger) : BackgroundService
@@ -67,31 +68,11 @@ public sealed class EventConsumer(
 
     private async Task Connect(CancellationToken ct)
     {
-        var rabbitUrl = configuration["RabbitMQ:Url"];
-        if (string.IsNullOrEmpty(rabbitUrl))
-        {
-            rabbitUrl = Environment.GetEnvironmentVariable("RABBITMQ_URL");
-        }
-
-        if (string.IsNullOrEmpty(rabbitUrl))
-        {
-            throw new InvalidOperationException("RabbitMQ:Url configuration or RABBITMQ_URL environment variable is required");
-        }
-
         var exchangeName = configuration["RabbitMQ:ExchangeName"] ?? "hellarch.events";
         _queueName = configuration["RabbitMQ:QueueName"] ?? "realtime-worker";
         var routingKey = configuration["RabbitMQ:RoutingKey"] ?? "hellarch.#";
 
-        var factory = new ConnectionFactory
-        {
-            Uri = new Uri(rabbitUrl),
-            AutomaticRecoveryEnabled = true,
-            NetworkRecoveryInterval = TimeSpan.FromSeconds(5),
-            TopologyRecoveryEnabled = true
-        };
-
-        _connection = await factory.CreateConnectionAsync(ct);
-        _channel = await _connection.CreateChannelAsync(cancellationToken: ct);
+        (_connection, _channel) = await connectionFactory.Create(ct);
 
         await _channel.ExchangeDeclareAsync(
             exchange: exchangeName,

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/nechja/hellarch/auth/internal/config"
@@ -20,33 +19,6 @@ type HTTPHandler struct {
 
 func NewHTTPHandler(auth *AuthHandler, cfg *config.Config) *HTTPHandler {
 	return &HTTPHandler{auth: auth, config: cfg}
-}
-
-func (h *HTTPHandler) isAllowedRedirectURI(redirectURI string) bool {
-	if redirectURI == "" {
-		return true
-	}
-
-	// Allow relative paths
-	if strings.HasPrefix(redirectURI, "/") && !strings.HasPrefix(redirectURI, "//") {
-		return true
-	}
-
-	parsed, err := url.Parse(redirectURI)
-	if err != nil {
-		return false
-	}
-
-	// Check against allowed origins
-	redirectOrigin := parsed.Scheme + "://" + parsed.Host
-	for _, allowed := range h.config.AllowedRedirectURIs {
-		if strings.EqualFold(redirectOrigin, allowed) {
-			return true
-		}
-	}
-
-	slog.Warn("rejected redirect URI", "uri", redirectURI, "allowed", h.config.AllowedRedirectURIs)
-	return false
 }
 
 func (h *HTTPHandler) RegisterRoutes(mux *http.ServeMux) {
@@ -69,11 +41,6 @@ func (h *HTTPHandler) handleOAuthLogin(w http.ResponseWriter, r *http.Request) {
 	redirectURI := r.URL.Query().Get("redirect_uri")
 	if redirectURI == "" {
 		redirectURI = r.URL.Query().Get("redirect")
-	}
-
-	if !h.isAllowedRedirectURI(redirectURI) {
-		http.Error(w, "Invalid redirect URI", http.StatusBadRequest)
-		return
 	}
 
 	result, err := h.auth.GetOAuthURL(r.Context(), provider, redirectURI)
@@ -156,7 +123,7 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 		MaxAge:   24 * 60 * 60, // 24 hours
 	})
 
-	if result.RedirectURI != "" && h.isAllowedRedirectURI(result.RedirectURI) {
+	if result.RedirectURI != "" {
 		http.Redirect(w, r, result.RedirectURI, http.StatusTemporaryRedirect)
 		return
 	}

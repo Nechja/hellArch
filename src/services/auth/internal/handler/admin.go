@@ -6,18 +6,24 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/nechja/hellarch/auth/internal/store"
+	"github.com/nechja/hellarch/auth/internal/service"
 )
 
 type AdminHandler struct {
-	postgres *store.Postgres
-	redis    *store.Redis
+	sessionService    *service.Session
+	userService       *service.User
+	permissionService *service.Permission
 }
 
-func NewAdminHandler(postgres *store.Postgres, redis *store.Redis) *AdminHandler {
+func NewAdminHandler(
+	sessionService *service.Session,
+	userService *service.User,
+	permissionService *service.Permission,
+) *AdminHandler {
 	return &AdminHandler{
-		postgres: postgres,
-		redis:    redis,
+		sessionService:    sessionService,
+		userService:       userService,
+		permissionService: permissionService,
 	}
 }
 
@@ -28,13 +34,11 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /auth/admin/sessions/{id}", h.handleDeleteSession)
 	mux.HandleFunc("GET /auth/admin/stats", h.handleGetStats)
 
-	// Permission management
 	mux.HandleFunc("GET /auth/admin/users/{id}/permissions", h.handleGetUserPermissions)
 	mux.HandleFunc("PUT /auth/admin/users/{id}/permissions", h.handleSetUserPermissions)
 	mux.HandleFunc("POST /auth/admin/users/{id}/permissions/grant", h.handleGrantPermission)
 	mux.HandleFunc("POST /auth/admin/users/{id}/permissions/revoke", h.handleRevokePermission)
 
-	// User status
 	mux.HandleFunc("POST /auth/admin/users/{id}/activate", h.handleActivateUser)
 	mux.HandleFunc("POST /auth/admin/users/{id}/deactivate", h.handleDeactivateUser)
 }
@@ -51,43 +55,38 @@ func (h *AdminHandler) handleListUsers(w http.ResponseWriter, r *http.Request) {
 
 	offset := (page - 1) * pageSize
 
-	users, total, err := h.postgres.ListUsers(r.Context(), pageSize, offset)
+	users, total, err := h.userService.List(r.Context(), pageSize, offset)
 	if err != nil {
 		slog.Error("failed to list users", "error", err)
 		http.Error(w, "Failed to list users", http.StatusInternalServerError)
 		return
 	}
 
-	response := map[string]any{
+	writeJSON(w, map[string]any{
 		"users":       users,
 		"total_count": total,
 		"page":        page,
 		"page_size":   pageSize,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		slog.Error("failed to encode response", "error", err)
-	}
+	})
 }
 
 func (h *AdminHandler) handleGetUser(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("id")
 
-	user, err := h.postgres.GetUserByID(r.Context(), userID)
+	user, err := h.userService.FindByID(r.Context(), userID)
 	if err != nil {
 		slog.Debug("user not found", "user_id", userID, "error", err)
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
-	linkedAccounts, err := h.postgres.GetLinkedAccounts(r.Context(), userID)
+	linkedAccounts, err := h.userService.GetLinkedAccounts(r.Context(), userID)
 	if err != nil {
 		slog.Error("failed to get linked accounts", "user_id", userID, "error", err)
-		linkedAccounts = []*store.LinkedAccount{}
+		linkedAccounts = nil
 	}
 
-	response := map[string]any{
+	writeJSON(w, map[string]any{
 		"id":              user.ID,
 		"email":           user.Email,
 		"username":        user.Username,
@@ -96,18 +95,13 @@ func (h *AdminHandler) handleGetUser(w http.ResponseWriter, r *http.Request) {
 		"created_at":      user.CreatedAt,
 		"updated_at":      user.UpdatedAt,
 		"linked_accounts": linkedAccounts,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		slog.Error("failed to encode response", "error", err)
-	}
+	})
 }
 
 func (h *AdminHandler) handleGetUserSessions(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("id")
 
-	sessions, err := h.redis.GetUserSessions(r.Context(), userID)
+	sessions, err := h.sessionService.List(r.Context(), userID)
 	if err != nil {
 		slog.Error("failed to get user sessions", "user_id", userID, "error", err)
 		http.Error(w, "Failed to get sessions", http.StatusInternalServerError)
@@ -126,78 +120,62 @@ func (h *AdminHandler) handleGetUserSessions(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	response := map[string]any{
-		"sessions": sanitizedSessions,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		slog.Error("failed to encode response", "error", err)
-	}
+	writeJSON(w, map[string]any{"sessions": sanitizedSessions})
 }
 
 func (h *AdminHandler) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.PathValue("id")
 
-	if err := h.redis.DeleteSessionByID(r.Context(), sessionID); err != nil {
+	if err := h.sessionService.InvalidateByID(r.Context(), sessionID); err != nil {
 		slog.Error("failed to delete session", "session_id", sessionID, "error", err)
 		http.Error(w, "Failed to delete session", http.StatusInternalServerError)
 		return
 	}
 
 	slog.Info("session revoked", "session_id", sessionID)
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *AdminHandler) handleGetStats(w http.ResponseWriter, r *http.Request) {
-	userCount, err := h.postgres.CountUsers(r.Context())
+	userCount, err := h.userService.Count(r.Context())
 	if err != nil {
 		slog.Error("failed to count users", "error", err)
 		userCount = 0
 	}
 
-	sessionCount, err := h.redis.CountActiveSessions(r.Context())
+	sessionCount, err := h.sessionService.CountActive(r.Context())
 	if err != nil {
 		slog.Error("failed to count sessions", "error", err)
 		sessionCount = 0
 	}
 
-	linkedAccountCount, err := h.postgres.CountLinkedAccounts(r.Context())
+	linkedAccountCount, err := h.userService.CountLinkedAccounts(r.Context())
 	if err != nil {
 		slog.Error("failed to count linked accounts", "error", err)
 		linkedAccountCount = 0
 	}
 
-	response := map[string]any{
+	writeJSON(w, map[string]any{
 		"user_count":           userCount,
 		"session_count":        sessionCount,
 		"linked_account_count": linkedAccountCount,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		slog.Error("failed to encode response", "error", err)
-	}
+	})
 }
 
 func (h *AdminHandler) handleGetUserPermissions(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("id")
 
-	permissions, err := h.postgres.GetUserPermissions(r.Context(), userID)
+	permissions, err := h.permissionService.Get(r.Context(), userID)
 	if err != nil {
 		slog.Error("failed to get user permissions", "user_id", userID, "error", err)
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]any{
+	writeJSON(w, map[string]any{
 		"user_id":     userID,
 		"permissions": permissions,
-	}); err != nil {
-		slog.Error("failed to encode response", "error", err)
-	}
+	})
 }
 
 func (h *AdminHandler) handleSetUserPermissions(w http.ResponseWriter, r *http.Request) {
@@ -211,7 +189,7 @@ func (h *AdminHandler) handleSetUserPermissions(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := h.postgres.SetUserPermissions(r.Context(), userID, req.Permissions); err != nil {
+	if err := h.permissionService.Set(r.Context(), userID, req.Permissions); err != nil {
 		slog.Error("failed to set user permissions", "user_id", userID, "error", err)
 		http.Error(w, "Failed to update permissions", http.StatusInternalServerError)
 		return
@@ -219,13 +197,10 @@ func (h *AdminHandler) handleSetUserPermissions(w http.ResponseWriter, r *http.R
 
 	slog.Info("user permissions updated", "user_id", userID, "permissions", req.Permissions)
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]any{
+	writeJSON(w, map[string]any{
 		"user_id":     userID,
 		"permissions": req.Permissions,
-	}); err != nil {
-		slog.Error("failed to encode response", "error", err)
-	}
+	})
 }
 
 func (h *AdminHandler) handleGrantPermission(w http.ResponseWriter, r *http.Request) {
@@ -244,14 +219,13 @@ func (h *AdminHandler) handleGrantPermission(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := h.postgres.GrantPermission(r.Context(), userID, req.Permission); err != nil {
+	if err := h.permissionService.Grant(r.Context(), userID, req.Permission); err != nil {
 		slog.Error("failed to grant permission", "user_id", userID, "permission", req.Permission, "error", err)
 		http.Error(w, "Failed to grant permission", http.StatusInternalServerError)
 		return
 	}
 
 	slog.Info("permission granted", "user_id", userID, "permission", req.Permission)
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -271,48 +245,51 @@ func (h *AdminHandler) handleRevokePermission(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := h.postgres.RevokePermission(r.Context(), userID, req.Permission); err != nil {
+	if err := h.permissionService.Revoke(r.Context(), userID, req.Permission); err != nil {
 		slog.Error("failed to revoke permission", "user_id", userID, "permission", req.Permission, "error", err)
 		http.Error(w, "Failed to revoke permission", http.StatusInternalServerError)
 		return
 	}
 
 	slog.Info("permission revoked", "user_id", userID, "permission", req.Permission)
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *AdminHandler) handleActivateUser(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("id")
 
-	if err := h.postgres.SetUserActive(r.Context(), userID, true); err != nil {
+	if err := h.userService.Activate(r.Context(), userID); err != nil {
 		slog.Error("failed to activate user", "user_id", userID, "error", err)
 		http.Error(w, "Failed to activate user", http.StatusInternalServerError)
 		return
 	}
 
 	slog.Info("user activated", "user_id", userID)
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *AdminHandler) handleDeactivateUser(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("id")
 
-	if err := h.postgres.SetUserActive(r.Context(), userID, false); err != nil {
+	if err := h.userService.Deactivate(r.Context(), userID); err != nil {
 		slog.Error("failed to deactivate user", "user_id", userID, "error", err)
 		http.Error(w, "Failed to deactivate user", http.StatusInternalServerError)
 		return
 	}
 
-	// Invalidate all user sessions when deactivating
-	if err := h.redis.DeleteUserSessions(r.Context(), userID); err != nil {
+	if err := h.sessionService.InvalidateAll(r.Context(), userID); err != nil {
 		slog.Warn("failed to delete user sessions on deactivation", "user_id", userID, "error", err)
 	} else {
 		slog.Info("invalidated user sessions on deactivation", "user_id", userID)
 	}
 
 	slog.Info("user deactivated", "user_id", userID)
-
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func writeJSON(w http.ResponseWriter, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
 }

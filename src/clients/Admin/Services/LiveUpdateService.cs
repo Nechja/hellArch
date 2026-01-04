@@ -26,14 +26,16 @@ public sealed class CloudEventUpdateEventArgs(CloudEventDto cloudEvent) : EventA
 public sealed class LiveUpdateService : IAsyncDisposable
 {
     private readonly RealtimeHubService _realtimeHub;
-    private readonly ToastService _toastService;
+    private readonly IToastService _toastService;
     private readonly ILogger<LiveUpdateService> _logger;
     private readonly PeriodicTimer _healthTimer;
     private readonly PeriodicTimer _statsTimer;
     private readonly CancellationTokenSource _cts = new();
+    private readonly Lock _eventLock = new();
     private Task? _healthPollingTask;
     private Task? _statsPollingTask;
     private bool _isStarted;
+    private volatile bool _disposed;
 
     public event EventHandler? OnHealthUpdate;
     public event EventHandler? OnStatsUpdate;
@@ -44,7 +46,7 @@ public sealed class LiveUpdateService : IAsyncDisposable
 
     public LiveUpdateService(
         RealtimeHubService realtimeHub,
-        ToastService toastService,
+        IToastService toastService,
         ILogger<LiveUpdateService> logger)
     {
         _realtimeHub = realtimeHub;
@@ -80,11 +82,11 @@ public sealed class LiveUpdateService : IAsyncDisposable
         try
         {
             // Trigger immediately on start
-            OnHealthUpdate?.Invoke(this, EventArgs.Empty);
+            InvokeHealthUpdate();
 
             while (await _healthTimer.WaitForNextTickAsync(_cts.Token))
             {
-                OnHealthUpdate?.Invoke(this, EventArgs.Empty);
+                InvokeHealthUpdate();
             }
         }
         catch (OperationCanceledException)
@@ -98,11 +100,11 @@ public sealed class LiveUpdateService : IAsyncDisposable
         try
         {
             // Trigger immediately on start
-            OnStatsUpdate?.Invoke(this, EventArgs.Empty);
+            InvokeStatsUpdate();
 
             while (await _statsTimer.WaitForNextTickAsync(_cts.Token))
             {
-                OnStatsUpdate?.Invoke(this, EventArgs.Empty);
+                InvokeStatsUpdate();
             }
         }
         catch (OperationCanceledException)
@@ -111,15 +113,68 @@ public sealed class LiveUpdateService : IAsyncDisposable
         }
     }
 
+    private void InvokeHealthUpdate()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        EventHandler? handler;
+        using (_eventLock.EnterScope())
+        {
+            handler = OnHealthUpdate;
+        }
+        handler?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void InvokeStatsUpdate()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        EventHandler? handler;
+        using (_eventLock.EnterScope())
+        {
+            handler = OnStatsUpdate;
+        }
+        handler?.Invoke(this, EventArgs.Empty);
+    }
+
     private void HandleEventReceived(object? sender, CloudEventReceivedEventArgs e)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         var cloudEvent = e.CloudEvent;
         var eventType = cloudEvent.Type.ToLowerInvariant();
 
         _logger.LogDebug("LiveUpdate received event: {Type}", cloudEvent.Type);
 
+        // Capture all handlers under lock
+        EventHandler<CloudEventUpdateEventArgs>? anyEventHandler;
+        EventHandler<UpdateEventArgs>? userHandler;
+        EventHandler<UpdateEventArgs>? sessionHandler;
+        EventHandler<UpdateEventArgs>? webhookHandler;
+        EventHandler? healthHandler;
+        EventHandler? statsHandler;
+
+        using (_eventLock.EnterScope())
+        {
+            anyEventHandler = OnAnyEvent;
+            userHandler = OnUserUpdate;
+            sessionHandler = OnSessionUpdate;
+            webhookHandler = OnWebhookUpdate;
+            healthHandler = OnHealthUpdate;
+            statsHandler = OnStatsUpdate;
+        }
+
         // Notify all event subscribers
-        OnAnyEvent?.Invoke(this, new CloudEventUpdateEventArgs(cloudEvent));
+        anyEventHandler?.Invoke(this, new CloudEventUpdateEventArgs(cloudEvent));
 
         // Show toast for significant events
         if (ShouldShowToast(eventType))
@@ -131,21 +186,21 @@ public sealed class LiveUpdateService : IAsyncDisposable
         // Trigger specific update events based on event type
         if (eventType.Contains("user"))
         {
-            OnUserUpdate?.Invoke(this, new UpdateEventArgs(cloudEvent.Type));
-            OnStatsUpdate?.Invoke(this, EventArgs.Empty);
+            userHandler?.Invoke(this, new UpdateEventArgs(cloudEvent.Type));
+            statsHandler?.Invoke(this, EventArgs.Empty);
         }
         else if (eventType.Contains("session"))
         {
-            OnSessionUpdate?.Invoke(this, new UpdateEventArgs(cloudEvent.Type));
-            OnStatsUpdate?.Invoke(this, EventArgs.Empty);
+            sessionHandler?.Invoke(this, new UpdateEventArgs(cloudEvent.Type));
+            statsHandler?.Invoke(this, EventArgs.Empty);
         }
         else if (eventType.Contains("webhook"))
         {
-            OnWebhookUpdate?.Invoke(this, new UpdateEventArgs(cloudEvent.Type));
+            webhookHandler?.Invoke(this, new UpdateEventArgs(cloudEvent.Type));
         }
         else if (eventType.Contains("health") || eventType.Contains("service"))
         {
-            OnHealthUpdate?.Invoke(this, EventArgs.Empty);
+            healthHandler?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -204,11 +259,12 @@ public sealed class LiveUpdateService : IAsyncDisposable
         }
     }
 
-    public void TriggerHealthUpdate() => OnHealthUpdate?.Invoke(this, EventArgs.Empty);
-    public void TriggerStatsUpdate() => OnStatsUpdate?.Invoke(this, EventArgs.Empty);
+    public void TriggerHealthUpdate() => InvokeHealthUpdate();
+    public void TriggerStatsUpdate() => InvokeStatsUpdate();
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
         _realtimeHub.OnEventReceived -= HandleEventReceived;
 
         await _cts.CancelAsync();

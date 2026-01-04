@@ -2,6 +2,7 @@ using System.Text.Json;
 using Admin.Components;
 using Admin.Middleware;
 using Admin.Services;
+using HellArch.Http;
 using MudBlazor.Services;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
@@ -10,6 +11,9 @@ using OpenTelemetry.Trace;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add resilient HTTP handling to all HttpClients
+builder.Services.AddResilientHttpClients();
 
 // Configure W3C TraceContext propagation for distributed tracing
 Sdk.SetDefaultTextMapPropagator(new CompositeTextMapPropagator([
@@ -91,15 +95,17 @@ builder.Services.AddHttpClient("HealthService", client =>
     client.Timeout = TimeSpan.FromSeconds(5);
 });
 
-builder.Services.AddScoped<AuthAdminFacade>();
-builder.Services.AddScoped<EventsAdminFacade>();
+builder.Services.AddScoped<IAuthAdminFacade, AuthAdminFacade>();
+builder.Services.AddScoped<IEventsAdminFacade, EventsAdminFacade>();
 builder.Services.AddScoped<RedisBrowserAdapter>();
-builder.Services.AddScoped<RabbitMqAdapter>();
-builder.Services.AddScoped<HealthAdapter>();
+builder.Services.AddScoped<IRabbitMqAdapter, RabbitMqAdapter>();
+builder.Services.AddScoped<IHealthAdapter, HealthAdapter>();
+builder.Services.AddSingleton<ISessionValidator, SessionValidator>();
 
 // Realtime SignalR hub connection (singleton for shared connection, lazy connect)
+builder.Services.AddSingleton<IHubConnectionFactory, HubConnectionFactory>();
 builder.Services.AddSingleton<RealtimeHubService>();
-builder.Services.AddSingleton<ToastService>();
+builder.Services.AddSingleton<IToastService, ToastService>();
 builder.Services.AddSingleton<LiveUpdateService>();
 builder.Services.AddHttpContextAccessor();
 

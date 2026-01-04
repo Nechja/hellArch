@@ -3,8 +3,8 @@
 @using Admin.Services
 @using Admin.Components.Shared.Panels
 @implements IDisposable
-@inject RabbitMqAdapter RabbitMq
-@inject EventsAdminFacade EventsApi
+@inject IRabbitMqAdapter RabbitMq
+@inject IEventsAdminFacade EventsApi
 @inject RealtimeHubService RealtimeHub
 @inject LiveUpdateService LiveUpdate
 @inject IHttpContextAccessor HttpContextAccessor

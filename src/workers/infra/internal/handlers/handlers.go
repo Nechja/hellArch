@@ -61,28 +61,19 @@ func (h *Handlers) HandleServiceUnhealthy(ctx context.Context, event infra.Servi
 		"consecutive_failures", event.ConsecutiveFailures,
 	)
 
-	// Check if service is excluded
+	// Check if service is excluded (immutable, no lock needed)
 	if h.excludeServices[serviceName] {
 		h.logger.Info("service is excluded from restart", "service", serviceName)
 		return nil
 	}
 
-	// Check cooldown
-	if h.isInCooldown(serviceName) {
-		h.logger.Info("service is in cooldown, skipping restart", "service", serviceName)
+	// Atomically check conditions and record restart intent
+	shouldRestart := h.tryAcquireRestartPermission(serviceName)
+	if !shouldRestart {
 		return nil
 	}
 
-	// Check max restarts
-	if h.exceedsMaxRestarts(serviceName) {
-		h.logger.Warn("service exceeded max restarts in window, skipping",
-			"service", serviceName,
-			"max_restarts", h.maxRestarts,
-		)
-		return nil
-	}
-
-	// Perform restart
+	// Perform restart (outside lock to avoid holding lock during I/O)
 	h.logger.Warn("restarting unhealthy service", "service", serviceName)
 	err := h.orch.RestartService(ctx, serviceName)
 	if err != nil {
@@ -90,9 +81,49 @@ func (h *Handlers) HandleServiceUnhealthy(ctx context.Context, event infra.Servi
 		return err
 	}
 
-	h.recordRestart(serviceName)
 	h.logger.Info("service restart initiated", "service", serviceName)
 	return nil
+}
+
+func (h *Handlers) tryAcquireRestartPermission(serviceName string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	now := time.Now()
+
+	// Check cooldown
+	if lastRestart, exists := h.lastRestart[serviceName]; exists {
+		if now.Sub(lastRestart) < h.cooldown {
+			h.logger.Info("service is in cooldown, skipping restart", "service", serviceName)
+			return false
+		}
+	}
+
+	// Check max restarts - count restarts within the window
+	cutoff := now.Add(-h.restartWindow)
+	count := 0
+	var filtered []time.Time
+	for _, t := range h.restartCounts[serviceName] {
+		if t.After(cutoff) {
+			count++
+			filtered = append(filtered, t)
+		}
+	}
+
+	if count >= h.maxRestarts {
+		h.logger.Warn("service exceeded max restarts in window, skipping",
+			"service", serviceName,
+			"max_restarts", h.maxRestarts,
+		)
+		return false
+	}
+
+	// Record restart intent atomically with the check
+	h.lastRestart[serviceName] = now
+	filtered = append(filtered, now)
+	h.restartCounts[serviceName] = filtered
+
+	return true
 }
 
 func (h *Handlers) HandleServiceRecovered(ctx context.Context, event infra.ServiceRecovered) error {
@@ -101,56 +132,4 @@ func (h *Handlers) HandleServiceRecovered(ctx context.Context, event infra.Servi
 		"downtime_seconds", event.DowntimeSeconds,
 	)
 	return nil
-}
-
-func (h *Handlers) isInCooldown(serviceName string) bool {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	lastRestart, exists := h.lastRestart[serviceName]
-	if !exists {
-		return false
-	}
-
-	return time.Since(lastRestart) < h.cooldown
-}
-
-func (h *Handlers) exceedsMaxRestarts(serviceName string) bool {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	restarts := h.restartCounts[serviceName]
-	if len(restarts) == 0 {
-		return false
-	}
-
-	// Count restarts within the window
-	cutoff := time.Now().Add(-h.restartWindow)
-	count := 0
-	for _, t := range restarts {
-		if t.After(cutoff) {
-			count++
-		}
-	}
-
-	return count >= h.maxRestarts
-}
-
-func (h *Handlers) recordRestart(serviceName string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	now := time.Now()
-	h.lastRestart[serviceName] = now
-
-	// Add to restart history and clean old entries
-	cutoff := now.Add(-h.restartWindow)
-	var filtered []time.Time
-	for _, t := range h.restartCounts[serviceName] {
-		if t.After(cutoff) {
-			filtered = append(filtered, t)
-		}
-	}
-	filtered = append(filtered, now)
-	h.restartCounts[serviceName] = filtered
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/nechja/hellarch/auth/internal/handler"
 	"github.com/nechja/hellarch/auth/internal/jwt"
 	"github.com/nechja/hellarch/auth/internal/oauth"
+	"github.com/nechja/hellarch/auth/internal/service"
 	"github.com/nechja/hellarch/auth/internal/store"
 	"github.com/nechja/hellarch/auth/internal/telemetry"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -87,9 +88,15 @@ func run() error {
 
 	oauthService := oauth.NewService(cfg.OAuth)
 
-	authHandler := handler.NewAuthHandler(pgStore, redisStore, jwtService, oauthService, eventPublisher, cfg)
+	// Create services
+	sessionService := service.NewSession(redisStore, cfg)
+	userService := service.NewUser(pgStore, eventPublisher)
+	permissionService := service.NewPermission(pgStore)
+
+	// Create handlers
+	authHandler := handler.NewAuthHandler(sessionService, userService, jwtService, oauthService, redisStore, cfg)
 	httpHandler := handler.NewHTTPHandler(authHandler, cfg)
-	adminHandler := handler.NewAdminHandler(pgStore, redisStore)
+	adminHandler := handler.NewAdminHandler(sessionService, userService, permissionService)
 
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),

@@ -6,7 +6,7 @@ namespace Admin.Services;
 
 public sealed class EventsAdminFacade(
     IHttpClientFactory httpClientFactory,
-    ILogger<EventsAdminFacade> logger)
+    ILogger<EventsAdminFacade> logger) : IEventsAdminFacade
 {
     private readonly HttpClient _client = httpClientFactory.CreateClient("EventsService");
 

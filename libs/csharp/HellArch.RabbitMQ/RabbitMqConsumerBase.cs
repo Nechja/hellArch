@@ -10,100 +10,55 @@ namespace HellArch.RabbitMQ;
 /// automatic reconnection, and lifecycle.
 /// </summary>
 public abstract class RabbitMqConsumerBase(
+    IRabbitMqConnectionFactory connectionFactory,
     IConfiguration configuration,
     ILogger logger) : BackgroundService
 {
     private readonly SemaphoreSlim _reconnectLock = new(1, 1);
 
-    protected IConfiguration Configuration { get; } = configuration;
-    protected ILogger Logger { get; } = logger;
+    /// <summary>
+    /// Lock for synchronizing access to Connection and Channel.
+    /// Derived classes should use this when atomicity is required.
+    /// </summary>
+    protected Lock ConnectionLock { get; } = new();
+
     protected IConnection? Connection { get; set; }
     protected IChannel? Channel { get; set; }
+
+    protected IRabbitMqConnectionFactory ConnectionFactory { get; } = connectionFactory;
+    protected IConfiguration Configuration { get; } = configuration;
+    protected ILogger Logger { get; } = logger;
     protected string QueueName { get; set; } = null!;
 
     /// <summary>
     /// Gets whether the RabbitMQ connection and channel are open.
     /// </summary>
-    public bool IsConnected => Connection?.IsOpen == true && Channel?.IsOpen == true;
-
-    /// <summary>
-    /// Gets the RabbitMQ URL from configuration or environment variables.
-    /// </summary>
-    protected Uri GetRabbitMqUri()
+    public bool IsConnected
     {
-        var rabbitUrl = Configuration["RabbitMQ:Url"];
-        if (string.IsNullOrEmpty(rabbitUrl))
+        get
         {
-            rabbitUrl = Environment.GetEnvironmentVariable("RABBITMQ_URL");
+            using (ConnectionLock.EnterScope())
+            {
+                return Connection?.IsOpen == true && Channel?.IsOpen == true;
+            }
         }
-
-        if (string.IsNullOrEmpty(rabbitUrl))
-        {
-            throw new InvalidOperationException("RabbitMQ:Url configuration or RABBITMQ_URL environment variable is required");
-        }
-
-        return new Uri(rabbitUrl);
     }
 
     /// <summary>
     /// Creates a connection and channel to RabbitMQ with automatic recovery enabled.
     /// </summary>
-    protected async Task<(IConnection connection, IChannel channel)> CreateConnection(CancellationToken ct)
-    {
-        var factory = new ConnectionFactory
-        {
-            Uri = GetRabbitMqUri(),
-            AutomaticRecoveryEnabled = true,
-            NetworkRecoveryInterval = TimeSpan.FromSeconds(5),
-            TopologyRecoveryEnabled = true
-        };
-
-        var connection = await factory.CreateConnectionAsync(ct);
-        var channel = await connection.CreateChannelAsync(cancellationToken: ct);
-
-        return (connection, channel);
-    }
+    protected Task<(IConnection Connection, IChannel Channel)> CreateConnection(CancellationToken ct) =>
+        ConnectionFactory.Create(ct);
 
     /// <summary>
     /// Creates a connection with retry logic for initial connection failures.
     /// </summary>
-    protected async Task<(IConnection connection, IChannel channel)> CreateConnectionWithRetry(
+    protected Task<(IConnection Connection, IChannel Channel)> CreateConnectionWithRetry(
         CancellationToken ct,
         int maxAttempts = 0,
         TimeSpan? initialDelay = null,
-        TimeSpan? maxDelay = null)
-    {
-        var delay = initialDelay ?? TimeSpan.FromSeconds(1);
-        var maxDelayValue = maxDelay ?? TimeSpan.FromSeconds(30);
-        var attempt = 0;
-
-        while (!ct.IsCancellationRequested)
-        {
-            try
-            {
-                attempt++;
-                return await CreateConnection(ct);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                if (maxAttempts > 0 && attempt >= maxAttempts)
-                {
-                    Logger.LogError(ex, "Max connection attempts ({MaxAttempts}) reached", maxAttempts);
-                    throw;
-                }
-
-                Logger.LogWarning(ex, "Failed to connect to RabbitMQ, retrying in {Delay}... (attempt {Attempt})",
-                    delay, attempt);
-
-                await Task.Delay(delay, ct);
-
-                // Exponential backoff with cap
-                delay = TimeSpan.FromMilliseconds(Math.Min(delay.TotalMilliseconds * 1.5, maxDelayValue.TotalMilliseconds));
-            }
-        }
-
-        throw new OperationCanceledException(ct);
-    }
+        TimeSpan? maxDelay = null) =>
+        ConnectionFactory.CreateWithRetry(maxAttempts, initialDelay, maxDelay, ct);
 
     /// <summary>
     /// Attempts to reconnect to RabbitMQ with exponential backoff.
@@ -144,13 +99,23 @@ public abstract class RabbitMqConsumerBase(
 
     private async Task CloseConnectionsAsync()
     {
+        IChannel? channelToClose;
+        IConnection? connectionToClose;
+
+        using (ConnectionLock.EnterScope())
+        {
+            channelToClose = Channel;
+            connectionToClose = Connection;
+            Channel = null;
+            Connection = null;
+        }
+
         try
         {
-            if (Channel is not null)
+            if (channelToClose is not null)
             {
-                await Channel.CloseAsync();
-                Channel.Dispose();
-                Channel = null;
+                await channelToClose.CloseAsync();
+                channelToClose.Dispose();
             }
         }
 #pragma warning disable CA1031 // Cleanup must ignore all exceptions
@@ -159,11 +124,10 @@ public abstract class RabbitMqConsumerBase(
 
         try
         {
-            if (Connection is not null)
+            if (connectionToClose is not null)
             {
-                await Connection.CloseAsync();
-                Connection.Dispose();
-                Connection = null;
+                await connectionToClose.CloseAsync();
+                connectionToClose.Dispose();
             }
         }
 #pragma warning disable CA1031 // Cleanup must ignore all exceptions
@@ -179,8 +143,11 @@ public abstract class RabbitMqConsumerBase(
 
     public override void Dispose()
     {
-        Channel?.Dispose();
-        Connection?.Dispose();
+        using (ConnectionLock.EnterScope())
+        {
+            Channel?.Dispose();
+            Connection?.Dispose();
+        }
         _reconnectLock.Dispose();
         base.Dispose();
         GC.SuppressFinalize(this);
