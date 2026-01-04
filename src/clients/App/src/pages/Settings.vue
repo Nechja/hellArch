@@ -13,9 +13,11 @@ const props = defineProps<{
 const route = useRoute()
 const router = useRouter()
 const { success, error: notifyError } = useNotifications()
-const { state: authState } = useAuth()
+const { state: authState, checkAuth } = useAuth()
 
-onMounted(() => {
+onMounted(async () => {
+  await checkAuth()
+
   if (route.query.error === 'provider_taken') {
     notifyError('Link Failed', 'This provider account is already linked to a different user.')
     router.replace({ path: route.path, query: {} })

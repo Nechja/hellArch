@@ -38,7 +38,8 @@ async function checkAuth(): Promise<boolean> {
       state.value.linkedProviders = []
       state.value.isAuthenticated = false
       return false
-    } catch {
+    } catch (err) {
+      console.error('Auth check failed:', err)
       state.value.userId = null
       state.value.linkedProviders = []
       state.value.isAuthenticated = false
