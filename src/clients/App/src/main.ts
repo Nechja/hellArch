@@ -9,6 +9,7 @@ import App from './App.vue'
 import Landing from './pages/Landing.vue'
 import Settings from './pages/Settings.vue'
 import Login from './pages/Login.vue'
+import { useAuth } from './composables'
 
 const router = createRouter({
   history: createWebHistory('/app'),
@@ -17,6 +18,19 @@ const router = createRouter({
     { path: '/settings', component: Settings },
     { path: '/login', component: Login, meta: { public: true, hideNav: true } },
   ],
+})
+
+router.beforeEach(async (to) => {
+  if (to.meta.public) return true
+
+  const { checkAuth } = useAuth()
+  const isAuthenticated = await checkAuth()
+
+  if (!isAuthenticated) {
+    return { path: '/login', query: { return_url: to.fullPath } }
+  }
+
+  return true
 })
 
 const vuetify = createVuetify({

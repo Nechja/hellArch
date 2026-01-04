@@ -81,6 +81,25 @@ func (p *Postgres) GetUserByProviderID(ctx context.Context, provider, providerUs
 	return &user, nil
 }
 
+func (p *Postgres) GetUserByEmail(ctx context.Context, email string) (*User, error) {
+	var user User
+	var permissionsJSON []byte
+	err := p.pool.QueryRow(ctx,
+		`SELECT id, email, username, is_active, COALESCE(permissions, '{}'::jsonb), created_at, updated_at
+		 FROM users WHERE email = $1`,
+		email,
+	).Scan(&user.ID, &user.Email, &user.Username, &user.IsActive, &permissionsJSON, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	if len(permissionsJSON) > 0 {
+		if err := json.Unmarshal(permissionsJSON, &user.Permissions); err != nil {
+			slog.Error("failed to unmarshal user permissions", "error", err, "user_id", user.ID)
+		}
+	}
+	return &user, nil
+}
+
 func (p *Postgres) CreateUser(ctx context.Context, email, username string) (*User, error) {
 	var user User
 	err := p.pool.QueryRow(ctx,

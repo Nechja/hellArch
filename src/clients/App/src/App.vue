@@ -41,6 +41,10 @@ async function fetchUser() {
       }
     } else if (res.status === 401) {
       // Not authenticated - redirect will happen via gateway
+    } else if (res.status === 404) {
+      // Profile not yet created - may happen if event processing is delayed
+      // Retry after a short delay
+      setTimeout(fetchUser, 2000)
     } else {
       error.value = 'Failed to load user data'
     }

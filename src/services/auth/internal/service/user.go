@@ -30,15 +30,39 @@ type FindOrCreateResult struct {
 }
 
 func (u *User) FindOrCreateFromOAuth(ctx context.Context, info *oauth.UserInfo) (*FindOrCreateResult, error) {
+	// First, check if this OAuth account is already linked
 	user, err := u.postgres.GetUserByProviderID(ctx, string(info.Provider), info.ID)
 	if err == nil {
 		return &FindOrCreateResult{User: user, IsNewUser: false}, nil
 	}
 
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, status.Error(codes.Internal, "failed to lookup user")
+		return nil, status.Error(codes.Internal, "failed to lookup user by provider")
 	}
 
+	// OAuth account not linked - check if user exists by email
+	user, err = u.postgres.GetUserByEmail(ctx, info.Email)
+	if err == nil {
+		// User exists with this email - link the new OAuth account
+		err = u.postgres.CreateLinkedAccount(ctx, &store.LinkedAccount{
+			UserID:         user.ID,
+			Provider:       string(info.Provider),
+			ProviderUserID: info.ID,
+			Email:          ptr(info.Email),
+			Username:       ptr(info.Username),
+			AvatarURL:      ptr(info.AvatarURL),
+		})
+		if err != nil {
+			return nil, status.Error(codes.Internal, "failed to link account to existing user")
+		}
+		return &FindOrCreateResult{User: user, IsNewUser: false}, nil
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, status.Error(codes.Internal, "failed to lookup user by email")
+	}
+
+	// No user exists - create new user and link account
 	user, err = u.postgres.CreateUser(ctx, info.Email, info.Username)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to create user")
@@ -69,6 +93,36 @@ func (u *User) PublishCreated(ctx context.Context, user *store.User, info *oauth
 		AvatarURL:      info.AvatarURL,
 		CreatedAt:      user.CreatedAt,
 	})
+}
+
+func (u *User) LinkProviderToUser(ctx context.Context, userID string, info *oauth.UserInfo) (*FindOrCreateResult, error) {
+	// Get the existing user
+	user, err := u.postgres.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "user not found")
+	}
+
+	// Check if this provider is already linked
+	_, err = u.postgres.GetUserByProviderID(ctx, string(info.Provider), info.ID)
+	if err == nil {
+		// Provider already linked - just return the user
+		return &FindOrCreateResult{User: user, IsNewUser: false}, nil
+	}
+
+	// Link the provider to this user
+	err = u.postgres.CreateLinkedAccount(ctx, &store.LinkedAccount{
+		UserID:         user.ID,
+		Provider:       string(info.Provider),
+		ProviderUserID: info.ID,
+		Email:          ptr(info.Email),
+		Username:       ptr(info.Username),
+		AvatarURL:      ptr(info.AvatarURL),
+	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to link account")
+	}
+
+	return &FindOrCreateResult{User: user, IsNewUser: false}, nil
 }
 
 func (u *User) FindByID(ctx context.Context, id string) (*store.User, error) {

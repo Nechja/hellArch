@@ -106,7 +106,15 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 	ipAddress := getClientIP(r)
 	userAgent := r.UserAgent()
 
-	result, err := h.auth.HandleOAuthCallback(r.Context(), provider, code, state, csrfToken, ipAddress, userAgent)
+	// Check if user is already logged in (for account linking)
+	var existingUserID string
+	if sessionCookie, err := r.Cookie("hellarch_session"); err == nil {
+		if userID, err := h.auth.ValidateSession(r.Context(), sessionCookie.Value); err == nil {
+			existingUserID = userID
+		}
+	}
+
+	result, err := h.auth.HandleOAuthCallback(r.Context(), provider, code, state, csrfToken, ipAddress, userAgent, existingUserID)
 	if err != nil {
 		slog.Error("oauth callback failed", "error", err, "provider", provider)
 		http.Error(w, "Authentication failed", http.StatusUnauthorized)
@@ -314,9 +322,23 @@ func (h *HTTPHandler) handleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Fetch linked accounts
+	accounts, err := h.auth.GetLinkedAccounts(r.Context(), userID)
+	if err != nil {
+		slog.Error("failed to get linked accounts", "error", err)
+		accounts = nil
+	}
+
+	// Build provider list
+	var providers []string
+	for _, acc := range accounts {
+		providers = append(providers, acc.Provider)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]string{
-		"user_id": userID,
+	if err := json.NewEncoder(w).Encode(map[string]any{
+		"user_id":          userID,
+		"linked_providers": providers,
 	}); err != nil {
 		slog.Error("failed to encode response", "error", err)
 	}

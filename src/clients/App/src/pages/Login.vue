@@ -5,7 +5,7 @@ import { AppLogo } from '../components/atoms'
 import { OAuthProviderButton } from '../components/molecules'
 
 const route = useRoute()
-const loading = ref(false)
+const loadingProvider = ref<'discord' | 'github' | 'google' | null>(null)
 const error = ref<string | null>(null)
 
 const returnUrl = computed(() => {
@@ -23,11 +23,11 @@ onMounted(() => {
   }
 })
 
-function loginWithDiscord() {
-  loading.value = true
+function loginWithProvider(provider: 'discord' | 'github' | 'google') {
+  loadingProvider.value = provider
   error.value = null
   const redirectParam = encodeURIComponent(returnUrl.value)
-  window.location.href = `/api/auth/discord/login?redirect=${redirectParam}`
+  window.location.href = `/api/auth/${provider}/login?redirect=${redirectParam}`
 }
 </script>
 
@@ -64,28 +64,30 @@ function loginWithDiscord() {
 
               <OAuthProviderButton
                 provider="discord"
-                :loading="loading"
-                :disabled="loading"
-                @click="loginWithDiscord"
+                :loading="loadingProvider === 'discord'"
+                :disabled="loadingProvider !== null"
+                @click="loginWithProvider('discord')"
               />
 
               <v-divider class="my-6">
                 <span class="text-caption text-disabled px-2">or</span>
               </v-divider>
 
-              <div class="text-center">
-                <p class="text-body-2 text-medium-emphasis mb-4">
-                  More sign-in options coming soon
-                </p>
-                <div class="d-flex justify-center ga-3">
-                  <v-avatar size="36" class="provider-coming-soon">
-                    <v-icon size="18" color="disabled">mdi-github</v-icon>
-                  </v-avatar>
-                  <v-avatar size="36" class="provider-coming-soon">
-                    <v-icon size="18" color="disabled">mdi-google</v-icon>
-                  </v-avatar>
-                </div>
-              </div>
+              <OAuthProviderButton
+                provider="github"
+                :loading="loadingProvider === 'github'"
+                :disabled="loadingProvider !== null"
+                @click="loginWithProvider('github')"
+              />
+
+              <div class="my-4" />
+
+              <OAuthProviderButton
+                provider="google"
+                :loading="loadingProvider === 'google'"
+                :disabled="loadingProvider !== null"
+                @click="loginWithProvider('google')"
+              />
             </v-card-text>
           </v-card>
 
@@ -123,11 +125,6 @@ function loginWithDiscord() {
 .login-card {
   background: rgba(22, 22, 30, 0.8) !important;
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.provider-coming-soon {
-  background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 </style>

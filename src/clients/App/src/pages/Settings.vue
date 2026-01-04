@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { SectionHeader, Badge, UserAvatar } from '../components/atoms'
 import { LinkedAccountItem } from '../components/molecules'
-import { useNotifications } from '../composables'
+import { useNotifications, useAuth } from '../composables'
 import type { UserProfile } from '@hellarch/types'
 
 const props = defineProps<{
@@ -10,6 +10,10 @@ const props = defineProps<{
 }>()
 
 const { success, error: notifyError } = useNotifications()
+const { state: authState } = useAuth()
+
+const isProviderConnected = (provider: string) =>
+  authState.value.linkedProviders.includes(provider)
 
 const displayName = ref(props.user?.display_name || '')
 const originalDisplayName = ref(props.user?.display_name || '')
@@ -17,6 +21,10 @@ const saving = ref(false)
 const deleteDialogOpen = ref(false)
 
 const hasChanges = computed(() => displayName.value !== originalDisplayName.value)
+
+function connectProvider(provider: 'discord' | 'github' | 'google') {
+  window.location.href = `/api/auth/${provider}/login?redirect=/app/settings`
+}
 
 watch(() => props.user, (newUser) => {
   if (newUser) {
@@ -126,11 +134,23 @@ async function saveProfile() {
         <SectionHeader title="Linked Accounts" />
         <v-card class="settings-card mb-8">
           <v-card-text class="pa-2">
-            <LinkedAccountItem provider="discord" connected />
+            <LinkedAccountItem
+              provider="discord"
+              :connected="isProviderConnected('discord')"
+              @connect="connectProvider('discord')"
+            />
             <v-divider class="mx-4" />
-            <LinkedAccountItem provider="github" coming-soon />
+            <LinkedAccountItem
+              provider="github"
+              :connected="isProviderConnected('github')"
+              @connect="connectProvider('github')"
+            />
             <v-divider class="mx-4" />
-            <LinkedAccountItem provider="google" coming-soon />
+            <LinkedAccountItem
+              provider="google"
+              :connected="isProviderConnected('google')"
+              @connect="connectProvider('google')"
+            />
           </v-card-text>
         </v-card>
 
