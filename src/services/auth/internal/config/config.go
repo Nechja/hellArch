@@ -28,7 +28,7 @@ type OAuthConfig struct {
 	Discord   ProviderConfig
 	Google    ProviderConfig
 	GitHub    ProviderConfig
-	Apple     ProviderConfig
+	Apple     AppleConfig
 	Microsoft ProviderConfig
 	Twitch    ProviderConfig
 }
@@ -37,6 +37,14 @@ type ProviderConfig struct {
 	ClientID     string
 	ClientSecret string
 	RedirectURI  string
+}
+
+type AppleConfig struct {
+	ClientID       string
+	TeamID         string
+	KeyID          string
+	PrivateKeyPath string
+	RedirectURI    string
 }
 
 func Load() (*Config, error) {
@@ -69,10 +77,12 @@ func Load() (*Config, error) {
 				ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
 				RedirectURI:  sharedconfig.GetEnv("GITHUB_REDIRECT_URI", "http://localhost:5000/api/auth/github/callback"),
 			},
-			Apple: ProviderConfig{
-				ClientID:     os.Getenv("APPLE_CLIENT_ID"),
-				ClientSecret: os.Getenv("APPLE_CLIENT_SECRET"),
-				RedirectURI:  sharedconfig.GetEnv("APPLE_REDIRECT_URI", "http://localhost:5000/api/auth/apple/callback"),
+			Apple: AppleConfig{
+				ClientID:       os.Getenv("APPLE_CLIENT_ID"),
+				TeamID:         os.Getenv("APPLE_TEAM_ID"),
+				KeyID:          os.Getenv("APPLE_KEY_ID"),
+				PrivateKeyPath: os.Getenv("APPLE_PRIVATE_KEY_PATH"),
+				RedirectURI:    sharedconfig.GetEnv("APPLE_REDIRECT_URI", "http://localhost:5000/api/auth/apple/callback"),
 			},
 			Microsoft: ProviderConfig{
 				ClientID:     os.Getenv("MICROSOFT_CLIENT_ID"),

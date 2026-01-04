@@ -253,6 +253,15 @@ func (h *AuthHandler) InvalidateSession(ctx context.Context, sessionToken string
 	return h.sessionService.Invalidate(ctx, sessionToken)
 }
 
+func (h *AuthHandler) GetConfiguredProviders() []string {
+	providers := h.oauthService.GetConfiguredProviders()
+	result := make([]string, len(providers))
+	for i, p := range providers {
+		result[i] = string(p)
+	}
+	return result
+}
+
 func (h *AuthHandler) validateRedirectURI(redirectURI string) error {
 	if redirectURI == "" {
 		return nil

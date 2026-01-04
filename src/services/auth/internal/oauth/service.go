@@ -28,7 +28,8 @@ type UserInfo struct {
 }
 
 type Service struct {
-	configs map[Provider]*oauth2.Config
+	configs     map[Provider]*oauth2.Config
+	appleConfig *config.AppleConfig
 }
 
 func NewService(cfg config.OAuthConfig) *Service {
@@ -73,12 +74,13 @@ func NewService(cfg config.OAuthConfig) *Service {
 		}
 	}
 
+	var appleConfig *config.AppleConfig
 	if cfg.Apple.ClientID != "" {
+		appleConfig = &cfg.Apple
 		configs[ProviderApple] = &oauth2.Config{
-			ClientID:     cfg.Apple.ClientID,
-			ClientSecret: cfg.Apple.ClientSecret,
-			RedirectURL:  cfg.Apple.RedirectURI,
-			Scopes:       []string{"name", "email"},
+			ClientID:    cfg.Apple.ClientID,
+			RedirectURL: cfg.Apple.RedirectURI,
+			Scopes:      []string{"name", "email"},
 			Endpoint: oauth2.Endpoint{
 				AuthURL:  "https://appleid.apple.com/auth/authorize",
 				TokenURL: "https://appleid.apple.com/auth/token",
@@ -112,7 +114,10 @@ func NewService(cfg config.OAuthConfig) *Service {
 		}
 	}
 
-	return &Service{configs: configs}
+	return &Service{
+		configs:     configs,
+		appleConfig: appleConfig,
+	}
 }
 
 func (s *Service) GetAuthURL(provider Provider, state string) (string, error) {
@@ -128,6 +133,15 @@ func (s *Service) Exchange(ctx context.Context, provider Provider, code string) 
 	if !ok {
 		return nil, fmt.Errorf("provider %s not configured", provider)
 	}
+
+	if provider == ProviderApple && s.appleConfig != nil {
+		clientSecret, err := generateAppleClientSecret(s.appleConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate apple client secret: %w", err)
+		}
+		cfg.ClientSecret = clientSecret
+	}
+
 	return cfg.Exchange(ctx, code)
 }
 
@@ -153,4 +167,12 @@ func (s *Service) GetUserInfo(ctx context.Context, provider Provider, token *oau
 func (s *Service) IsProviderConfigured(provider Provider) bool {
 	_, ok := s.configs[provider]
 	return ok
+}
+
+func (s *Service) GetConfiguredProviders() []Provider {
+	providers := make([]Provider, 0, len(s.configs))
+	for p := range s.configs {
+		providers = append(providers, p)
+	}
+	return providers
 }

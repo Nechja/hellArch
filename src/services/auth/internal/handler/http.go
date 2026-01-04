@@ -32,6 +32,7 @@ func (h *HTTPHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/logout", h.handleLogout)
 	mux.HandleFunc("POST /auth/logout", h.handleLogout)
 	mux.HandleFunc("GET /auth/health", h.handleHealth)
+	mux.HandleFunc("GET /auth/providers", h.handleProviders)
 }
 
 const csrfCookieName = "hellarch_csrf"
@@ -270,6 +271,15 @@ func (h *HTTPHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status": status.Healthy,
+	}); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
+}
+
+func (h *HTTPHandler) handleProviders(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]any{
+		"providers": h.auth.GetConfiguredProviders(),
 	}); err != nil {
 		slog.Error("failed to encode response", "error", err)
 	}

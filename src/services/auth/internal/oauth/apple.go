@@ -5,16 +5,20 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"math/big"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/nechja/hellarch/auth/internal/config"
 	"golang.org/x/oauth2"
 )
 
@@ -235,4 +239,40 @@ func parseRSAKey(key appleJWK) (*rsa.PublicKey, error) {
 		N: new(big.Int).SetBytes(nBytes),
 		E: int(new(big.Int).SetBytes(eBytes).Int64()),
 	}, nil
+}
+
+func generateAppleClientSecret(cfg *config.AppleConfig) (string, error) {
+	keyBytes, err := os.ReadFile(cfg.PrivateKeyPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read private key: %w", err)
+	}
+
+	block, _ := pem.Decode(keyBytes)
+	if block == nil {
+		return "", fmt.Errorf("failed to decode PEM block")
+	}
+
+	privateKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	ecKey, ok := privateKey.(*ecdsa.PrivateKey)
+	if !ok {
+		return "", fmt.Errorf("private key is not ECDSA")
+	}
+
+	now := time.Now()
+	claims := jwt.RegisteredClaims{
+		Issuer:    cfg.TeamID,
+		Subject:   cfg.ClientID,
+		Audience:  jwt.ClaimStrings{"https://appleid.apple.com"},
+		IssuedAt:  jwt.NewNumericDate(now),
+		ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour)),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	token.Header["kid"] = cfg.KeyID
+
+	return token.SignedString(ecKey)
 }

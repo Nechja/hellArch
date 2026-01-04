@@ -14,9 +14,20 @@ const route = useRoute()
 const router = useRouter()
 const { success, error: notifyError } = useNotifications()
 const { state: authState, checkAuth } = useAuth()
+const availableProviders = ref<string[]>([])
 
 onMounted(async () => {
   await checkAuth()
+
+  try {
+    const res = await fetch('/api/auth/providers')
+    if (res.ok) {
+      const data = await res.json()
+      availableProviders.value = data.providers || []
+    }
+  } catch {
+    console.error('Failed to fetch providers')
+  }
 
   if (route.query.error === 'provider_taken') {
     notifyError('Link Failed', 'This provider account is already linked to a different user.')
@@ -146,41 +157,14 @@ async function saveProfile() {
         <SectionHeader title="Linked Accounts" />
         <v-card class="settings-card mb-8">
           <v-card-text class="pa-2">
-            <LinkedAccountItem
-              provider="discord"
-              :connected="isProviderConnected('discord')"
-              @connect="connectProvider('discord')"
-            />
-            <v-divider class="mx-4" />
-            <LinkedAccountItem
-              provider="github"
-              :connected="isProviderConnected('github')"
-              @connect="connectProvider('github')"
-            />
-            <v-divider class="mx-4" />
-            <LinkedAccountItem
-              provider="google"
-              :connected="isProviderConnected('google')"
-              @connect="connectProvider('google')"
-            />
-            <v-divider class="mx-4" />
-            <LinkedAccountItem
-              provider="apple"
-              :connected="isProviderConnected('apple')"
-              @connect="connectProvider('apple')"
-            />
-            <v-divider class="mx-4" />
-            <LinkedAccountItem
-              provider="microsoft"
-              :connected="isProviderConnected('microsoft')"
-              @connect="connectProvider('microsoft')"
-            />
-            <v-divider class="mx-4" />
-            <LinkedAccountItem
-              provider="twitch"
-              :connected="isProviderConnected('twitch')"
-              @connect="connectProvider('twitch')"
-            />
+            <template v-for="(provider, index) in availableProviders" :key="provider">
+              <LinkedAccountItem
+                :provider="provider"
+                :connected="isProviderConnected(provider)"
+                @connect="connectProvider(provider)"
+              />
+              <v-divider v-if="index < availableProviders.length - 1" class="mx-4" />
+            </template>
           </v-card-text>
         </v-card>
 

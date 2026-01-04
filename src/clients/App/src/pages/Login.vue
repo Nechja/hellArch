@@ -6,9 +6,8 @@ import { OAuthProviderButton } from '../components/molecules'
 
 type Provider = 'discord' | 'github' | 'google' | 'apple' | 'microsoft' | 'twitch'
 
-const providers: Provider[] = ['discord', 'github', 'google', 'apple', 'microsoft', 'twitch']
-
 const route = useRoute()
+const providers = ref<Provider[]>([])
 const loadingProvider = ref<Provider | null>(null)
 const error = ref<string | null>(null)
 
@@ -22,7 +21,17 @@ const errorMessages: Record<string, string> = {
   email_conflict: 'This email is already linked to an account. Sign in with your original provider, then link additional providers from Settings.'
 }
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    const res = await fetch('/api/auth/providers')
+    if (res.ok) {
+      const data = await res.json()
+      providers.value = data.providers || []
+    }
+  } catch {
+    console.error('Failed to fetch providers')
+  }
+
   const errorParam = route.query.error as string
   if (errorParam) {
     error.value = errorMessages[errorParam] ?? 'Login failed. Please try again.'
