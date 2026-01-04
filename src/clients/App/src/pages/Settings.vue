@@ -17,6 +17,8 @@ type Provider = 'discord' | 'github' | 'google' | 'apple' | 'microsoft' | 'twitc
 
 const { state: authState, checkAuth } = useAuth()
 const availableProviders = ref<Provider[]>([])
+const providersLoading = ref(true)
+const providersError = ref(false)
 
 onMounted(async () => {
   await checkAuth()
@@ -26,9 +28,14 @@ onMounted(async () => {
     if (res.ok) {
       const data = await res.json()
       availableProviders.value = data.providers || []
+    } else {
+      providersError.value = true
     }
   } catch {
     console.error('Failed to fetch providers')
+    providersError.value = true
+  } finally {
+    providersLoading.value = false
   }
 
   if (route.query.error === 'provider_taken') {
@@ -159,13 +166,30 @@ async function saveProfile() {
         <SectionHeader title="Linked Accounts" />
         <v-card class="settings-card mb-8">
           <v-card-text class="pa-2">
-            <template v-for="(provider, index) in availableProviders" :key="provider">
-              <LinkedAccountItem
-                :provider="provider"
-                :connected="isProviderConnected(provider)"
-                @connect="connectProvider(provider)"
-              />
-              <v-divider v-if="index < availableProviders.length - 1" class="mx-4" />
+            <div v-if="providersLoading" class="d-flex justify-center align-center py-8">
+              <v-progress-circular indeterminate color="primary" />
+            </div>
+            <div v-else-if="providersError" class="text-center py-6">
+              <v-icon size="32" color="error" class="mb-2">mdi-alert-circle-outline</v-icon>
+              <p class="text-body-2 text-medium-emphasis mb-0">
+                Failed to load providers
+              </p>
+            </div>
+            <div v-else-if="availableProviders.length === 0" class="text-center py-6">
+              <v-icon size="32" color="medium-emphasis" class="mb-2">mdi-link-off</v-icon>
+              <p class="text-body-2 text-medium-emphasis mb-0">
+                No login providers configured
+              </p>
+            </div>
+            <template v-else>
+              <template v-for="(provider, index) in availableProviders" :key="provider">
+                <LinkedAccountItem
+                  :provider="provider"
+                  :connected="isProviderConnected(provider)"
+                  @connect="connectProvider(provider)"
+                />
+                <v-divider v-if="index < availableProviders.length - 1" class="mx-4" />
+              </template>
             </template>
           </v-card-text>
         </v-card>
