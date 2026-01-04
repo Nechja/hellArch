@@ -41,6 +41,11 @@ func (h *HTTPHandler) handleOAuthLogin(w http.ResponseWriter, r *http.Request) {
 	providerStr := r.PathValue("provider")
 	provider := oauth.Provider(providerStr)
 
+	if !h.auth.IsProviderConfigured(provider) {
+		http.Error(w, "Provider not available", http.StatusNotFound)
+		return
+	}
+
 	redirectURI := r.URL.Query().Get("redirect_uri")
 	if redirectURI == "" {
 		redirectURI = r.URL.Query().Get("redirect")
@@ -70,6 +75,11 @@ func (h *HTTPHandler) handleOAuthLogin(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	providerStr := r.PathValue("provider")
 	provider := oauth.Provider(providerStr)
+
+	if !h.auth.IsProviderConfigured(provider) {
+		http.Error(w, "Provider not available", http.StatusNotFound)
+		return
+	}
 
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")

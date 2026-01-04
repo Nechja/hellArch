@@ -262,6 +262,10 @@ func (h *AuthHandler) GetConfiguredProviders() []string {
 	return result
 }
 
+func (h *AuthHandler) IsProviderConfigured(provider oauth.Provider) bool {
+	return h.oauthService.IsProviderConfigured(provider)
+}
+
 func (h *AuthHandler) validateRedirectURI(redirectURI string) error {
 	if redirectURI == "" {
 		return nil

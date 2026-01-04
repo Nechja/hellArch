@@ -105,11 +105,15 @@ func Load() (*Config, error) {
 }
 
 func (c *Config) validate() error {
-	if c.OAuth.Discord.ClientID == "" {
-		return fmt.Errorf("DISCORD_CLIENT_ID is required")
-	}
-	if c.OAuth.Discord.ClientSecret == "" {
-		return fmt.Errorf("DISCORD_CLIENT_SECRET is required")
+	hasProvider := c.OAuth.Discord.ClientID != "" ||
+		c.OAuth.Google.ClientID != "" ||
+		c.OAuth.GitHub.ClientID != "" ||
+		c.OAuth.Apple.ClientID != "" ||
+		c.OAuth.Microsoft.ClientID != "" ||
+		c.OAuth.Twitch.ClientID != ""
+
+	if !hasProvider {
+		return fmt.Errorf("at least one OAuth provider must be configured")
 	}
 	return nil
 }

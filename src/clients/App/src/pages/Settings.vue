@@ -13,8 +13,10 @@ const props = defineProps<{
 const route = useRoute()
 const router = useRouter()
 const { success, error: notifyError } = useNotifications()
+type Provider = 'discord' | 'github' | 'google' | 'apple' | 'microsoft' | 'twitch'
+
 const { state: authState, checkAuth } = useAuth()
-const availableProviders = ref<string[]>([])
+const availableProviders = ref<Provider[]>([])
 
 onMounted(async () => {
   await checkAuth()
