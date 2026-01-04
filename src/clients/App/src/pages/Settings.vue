@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { SectionHeader, Badge, UserAvatar } from '../components/atoms'
 import { LinkedAccountItem } from '../components/molecules'
 import { useNotifications, useAuth } from '../composables'
@@ -9,8 +10,17 @@ const props = defineProps<{
   user: UserProfile | null
 }>()
 
+const route = useRoute()
+const router = useRouter()
 const { success, error: notifyError } = useNotifications()
 const { state: authState } = useAuth()
+
+onMounted(() => {
+  if (route.query.error === 'provider_taken') {
+    notifyError('Link Failed', 'This provider account is already linked to a different user.')
+    router.replace({ path: route.path, query: {} })
+  }
+})
 
 const isProviderConnected = (provider: string) =>
   authState.value.linkedProviders.includes(provider)

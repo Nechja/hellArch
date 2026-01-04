@@ -119,6 +119,11 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 	result, err := h.auth.HandleOAuthCallback(r.Context(), provider, code, state, csrfToken, ipAddress, userAgent, existingUserID)
 	if err != nil {
 		if grpcstatus.Code(err) == codes.AlreadyExists {
+			msg := grpcstatus.Convert(err).Message()
+			if msg == "provider_linked_to_other_account" {
+				http.Redirect(w, r, "/settings?error=provider_taken", http.StatusTemporaryRedirect)
+				return
+			}
 			http.Redirect(w, r, "/login?error=email_conflict", http.StatusTemporaryRedirect)
 			return
 		}

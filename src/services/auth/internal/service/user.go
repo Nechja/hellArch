@@ -83,17 +83,17 @@ func (u *User) PublishCreated(ctx context.Context, user *store.User, info *oauth
 }
 
 func (u *User) LinkProviderToUser(ctx context.Context, userID string, info *oauth.UserInfo) (*FindOrCreateResult, error) {
-	// Get the existing user
 	user, err := u.postgres.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "user not found")
 	}
 
-	// Check if this provider is already linked
-	_, err = u.postgres.GetUserByProviderID(ctx, string(info.Provider), info.ID)
+	existingOwner, err := u.postgres.GetUserByProviderID(ctx, string(info.Provider), info.ID)
 	if err == nil {
-		// Provider already linked - just return the user
-		return &FindOrCreateResult{User: user, IsNewUser: false}, nil
+		if existingOwner.ID == userID {
+			return &FindOrCreateResult{User: user, IsNewUser: false}, nil
+		}
+		return nil, status.Error(codes.AlreadyExists, "provider_linked_to_other_account")
 	}
 
 	// Link the provider to this user
