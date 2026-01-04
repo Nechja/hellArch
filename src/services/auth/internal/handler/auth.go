@@ -201,7 +201,11 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, refreshToken string) (st
 	}
 
 	if user.Permissions != nil && len(user.Permissions) > 0 {
-		permJSON, _ := json.Marshal(user.Permissions)
+		permJSON, err := json.Marshal(user.Permissions)
+		if err != nil {
+			slog.Error("failed to marshal user permissions", "userID", user.ID, "error", err)
+			return "", "", status.Error(codes.Internal, "failed to process user permissions")
+		}
 		newClaims.Custom = map[string]string{
 			"permissions": string(permJSON),
 		}
@@ -288,7 +292,11 @@ func (h *AuthHandler) generateTokens(user *store.User, info *oauth.UserInfo) (st
 	}
 
 	if user.Permissions != nil && len(user.Permissions) > 0 {
-		permJSON, _ := json.Marshal(user.Permissions)
+		permJSON, err := json.Marshal(user.Permissions)
+		if err != nil {
+			slog.Error("failed to marshal user permissions", "userID", user.ID, "error", err)
+			return "", "", status.Error(codes.Internal, "failed to process user permissions")
+		}
 		claims.Custom = map[string]string{
 			"permissions": string(permJSON),
 		}

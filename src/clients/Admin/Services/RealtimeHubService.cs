@@ -180,8 +180,15 @@ public sealed class RealtimeHubService(
                 return;
             }
 
-            await _hubConnection.InvokeAsync("SubscribeToEventType", eventType, cancellationToken);
-            logger.LogDebug("Subscribed to event type: {EventType}", eventType);
+            try
+            {
+                await _hubConnection.InvokeAsync("SubscribeToEventType", eventType, cancellationToken);
+                logger.LogDebug("Subscribed to event type: {EventType}", eventType);
+            }
+            catch (InvalidOperationException ex)
+            {
+                logger.LogWarning(ex, "Failed to subscribe to {EventType} - connection state changed", eventType);
+            }
         }
         finally
         {
@@ -199,8 +206,15 @@ public sealed class RealtimeHubService(
                 return;
             }
 
-            await _hubConnection.InvokeAsync("UnsubscribeFromEventType", eventType, cancellationToken);
-            logger.LogDebug("Unsubscribed from event type: {EventType}", eventType);
+            try
+            {
+                await _hubConnection.InvokeAsync("UnsubscribeFromEventType", eventType, cancellationToken);
+                logger.LogDebug("Unsubscribed from event type: {EventType}", eventType);
+            }
+            catch (InvalidOperationException ex)
+            {
+                logger.LogDebug(ex, "Failed to unsubscribe from {EventType} - connection state changed", eventType);
+            }
         }
         finally
         {
