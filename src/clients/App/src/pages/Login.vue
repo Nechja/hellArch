@@ -4,8 +4,12 @@ import { useRoute } from 'vue-router'
 import { AppLogo } from '../components/atoms'
 import { OAuthProviderButton } from '../components/molecules'
 
+type Provider = 'discord' | 'github' | 'google' | 'apple' | 'microsoft' | 'twitch'
+
+const providers: Provider[] = ['discord', 'github', 'google', 'apple', 'microsoft', 'twitch']
+
 const route = useRoute()
-const loadingProvider = ref<'discord' | 'github' | 'google' | null>(null)
+const loadingProvider = ref<Provider | null>(null)
 const error = ref<string | null>(null)
 
 const returnUrl = computed(() => {
@@ -14,7 +18,6 @@ const returnUrl = computed(() => {
 })
 
 onMounted(() => {
-  // Check for error from OAuth callback
   const errorParam = route.query.error as string
   if (errorParam) {
     error.value = errorParam === 'access_denied'
@@ -23,7 +26,7 @@ onMounted(() => {
   }
 })
 
-function loginWithProvider(provider: 'discord' | 'github' | 'google') {
+function loginWithProvider(provider: Provider) {
   loadingProvider.value = provider
   error.value = null
   const redirectParam = encodeURIComponent(returnUrl.value)
@@ -62,32 +65,20 @@ function loginWithProvider(provider: 'discord' | 'github' | 'google') {
                 {{ error }}
               </v-alert>
 
-              <OAuthProviderButton
-                provider="discord"
-                :loading="loadingProvider === 'discord'"
-                :disabled="loadingProvider !== null"
-                @click="loginWithProvider('discord')"
-              />
-
-              <v-divider class="my-6">
-                <span class="text-caption text-disabled px-2">or</span>
-              </v-divider>
-
-              <OAuthProviderButton
-                provider="github"
-                :loading="loadingProvider === 'github'"
-                :disabled="loadingProvider !== null"
-                @click="loginWithProvider('github')"
-              />
-
-              <div class="my-4" />
-
-              <OAuthProviderButton
-                provider="google"
-                :loading="loadingProvider === 'google'"
-                :disabled="loadingProvider !== null"
-                @click="loginWithProvider('google')"
-              />
+              <p class="text-body-2 text-medium-emphasis text-center mb-4">
+                Choose a provider
+              </p>
+              <div class="provider-grid">
+                <OAuthProviderButton
+                  v-for="provider in providers"
+                  :key="provider"
+                  :provider="provider"
+                  :loading="loadingProvider === provider"
+                  :disabled="loadingProvider !== null"
+                  compact
+                  @click="loginWithProvider(provider)"
+                />
+              </div>
             </v-card-text>
           </v-card>
 
@@ -126,5 +117,12 @@ function loginWithProvider(provider: 'discord' | 'github' | 'google') {
   background: rgba(22, 22, 30, 0.8) !important;
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.provider-grid {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 </style>

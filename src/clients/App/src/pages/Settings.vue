@@ -22,7 +22,7 @@ const deleteDialogOpen = ref(false)
 
 const hasChanges = computed(() => displayName.value !== originalDisplayName.value)
 
-function connectProvider(provider: 'discord' | 'github' | 'google') {
+function connectProvider(provider: string) {
   window.location.href = `/api/auth/${provider}/login?redirect=/app/settings`
 }
 
@@ -150,6 +150,24 @@ async function saveProfile() {
               provider="google"
               :connected="isProviderConnected('google')"
               @connect="connectProvider('google')"
+            />
+            <v-divider class="mx-4" />
+            <LinkedAccountItem
+              provider="apple"
+              :connected="isProviderConnected('apple')"
+              @connect="connectProvider('apple')"
+            />
+            <v-divider class="mx-4" />
+            <LinkedAccountItem
+              provider="microsoft"
+              :connected="isProviderConnected('microsoft')"
+              @connect="connectProvider('microsoft')"
+            />
+            <v-divider class="mx-4" />
+            <LinkedAccountItem
+              provider="twitch"
+              :connected="isProviderConnected('twitch')"
+              @connect="connectProvider('twitch')"
             />
           </v-card-text>
         </v-card>
