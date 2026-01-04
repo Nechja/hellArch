@@ -157,9 +157,14 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 		return nil, status.Error(codes.Internal, "failed to generate tokens")
 	}
 
-	sessionToken, err := h.sessionService.Create(ctx, result.User.ID, ipAddress, userAgent)
-	if err != nil {
-		return nil, err
+	var sessionToken string
+	wasLinked := existingUserID != ""
+
+	if !wasLinked {
+		sessionToken, err = h.sessionService.Create(ctx, result.User.ID, ipAddress, userAgent)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &AuthResult{
@@ -175,6 +180,7 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 			Provider:  string(provider),
 		},
 		RedirectURI: stateInfo["redirect_uri"],
+		WasLinked:   wasLinked,
 	}, nil
 }
 

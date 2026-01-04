@@ -143,15 +143,17 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "hellarch_session",
-		Value:    result.SessionToken,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   h.config.SecureCookies,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   24 * 60 * 60, // 24 hours
-	})
+	if !result.WasLinked {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "hellarch_session",
+			Value:    result.SessionToken,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   h.config.SecureCookies,
+			SameSite: http.SameSiteLaxMode,
+			MaxAge:   24 * 60 * 60, // 24 hours
+		})
+	}
 
 	if result.RedirectURI != "" {
 		http.Redirect(w, r, result.RedirectURI, http.StatusTemporaryRedirect)
