@@ -17,12 +17,15 @@ const returnUrl = computed(() => {
   return url || '/app'
 })
 
+const errorMessages: Record<string, string> = {
+  access_denied: 'Login was cancelled',
+  email_conflict: 'This email is already linked to an account. Sign in with your original provider, then link additional providers from Settings.'
+}
+
 onMounted(() => {
   const errorParam = route.query.error as string
   if (errorParam) {
-    error.value = errorParam === 'access_denied'
-      ? 'Login was cancelled'
-      : 'Login failed. Please try again.'
+    error.value = errorMessages[errorParam] ?? 'Login failed. Please try again.'
   }
 })
 

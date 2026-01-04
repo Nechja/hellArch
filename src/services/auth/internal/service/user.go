@@ -40,22 +40,9 @@ func (u *User) FindOrCreateFromOAuth(ctx context.Context, info *oauth.UserInfo) 
 		return nil, status.Error(codes.Internal, "failed to lookup user by provider")
 	}
 
-	// OAuth account not linked - check if user exists by email
 	user, err = u.postgres.GetUserByEmail(ctx, info.Email)
 	if err == nil {
-		// User exists with this email - link the new OAuth account
-		err = u.postgres.CreateLinkedAccount(ctx, &store.LinkedAccount{
-			UserID:         user.ID,
-			Provider:       string(info.Provider),
-			ProviderUserID: info.ID,
-			Email:          ptr(info.Email),
-			Username:       ptr(info.Username),
-			AvatarURL:      ptr(info.AvatarURL),
-		})
-		if err != nil {
-			return nil, status.Error(codes.Internal, "failed to link account to existing user")
-		}
-		return &FindOrCreateResult{User: user, IsNewUser: false}, nil
+		return nil, status.Error(codes.AlreadyExists, "email_conflict")
 	}
 
 	if !errors.Is(err, pgx.ErrNoRows) {

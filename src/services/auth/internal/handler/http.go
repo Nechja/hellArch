@@ -9,6 +9,8 @@ import (
 	"github.com/nechja/hellarch/auth/internal/config"
 	"github.com/nechja/hellarch/auth/internal/oauth"
 	"github.com/nechja/hellarch/golibs/status"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 )
 
 // HTTPHandler handles HTTP endpoints for OAuth flows
@@ -116,6 +118,10 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 
 	result, err := h.auth.HandleOAuthCallback(r.Context(), provider, code, state, csrfToken, ipAddress, userAgent, existingUserID)
 	if err != nil {
+		if grpcstatus.Code(err) == codes.AlreadyExists {
+			http.Redirect(w, r, "/login?error=email_conflict", http.StatusTemporaryRedirect)
+			return
+		}
 		slog.Error("oauth callback failed", "error", err, "provider", provider)
 		http.Error(w, "Authentication failed", http.StatusUnauthorized)
 		return
