@@ -2,18 +2,50 @@ package oauth
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"net/http"
 	"strings"
+	"sync"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/oauth2"
 )
 
+const appleJWKSURL = "https://appleid.apple.com/auth/keys"
+
+type appleJWKS struct {
+	Keys []appleJWK `json:"keys"`
+}
+
+type appleJWK struct {
+	Kty string `json:"kty"`
+	Kid string `json:"kid"`
+	Use string `json:"use"`
+	Alg string `json:"alg"`
+	N   string `json:"n"`
+	E   string `json:"e"`
+	X   string `json:"x"`
+	Y   string `json:"y"`
+	Crv string `json:"crv"`
+}
+
 type appleIDTokenClaims struct {
-	Sub   string `json:"sub"`
+	jwt.RegisteredClaims
 	Email string `json:"email"`
 }
+
+var (
+	appleJWKSCache     *appleJWKS
+	appleJWKSCacheLock sync.RWMutex
+	appleJWKSCacheTime time.Time
+)
 
 func (s *Service) getAppleUserInfo(ctx context.Context, token *oauth2.Token) (*UserInfo, error) {
 	idToken := token.Extra("id_token")
@@ -26,9 +58,14 @@ func (s *Service) getAppleUserInfo(ctx context.Context, token *oauth2.Token) (*U
 		return nil, fmt.Errorf("id_token is not a string")
 	}
 
-	claims, err := parseAppleIDToken(idTokenStr)
+	cfg := s.configs[ProviderApple]
+	if cfg == nil {
+		return nil, fmt.Errorf("apple not configured")
+	}
+
+	claims, err := verifyAppleIDToken(ctx, idTokenStr, cfg.ClientID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse id_token: %w", err)
+		return nil, fmt.Errorf("failed to verify id_token: %w", err)
 	}
 
 	username := claims.Email
@@ -37,7 +74,7 @@ func (s *Service) getAppleUserInfo(ctx context.Context, token *oauth2.Token) (*U
 	}
 
 	return &UserInfo{
-		ID:        claims.Sub,
+		ID:        claims.Subject,
 		Email:     claims.Email,
 		Username:  username,
 		AvatarURL: "",
@@ -45,21 +82,157 @@ func (s *Service) getAppleUserInfo(ctx context.Context, token *oauth2.Token) (*U
 	}, nil
 }
 
-func parseAppleIDToken(idToken string) (*appleIDTokenClaims, error) {
-	parts := strings.Split(idToken, ".")
-	if len(parts) != 3 {
-		return nil, fmt.Errorf("invalid id_token format")
-	}
-
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+func verifyAppleIDToken(ctx context.Context, idToken, clientID string) (*appleIDTokenClaims, error) {
+	jwks, err := getAppleJWKS(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode payload: %w", err)
+		return nil, fmt.Errorf("failed to fetch JWKS: %w", err)
 	}
 
-	var claims appleIDTokenClaims
-	if err := json.Unmarshal(payload, &claims); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal claims: %w", err)
+	token, err := jwt.ParseWithClaims(idToken, &appleIDTokenClaims{}, func(token *jwt.Token) (interface{}, error) {
+		kid, ok := token.Header["kid"].(string)
+		if !ok {
+			return nil, fmt.Errorf("missing kid in token header")
+		}
+
+		key, err := findAppleKey(jwks, kid)
+		if err != nil {
+			return nil, err
+		}
+		return key, nil
+	}, jwt.WithValidMethods([]string{"ES256", "RS256"}))
+
+	if err != nil {
+		return nil, fmt.Errorf("token validation failed: %w", err)
 	}
 
-	return &claims, nil
+	claims, ok := token.Claims.(*appleIDTokenClaims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid token claims")
+	}
+
+	if claims.Issuer != "https://appleid.apple.com" {
+		return nil, fmt.Errorf("invalid issuer: %s", claims.Issuer)
+	}
+
+	if !containsAudience(claims.Audience, clientID) {
+		return nil, fmt.Errorf("invalid audience")
+	}
+
+	return claims, nil
+}
+
+func containsAudience(audiences jwt.ClaimStrings, clientID string) bool {
+	for _, aud := range audiences {
+		if aud == clientID {
+			return true
+		}
+	}
+	return false
+}
+
+func getAppleJWKS(ctx context.Context) (*appleJWKS, error) {
+	appleJWKSCacheLock.RLock()
+	if appleJWKSCache != nil && time.Since(appleJWKSCacheTime) < time.Hour {
+		defer appleJWKSCacheLock.RUnlock()
+		return appleJWKSCache, nil
+	}
+	appleJWKSCacheLock.RUnlock()
+
+	appleJWKSCacheLock.Lock()
+	defer appleJWKSCacheLock.Unlock()
+
+	if appleJWKSCache != nil && time.Since(appleJWKSCacheTime) < time.Hour {
+		return appleJWKSCache, nil
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, appleJWKSURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to fetch JWKS: status %d", resp.StatusCode)
+	}
+
+	var jwks appleJWKS
+	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
+		return nil, err
+	}
+
+	appleJWKSCache = &jwks
+	appleJWKSCacheTime = time.Now()
+	return &jwks, nil
+}
+
+func findAppleKey(jwks *appleJWKS, kid string) (interface{}, error) {
+	for _, key := range jwks.Keys {
+		if key.Kid == kid {
+			return parseJWK(key)
+		}
+	}
+	return nil, fmt.Errorf("key %s not found in JWKS", kid)
+}
+
+func parseJWK(key appleJWK) (interface{}, error) {
+	switch key.Kty {
+	case "EC":
+		return parseECKey(key)
+	case "RSA":
+		return parseRSAKey(key)
+	default:
+		return nil, fmt.Errorf("unsupported key type: %s", key.Kty)
+	}
+}
+
+func parseECKey(key appleJWK) (*ecdsa.PublicKey, error) {
+	xBytes, err := base64.RawURLEncoding.DecodeString(key.X)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode X: %w", err)
+	}
+
+	yBytes, err := base64.RawURLEncoding.DecodeString(key.Y)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode Y: %w", err)
+	}
+
+	var curve elliptic.Curve
+	switch key.Crv {
+	case "P-256":
+		curve = elliptic.P256()
+	case "P-384":
+		curve = elliptic.P384()
+	case "P-521":
+		curve = elliptic.P521()
+	default:
+		return nil, fmt.Errorf("unsupported curve: %s", key.Crv)
+	}
+
+	return &ecdsa.PublicKey{
+		Curve: curve,
+		X:     new(big.Int).SetBytes(xBytes),
+		Y:     new(big.Int).SetBytes(yBytes),
+	}, nil
+}
+
+func parseRSAKey(key appleJWK) (*rsa.PublicKey, error) {
+	nBytes, err := base64.RawURLEncoding.DecodeString(key.N)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode N: %w", err)
+	}
+
+	eBytes, err := base64.RawURLEncoding.DecodeString(key.E)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode E: %w", err)
+	}
+
+	return &rsa.PublicKey{
+		N: new(big.Int).SetBytes(nBytes),
+		E: int(new(big.Int).SetBytes(eBytes).Int64()),
+	}, nil
 }
