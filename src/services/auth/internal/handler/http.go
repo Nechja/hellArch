@@ -9,6 +9,8 @@ import (
 	"github.com/nechja/hellarch/auth/internal/config"
 	"github.com/nechja/hellarch/auth/internal/oauth"
 	"github.com/nechja/hellarch/golibs/status"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 )
 
 // HTTPHandler handles HTTP endpoints for OAuth flows
@@ -30,6 +32,7 @@ func (h *HTTPHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/logout", h.handleLogout)
 	mux.HandleFunc("POST /auth/logout", h.handleLogout)
 	mux.HandleFunc("GET /auth/health", h.handleHealth)
+	mux.HandleFunc("GET /auth/providers", h.handleProviders)
 }
 
 const csrfCookieName = "hellarch_csrf"
@@ -37,6 +40,11 @@ const csrfCookieName = "hellarch_csrf"
 func (h *HTTPHandler) handleOAuthLogin(w http.ResponseWriter, r *http.Request) {
 	providerStr := r.PathValue("provider")
 	provider := oauth.Provider(providerStr)
+
+	if !h.auth.IsProviderConfigured(provider) {
+		http.Error(w, "Provider not available", http.StatusNotFound)
+		return
+	}
 
 	redirectURI := r.URL.Query().Get("redirect_uri")
 	if redirectURI == "" {
@@ -67,6 +75,11 @@ func (h *HTTPHandler) handleOAuthLogin(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	providerStr := r.PathValue("provider")
 	provider := oauth.Provider(providerStr)
+
+	if !h.auth.IsProviderConfigured(provider) {
+		http.Error(w, "Provider not available", http.StatusNotFound)
+		return
+	}
 
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
@@ -106,22 +119,41 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 	ipAddress := getClientIP(r)
 	userAgent := r.UserAgent()
 
-	result, err := h.auth.HandleOAuthCallback(r.Context(), provider, code, state, csrfToken, ipAddress, userAgent)
+	// Check if user is already logged in (for account linking)
+	var existingUserID string
+	if sessionCookie, err := r.Cookie("hellarch_session"); err == nil {
+		if userID, err := h.auth.ValidateSession(r.Context(), sessionCookie.Value); err == nil {
+			existingUserID = userID
+		}
+	}
+
+	result, err := h.auth.HandleOAuthCallback(r.Context(), provider, code, state, csrfToken, ipAddress, userAgent, existingUserID)
 	if err != nil {
+		if grpcstatus.Code(err) == codes.AlreadyExists {
+			msg := grpcstatus.Convert(err).Message()
+			if msg == "provider_linked_to_other_account" {
+				http.Redirect(w, r, "/settings?error=provider_taken", http.StatusTemporaryRedirect)
+				return
+			}
+			http.Redirect(w, r, "/login?error=email_conflict", http.StatusTemporaryRedirect)
+			return
+		}
 		slog.Error("oauth callback failed", "error", err, "provider", provider)
 		http.Error(w, "Authentication failed", http.StatusUnauthorized)
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "hellarch_session",
-		Value:    result.SessionToken,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   h.config.SecureCookies,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   24 * 60 * 60, // 24 hours
-	})
+	if !result.WasLinked {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "hellarch_session",
+			Value:    result.SessionToken,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   h.config.SecureCookies,
+			SameSite: http.SameSiteLaxMode,
+			MaxAge:   24 * 60 * 60, // 24 hours
+		})
+	}
 
 	if result.RedirectURI != "" {
 		http.Redirect(w, r, result.RedirectURI, http.StatusTemporaryRedirect)
@@ -256,6 +288,15 @@ func (h *HTTPHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *HTTPHandler) handleProviders(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]any{
+		"providers": h.auth.GetConfiguredProviders(),
+	}); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
+}
+
 func (h *HTTPHandler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	sessionToken := r.Header.Get("X-Session-Token")
 	if sessionToken == "" {
@@ -314,9 +355,23 @@ func (h *HTTPHandler) handleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Fetch linked accounts
+	accounts, err := h.auth.GetLinkedAccounts(r.Context(), userID)
+	if err != nil {
+		slog.Error("failed to get linked accounts", "error", err)
+		accounts = nil
+	}
+
+	// Build provider list
+	var providers []string
+	for _, acc := range accounts {
+		providers = append(providers, acc.Provider)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]string{
-		"user_id": userID,
+	if err := json.NewEncoder(w).Encode(map[string]any{
+		"user_id":          userID,
+		"linked_providers": providers,
 	}); err != nil {
 		slog.Error("failed to encode response", "error", err)
 	}

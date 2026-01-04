@@ -98,7 +98,7 @@ func (h *AuthHandler) GetOAuthURL(ctx context.Context, provider oauth.Provider, 
 	}, nil
 }
 
-func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Provider, code, state, csrfToken, ipAddress, userAgent string) (*AuthResult, error) {
+func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Provider, code, state, csrfToken, ipAddress, userAgent, existingUserID string) (*AuthResult, error) {
 	stateData, err := h.oauthState.GetOAuthState(ctx, state)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid or expired state")
@@ -127,15 +127,28 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 		return nil, status.Error(codes.Internal, "failed to get user info")
 	}
 
-	result, err := h.userService.FindOrCreateFromOAuth(ctx, userInfo)
-	if err != nil {
-		slog.Error("failed to find or create user", "error", err)
-		return nil, err
-	}
+	var result *service.FindOrCreateResult
 
-	if result.IsNewUser {
-		if err := h.userService.PublishCreated(ctx, result.User, userInfo); err != nil {
-			slog.Error("failed to publish user.created event", "error", err, "user_id", result.User.ID)
+	// If user is already logged in, link this provider to their existing account
+	if existingUserID != "" {
+		linkResult, err := h.userService.LinkProviderToUser(ctx, existingUserID, userInfo)
+		if err != nil {
+			slog.Error("failed to link provider to existing user", "error", err, "user_id", existingUserID)
+			return nil, err
+		}
+		result = linkResult
+	} else {
+		findResult, err := h.userService.FindOrCreateFromOAuth(ctx, userInfo)
+		if err != nil {
+			slog.Error("failed to find or create user", "error", err)
+			return nil, err
+		}
+		result = findResult
+
+		if result.IsNewUser {
+			if err := h.userService.PublishCreated(ctx, result.User, userInfo); err != nil {
+				slog.Error("failed to publish user.created event", "error", err, "user_id", result.User.ID)
+			}
 		}
 	}
 
@@ -144,9 +157,14 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 		return nil, status.Error(codes.Internal, "failed to generate tokens")
 	}
 
-	sessionToken, err := h.sessionService.Create(ctx, result.User.ID, ipAddress, userAgent)
-	if err != nil {
-		return nil, err
+	var sessionToken string
+	wasLinked := existingUserID != ""
+
+	if !wasLinked {
+		sessionToken, err = h.sessionService.Create(ctx, result.User.ID, ipAddress, userAgent)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &AuthResult{
@@ -162,6 +180,7 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 			Provider:  string(provider),
 		},
 		RedirectURI: stateInfo["redirect_uri"],
+		WasLinked:   wasLinked,
 	}, nil
 }
 
@@ -232,8 +251,25 @@ func (h *AuthHandler) GetUserByID(ctx context.Context, userID string) (*store.Us
 	return h.userService.FindByID(ctx, userID)
 }
 
+func (h *AuthHandler) GetLinkedAccounts(ctx context.Context, userID string) ([]*store.LinkedAccount, error) {
+	return h.userService.GetLinkedAccounts(ctx, userID)
+}
+
 func (h *AuthHandler) InvalidateSession(ctx context.Context, sessionToken string) error {
 	return h.sessionService.Invalidate(ctx, sessionToken)
+}
+
+func (h *AuthHandler) GetConfiguredProviders() []string {
+	providers := h.oauthService.GetConfiguredProviders()
+	result := make([]string, len(providers))
+	for i, p := range providers {
+		result[i] = string(p)
+	}
+	return result
+}
+
+func (h *AuthHandler) IsProviderConfigured(provider oauth.Provider) bool {
+	return h.oauthService.IsProviderConfigured(provider)
 }
 
 func (h *AuthHandler) validateRedirectURI(redirectURI string) error {

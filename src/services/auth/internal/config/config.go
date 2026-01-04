@@ -25,15 +25,26 @@ type Config struct {
 }
 
 type OAuthConfig struct {
-	Discord ProviderConfig
-	Google  ProviderConfig
-	GitHub  ProviderConfig
+	Discord   ProviderConfig
+	Google    ProviderConfig
+	GitHub    ProviderConfig
+	Apple     AppleConfig
+	Microsoft ProviderConfig
+	Twitch    ProviderConfig
 }
 
 type ProviderConfig struct {
 	ClientID     string
 	ClientSecret string
 	RedirectURI  string
+}
+
+type AppleConfig struct {
+	ClientID       string
+	TeamID         string
+	KeyID          string
+	PrivateKeyPath string
+	RedirectURI    string
 }
 
 func Load() (*Config, error) {
@@ -66,6 +77,23 @@ func Load() (*Config, error) {
 				ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
 				RedirectURI:  sharedconfig.GetEnv("GITHUB_REDIRECT_URI", "http://localhost:5000/api/auth/github/callback"),
 			},
+			Apple: AppleConfig{
+				ClientID:       os.Getenv("APPLE_CLIENT_ID"),
+				TeamID:         os.Getenv("APPLE_TEAM_ID"),
+				KeyID:          os.Getenv("APPLE_KEY_ID"),
+				PrivateKeyPath: os.Getenv("APPLE_PRIVATE_KEY_PATH"),
+				RedirectURI:    sharedconfig.GetEnv("APPLE_REDIRECT_URI", "http://localhost:5000/api/auth/apple/callback"),
+			},
+			Microsoft: ProviderConfig{
+				ClientID:     os.Getenv("MICROSOFT_CLIENT_ID"),
+				ClientSecret: os.Getenv("MICROSOFT_CLIENT_SECRET"),
+				RedirectURI:  sharedconfig.GetEnv("MICROSOFT_REDIRECT_URI", "http://localhost:5000/api/auth/microsoft/callback"),
+			},
+			Twitch: ProviderConfig{
+				ClientID:     os.Getenv("TWITCH_CLIENT_ID"),
+				ClientSecret: os.Getenv("TWITCH_CLIENT_SECRET"),
+				RedirectURI:  sharedconfig.GetEnv("TWITCH_REDIRECT_URI", "http://localhost:5000/api/auth/twitch/callback"),
+			},
 		},
 	}
 
@@ -77,11 +105,15 @@ func Load() (*Config, error) {
 }
 
 func (c *Config) validate() error {
-	if c.OAuth.Discord.ClientID == "" {
-		return fmt.Errorf("DISCORD_CLIENT_ID is required")
-	}
-	if c.OAuth.Discord.ClientSecret == "" {
-		return fmt.Errorf("DISCORD_CLIENT_SECRET is required")
+	hasProvider := c.OAuth.Discord.ClientID != "" ||
+		c.OAuth.Google.ClientID != "" ||
+		c.OAuth.GitHub.ClientID != "" ||
+		c.OAuth.Apple.ClientID != "" ||
+		c.OAuth.Microsoft.ClientID != "" ||
+		c.OAuth.Twitch.ClientID != ""
+
+	if !hasProvider {
+		return fmt.Errorf("at least one OAuth provider must be configured")
 	}
 	return nil
 }

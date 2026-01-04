@@ -4,8 +4,11 @@ import { useRoute } from 'vue-router'
 import { AppLogo } from '../components/atoms'
 import { OAuthProviderButton } from '../components/molecules'
 
+type Provider = 'discord' | 'github' | 'google' | 'apple' | 'microsoft' | 'twitch'
+
 const route = useRoute()
-const loading = ref(false)
+const providers = ref<Provider[]>([])
+const loadingProvider = ref<Provider | null>(null)
 const error = ref<string | null>(null)
 
 const returnUrl = computed(() => {
@@ -13,21 +16,33 @@ const returnUrl = computed(() => {
   return url || '/app'
 })
 
-onMounted(() => {
-  // Check for error from OAuth callback
+const errorMessages: Record<string, string> = {
+  access_denied: 'Login was cancelled',
+  email_conflict: 'This email is already linked to an account. Sign in with your original provider, then link additional providers from Settings.'
+}
+
+onMounted(async () => {
+  try {
+    const res = await fetch('/api/auth/providers')
+    if (res.ok) {
+      const data = await res.json()
+      providers.value = data.providers || []
+    }
+  } catch {
+    console.error('Failed to fetch providers')
+  }
+
   const errorParam = route.query.error as string
   if (errorParam) {
-    error.value = errorParam === 'access_denied'
-      ? 'Login was cancelled'
-      : 'Login failed. Please try again.'
+    error.value = errorMessages[errorParam] ?? 'Login failed. Please try again.'
   }
 })
 
-function loginWithDiscord() {
-  loading.value = true
+function loginWithProvider(provider: Provider) {
+  loadingProvider.value = provider
   error.value = null
   const redirectParam = encodeURIComponent(returnUrl.value)
-  window.location.href = `/api/auth/discord/login?redirect=${redirectParam}`
+  window.location.href = `/api/auth/${provider}/login?redirect=${redirectParam}`
 }
 </script>
 
@@ -62,29 +77,19 @@ function loginWithDiscord() {
                 {{ error }}
               </v-alert>
 
-              <OAuthProviderButton
-                provider="discord"
-                :loading="loading"
-                :disabled="loading"
-                @click="loginWithDiscord"
-              />
-
-              <v-divider class="my-6">
-                <span class="text-caption text-disabled px-2">or</span>
-              </v-divider>
-
-              <div class="text-center">
-                <p class="text-body-2 text-medium-emphasis mb-4">
-                  More sign-in options coming soon
-                </p>
-                <div class="d-flex justify-center ga-3">
-                  <v-avatar size="36" class="provider-coming-soon">
-                    <v-icon size="18" color="disabled">mdi-github</v-icon>
-                  </v-avatar>
-                  <v-avatar size="36" class="provider-coming-soon">
-                    <v-icon size="18" color="disabled">mdi-google</v-icon>
-                  </v-avatar>
-                </div>
+              <p class="text-body-2 text-medium-emphasis text-center mb-4">
+                Choose a provider
+              </p>
+              <div class="provider-grid">
+                <OAuthProviderButton
+                  v-for="provider in providers"
+                  :key="provider"
+                  :provider="provider"
+                  :loading="loadingProvider === provider"
+                  :disabled="loadingProvider !== null"
+                  compact
+                  @click="loginWithProvider(provider)"
+                />
               </div>
             </v-card-text>
           </v-card>
@@ -126,8 +131,10 @@ function loginWithDiscord() {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.provider-coming-soon {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.provider-grid {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 </style>

@@ -11,9 +11,12 @@ import (
 type Provider string
 
 const (
-	ProviderDiscord Provider = "discord"
-	ProviderGoogle  Provider = "google"
-	ProviderGitHub  Provider = "github"
+	ProviderDiscord   Provider = "discord"
+	ProviderGoogle    Provider = "google"
+	ProviderGitHub    Provider = "github"
+	ProviderApple     Provider = "apple"
+	ProviderMicrosoft Provider = "microsoft"
+	ProviderTwitch    Provider = "twitch"
 )
 
 type UserInfo struct {
@@ -25,7 +28,8 @@ type UserInfo struct {
 }
 
 type Service struct {
-	configs map[Provider]*oauth2.Config
+	configs     map[Provider]*oauth2.Config
+	appleConfig *config.AppleConfig
 }
 
 func NewService(cfg config.OAuthConfig) *Service {
@@ -70,7 +74,50 @@ func NewService(cfg config.OAuthConfig) *Service {
 		}
 	}
 
-	return &Service{configs: configs}
+	var appleConfig *config.AppleConfig
+	if cfg.Apple.ClientID != "" {
+		appleConfig = &cfg.Apple
+		configs[ProviderApple] = &oauth2.Config{
+			ClientID:    cfg.Apple.ClientID,
+			RedirectURL: cfg.Apple.RedirectURI,
+			Scopes:      []string{"name", "email"},
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  "https://appleid.apple.com/auth/authorize",
+				TokenURL: "https://appleid.apple.com/auth/token",
+			},
+		}
+	}
+
+	if cfg.Microsoft.ClientID != "" {
+		configs[ProviderMicrosoft] = &oauth2.Config{
+			ClientID:     cfg.Microsoft.ClientID,
+			ClientSecret: cfg.Microsoft.ClientSecret,
+			RedirectURL:  cfg.Microsoft.RedirectURI,
+			Scopes:       []string{"openid", "email", "profile", "User.Read"},
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+				TokenURL: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+			},
+		}
+	}
+
+	if cfg.Twitch.ClientID != "" {
+		configs[ProviderTwitch] = &oauth2.Config{
+			ClientID:     cfg.Twitch.ClientID,
+			ClientSecret: cfg.Twitch.ClientSecret,
+			RedirectURL:  cfg.Twitch.RedirectURI,
+			Scopes:       []string{"user:read:email"},
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  "https://id.twitch.tv/oauth2/authorize",
+				TokenURL: "https://id.twitch.tv/oauth2/token",
+			},
+		}
+	}
+
+	return &Service{
+		configs:     configs,
+		appleConfig: appleConfig,
+	}
 }
 
 func (s *Service) GetAuthURL(provider Provider, state string) (string, error) {
@@ -86,6 +133,15 @@ func (s *Service) Exchange(ctx context.Context, provider Provider, code string) 
 	if !ok {
 		return nil, fmt.Errorf("provider %s not configured", provider)
 	}
+
+	if provider == ProviderApple && s.appleConfig != nil {
+		clientSecret, err := generateAppleClientSecret(s.appleConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate apple client secret: %w", err)
+		}
+		cfg.ClientSecret = clientSecret
+	}
+
 	return cfg.Exchange(ctx, code)
 }
 
@@ -97,6 +153,12 @@ func (s *Service) GetUserInfo(ctx context.Context, provider Provider, token *oau
 		return s.getGoogleUserInfo(ctx, token)
 	case ProviderGitHub:
 		return s.getGitHubUserInfo(ctx, token)
+	case ProviderApple:
+		return s.getAppleUserInfo(ctx, token)
+	case ProviderMicrosoft:
+		return s.getMicrosoftUserInfo(ctx, token)
+	case ProviderTwitch:
+		return s.getTwitchUserInfo(ctx, token)
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", provider)
 	}
@@ -105,4 +167,12 @@ func (s *Service) GetUserInfo(ctx context.Context, provider Provider, token *oau
 func (s *Service) IsProviderConfigured(provider Provider) bool {
 	_, ok := s.configs[provider]
 	return ok
+}
+
+func (s *Service) GetConfiguredProviders() []Provider {
+	providers := make([]Provider, 0, len(s.configs))
+	for p := range s.configs {
+		providers = append(providers, p)
+	}
+	return providers
 }

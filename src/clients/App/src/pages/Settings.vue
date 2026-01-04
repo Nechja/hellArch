@@ -1,15 +1,51 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { SectionHeader, Badge, UserAvatar } from '../components/atoms'
 import { LinkedAccountItem } from '../components/molecules'
-import { useNotifications } from '../composables'
+import { useNotifications, useAuth } from '../composables'
 import type { UserProfile } from '@hellarch/types'
 
 const props = defineProps<{
   user: UserProfile | null
 }>()
 
+const route = useRoute()
+const router = useRouter()
 const { success, error: notifyError } = useNotifications()
+type Provider = 'discord' | 'github' | 'google' | 'apple' | 'microsoft' | 'twitch'
+
+const { state: authState, checkAuth } = useAuth()
+const availableProviders = ref<Provider[]>([])
+const providersLoading = ref(true)
+const providersError = ref(false)
+
+onMounted(async () => {
+  await checkAuth()
+
+  try {
+    const res = await fetch('/api/auth/providers')
+    if (res.ok) {
+      const data = await res.json()
+      availableProviders.value = data.providers || []
+    } else {
+      providersError.value = true
+    }
+  } catch {
+    console.error('Failed to fetch providers')
+    providersError.value = true
+  } finally {
+    providersLoading.value = false
+  }
+
+  if (route.query.error === 'provider_taken') {
+    notifyError('Link Failed', 'This provider account is already linked to a different user.')
+    router.replace({ path: route.path, query: {} })
+  }
+})
+
+const isProviderConnected = (provider: string) =>
+  authState.value.linkedProviders.includes(provider)
 
 const displayName = ref(props.user?.display_name || '')
 const originalDisplayName = ref(props.user?.display_name || '')
@@ -17,6 +53,10 @@ const saving = ref(false)
 const deleteDialogOpen = ref(false)
 
 const hasChanges = computed(() => displayName.value !== originalDisplayName.value)
+
+function connectProvider(provider: string) {
+  window.location.href = `/api/auth/${provider}/login?redirect=/app/settings`
+}
 
 watch(() => props.user, (newUser) => {
   if (newUser) {
@@ -126,11 +166,31 @@ async function saveProfile() {
         <SectionHeader title="Linked Accounts" />
         <v-card class="settings-card mb-8">
           <v-card-text class="pa-2">
-            <LinkedAccountItem provider="discord" connected />
-            <v-divider class="mx-4" />
-            <LinkedAccountItem provider="github" coming-soon />
-            <v-divider class="mx-4" />
-            <LinkedAccountItem provider="google" coming-soon />
+            <div v-if="providersLoading" class="d-flex justify-center align-center py-8">
+              <v-progress-circular indeterminate color="primary" />
+            </div>
+            <div v-else-if="providersError" class="text-center py-6">
+              <v-icon size="32" color="error" class="mb-2">mdi-alert-circle-outline</v-icon>
+              <p class="text-body-2 text-medium-emphasis mb-0">
+                Failed to load providers
+              </p>
+            </div>
+            <div v-else-if="availableProviders.length === 0" class="text-center py-6">
+              <v-icon size="32" color="medium-emphasis" class="mb-2">mdi-link-off</v-icon>
+              <p class="text-body-2 text-medium-emphasis mb-0">
+                No login providers configured
+              </p>
+            </div>
+            <template v-else>
+              <template v-for="(provider, index) in availableProviders" :key="provider">
+                <LinkedAccountItem
+                  :provider="provider"
+                  :connected="isProviderConnected(provider)"
+                  @connect="connectProvider(provider)"
+                />
+                <v-divider v-if="index < availableProviders.length - 1" class="mx-4" />
+              </template>
+            </template>
           </v-card-text>
         </v-card>
 

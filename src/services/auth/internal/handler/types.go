@@ -18,6 +18,7 @@ type AuthResult struct {
 	ExpiresIn    int64
 	User         *UserInfo
 	RedirectURI  string
+	WasLinked    bool
 }
 
 type UserInfo struct {

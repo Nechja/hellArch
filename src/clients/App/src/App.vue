@@ -12,6 +12,8 @@ const { connect, disconnect, isConnected } = useSignalR()
 const user = ref<UserProfile | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const retryCount = ref(0)
+const maxRetries = 5
 
 const hideNav = computed(() => route.meta.hideNav === true)
 const isPublicRoute = computed(() => route.meta.public === true)
@@ -34,6 +36,7 @@ async function fetchUser() {
   try {
     const res = await fetch('/api/user/me')
     if (res.ok) {
+      retryCount.value = 0
       user.value = await res.json()
       // Connect to SignalR once authenticated
       if (!isConnected()) {
@@ -41,6 +44,13 @@ async function fetchUser() {
       }
     } else if (res.status === 401) {
       // Not authenticated - redirect will happen via gateway
+    } else if (res.status === 404) {
+      if (retryCount.value < maxRetries) {
+        retryCount.value++
+        setTimeout(fetchUser, 2000)
+      } else {
+        error.value = 'Profile creation is taking longer than expected. Please try again later.'
+      }
     } else {
       error.value = 'Failed to load user data'
     }
