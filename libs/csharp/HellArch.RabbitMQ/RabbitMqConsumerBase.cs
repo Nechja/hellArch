@@ -15,26 +15,19 @@ public abstract class RabbitMqConsumerBase(
     ILogger logger) : BackgroundService
 {
     private readonly SemaphoreSlim _reconnectLock = new(1, 1);
-    private readonly Lock _connectionLock = new();
-    private IConnection? _connection;
-    private IChannel? _channel;
+
+    /// <summary>
+    /// Lock for synchronizing access to Connection and Channel.
+    /// Derived classes should use this when atomicity is required.
+    /// </summary>
+    protected Lock ConnectionLock { get; } = new();
+
+    protected IConnection? Connection { get; set; }
+    protected IChannel? Channel { get; set; }
 
     protected IRabbitMqConnectionFactory ConnectionFactory { get; } = connectionFactory;
     protected IConfiguration Configuration { get; } = configuration;
     protected ILogger Logger { get; } = logger;
-
-    protected IConnection? Connection
-    {
-        get { using (_connectionLock.EnterScope()) { return _connection; } }
-        set { using (_connectionLock.EnterScope()) { _connection = value; } }
-    }
-
-    protected IChannel? Channel
-    {
-        get { using (_connectionLock.EnterScope()) { return _channel; } }
-        set { using (_connectionLock.EnterScope()) { _channel = value; } }
-    }
-
     protected string QueueName { get; set; } = null!;
 
     /// <summary>
@@ -44,9 +37,9 @@ public abstract class RabbitMqConsumerBase(
     {
         get
         {
-            using (_connectionLock.EnterScope())
+            using (ConnectionLock.EnterScope())
             {
-                return _connection?.IsOpen == true && _channel?.IsOpen == true;
+                return Connection?.IsOpen == true && Channel?.IsOpen == true;
             }
         }
     }
@@ -109,12 +102,12 @@ public abstract class RabbitMqConsumerBase(
         IChannel? channelToClose;
         IConnection? connectionToClose;
 
-        using (_connectionLock.EnterScope())
+        using (ConnectionLock.EnterScope())
         {
-            channelToClose = _channel;
-            connectionToClose = _connection;
-            _channel = null;
-            _connection = null;
+            channelToClose = Channel;
+            connectionToClose = Connection;
+            Channel = null;
+            Connection = null;
         }
 
         try
@@ -150,10 +143,10 @@ public abstract class RabbitMqConsumerBase(
 
     public override void Dispose()
     {
-        using (_connectionLock.EnterScope())
+        using (ConnectionLock.EnterScope())
         {
-            _channel?.Dispose();
-            _connection?.Dispose();
+            Channel?.Dispose();
+            Connection?.Dispose();
         }
         _reconnectLock.Dispose();
         base.Dispose();
