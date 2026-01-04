@@ -44,7 +44,7 @@ public sealed class DlqConsumer(
 
     private readonly int _maxRetries = configuration.GetValue("DLQ:MaxRetries", 3);
     private readonly int _baseDelaySeconds = configuration.GetValue("DLQ:BaseDelaySeconds", 5);
-    private readonly Lock _publishChannelLock = new();
+    private readonly SemaphoreSlim _publishChannelLock = new(1, 1);
 
     private IChannel? _publishChannel;
     private volatile bool _stopping;
@@ -248,34 +248,37 @@ public sealed class DlqConsumer(
 
         var mainExchange = Configuration["RabbitMQ:MainExchange"] ?? "hellarch.events";
 
-        IChannel? channelToUse;
-        using (_publishChannelLock.EnterScope())
+        await _publishChannelLock.WaitAsync(ct);
+        try
         {
             if (_stopping)
             {
                 Logger.LogWarning("Skipping retry - service is stopping");
                 return;
             }
-            channelToUse = _publishChannel;
-        }
 
-        if (channelToUse is null)
+            if (_publishChannel is null)
+            {
+                Logger.LogError("Cannot retry message - publish channel is null");
+                return;
+            }
+
+            await _publishChannel.BasicPublishAsync(
+                exchange: mainExchange,
+                routingKey: routingKey,
+                mandatory: false,
+                basicProperties: properties,
+                body: ea.Body,
+                cancellationToken: ct);
+
+            Logger.LogInformation(
+                "Retried event {EventType} to {Exchange} with routing key {RoutingKey}",
+                eventType, mainExchange, routingKey);
+        }
+        finally
         {
-            Logger.LogError("Cannot retry message - publish channel is null");
-            return;
+            _publishChannelLock.Release();
         }
-
-        await channelToUse.BasicPublishAsync(
-            exchange: mainExchange,
-            routingKey: routingKey,
-            mandatory: false,
-            basicProperties: properties,
-            body: ea.Body,
-            cancellationToken: ct);
-
-        Logger.LogInformation(
-            "Retried event {EventType} to {Exchange} with routing key {RoutingKey}",
-            eventType, mainExchange, routingKey);
     }
 
     private static int GetRetryCount(IDictionary<string, object?>? headers)
@@ -323,11 +326,16 @@ public sealed class DlqConsumer(
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         IChannel? channelToClose;
-        using (_publishChannelLock.EnterScope())
+        await _publishChannelLock.WaitAsync(cancellationToken);
+        try
         {
             _stopping = true;
             channelToClose = _publishChannel;
             _publishChannel = null;
+        }
+        finally
+        {
+            _publishChannelLock.Release();
         }
 
         if (channelToClose is not null)
@@ -335,6 +343,13 @@ public sealed class DlqConsumer(
             await channelToClose.CloseAsync(cancellationToken);
             channelToClose.Dispose();
         }
+
         await base.StopAsync(cancellationToken);
+    }
+
+    public override void Dispose()
+    {
+        _publishChannelLock.Dispose();
+        base.Dispose();
     }
 }
