@@ -17,6 +17,7 @@ const (
 	ProviderApple     Provider = "apple"
 	ProviderMicrosoft Provider = "microsoft"
 	ProviderTwitch    Provider = "twitch"
+	ProviderHellArch  Provider = "hellarch"
 )
 
 type UserInfo struct {
@@ -28,8 +29,9 @@ type UserInfo struct {
 }
 
 type Service struct {
-	configs     map[Provider]*oauth2.Config
-	appleConfig *config.AppleConfig
+	configs         map[Provider]*oauth2.Config
+	appleConfig     *config.AppleConfig
+	hellarchBaseURL string
 }
 
 func NewService(cfg config.OAuthConfig) *Service {
@@ -114,9 +116,30 @@ func NewService(cfg config.OAuthConfig) *Service {
 		}
 	}
 
+	var hellarchBaseURL string
+	if cfg.HellArch.ClientID != "" {
+		hellarchBaseURL = cfg.HellArch.IdentityURL
+		// AuthURL uses public URL (browser redirect), TokenURL uses internal URL (server-to-server)
+		publicURL := cfg.HellArch.IdentityPublicURL
+		if publicURL == "" {
+			publicURL = hellarchBaseURL
+		}
+		configs[ProviderHellArch] = &oauth2.Config{
+			ClientID:     cfg.HellArch.ClientID,
+			ClientSecret: cfg.HellArch.ClientSecret,
+			RedirectURL:  cfg.HellArch.RedirectURI,
+			Scopes:       []string{"openid", "profile", "email"},
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  publicURL + "/api/identity/authorize",
+				TokenURL: hellarchBaseURL + "/identity/token",
+			},
+		}
+	}
+
 	return &Service{
-		configs:     configs,
-		appleConfig: appleConfig,
+		configs:         configs,
+		appleConfig:     appleConfig,
+		hellarchBaseURL: hellarchBaseURL,
 	}
 }
 
@@ -159,6 +182,8 @@ func (s *Service) GetUserInfo(ctx context.Context, provider Provider, token *oau
 		return s.getMicrosoftUserInfo(ctx, token)
 	case ProviderTwitch:
 		return s.getTwitchUserInfo(ctx, token)
+	case ProviderHellArch:
+		return s.getHellArchUserInfo(ctx, token)
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", provider)
 	}

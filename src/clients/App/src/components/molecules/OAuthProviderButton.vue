@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-type Provider = 'discord' | 'github' | 'google' | 'apple' | 'microsoft' | 'twitch'
+type Provider = 'discord' | 'github' | 'google' | 'apple' | 'microsoft' | 'twitch' | 'hellarch'
 
 const props = defineProps<{
   provider: Provider
@@ -50,6 +50,12 @@ const providerConfig = {
     hoverColor: '#7c3aed',
     icon: 'mdi-twitch',
     label: 'Twitch',
+  },
+  hellarch: {
+    color: '#ff4d8d',
+    hoverColor: '#e63b75',
+    icon: 'mdi-key',
+    label: 'HellArch',
   },
 }
 

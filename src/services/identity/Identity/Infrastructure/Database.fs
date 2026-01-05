@@ -121,6 +121,30 @@ module Database =
                 return Error (IdentityError.DatabaseError ex.Message)
         }
 
+    let createClient (connectionString: string) (client: HellArch.DataTypes.Identity.OAuthClient) =
+        async {
+            try
+                do!
+                    connectionString
+                    |> Sql.connect
+                    |> Sql.query "INSERT INTO oauth_clients (id, secret_hash, name, redirect_uris, is_active, created_at) VALUES (@id, @secret_hash, @name, @redirect_uris, @is_active, @created_at)"
+                    |> Sql.parameters [
+                        "id", Sql.string client.Id
+                        "secret_hash", Sql.string client.SecretHash
+                        "name", Sql.string client.Name
+                        "redirect_uris", Sql.stringArray (client.RedirectUris |> List.toArray)
+                        "is_active", Sql.bool client.IsActive
+                        "created_at", Sql.timestamptz client.CreatedAt
+                    ]
+                    |> Sql.executeNonQueryAsync
+                    |> Async.AwaitTask
+                    |> Async.Ignore
+
+                return Ok ()
+            with ex ->
+                return Error (IdentityError.DatabaseError ex.Message)
+        }
+
     // Authorization code operations
 
     let createAuthorizationCode
@@ -148,7 +172,7 @@ module Database =
                         "scope", Sql.string scope
                         "code_challenge", Sql.stringOrNone codeChallenge
                         "code_challenge_method", Sql.stringOrNone codeChallengeMethod
-                        "expires_at", Sql.timestamp expiresAt
+                        "expires_at", Sql.timestamptz expiresAt
                     ]
                     |> Sql.executeNonQueryAsync
                     |> Async.AwaitTask
@@ -202,7 +226,7 @@ module Database =
                         "user_id", Sql.uuid userId
                         "client_id", Sql.string clientId
                         "scope", Sql.string scope
-                        "expires_at", Sql.timestamp expiresAt
+                        "expires_at", Sql.timestamptz expiresAt
                     ]
                     |> Sql.executeNonQueryAsync
                     |> Async.AwaitTask
@@ -253,7 +277,7 @@ module Database =
                         "user_id", Sql.uuid userId
                         "client_id", Sql.string clientId
                         "scope", Sql.string scope
-                        "expires_at", Sql.timestamp expiresAt
+                        "expires_at", Sql.timestamptz expiresAt
                     ]
                     |> Sql.executeNonQueryAsync
                     |> Async.AwaitTask

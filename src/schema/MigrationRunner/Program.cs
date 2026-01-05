@@ -11,7 +11,7 @@ var activitySource = new ActivitySource(ServiceName);
 if (args.Length < 2)
 {
     Console.Error.WriteLine("Usage: MigrationRunner <context> <connection-string>");
-    Console.Error.WriteLine("  context: auth | user | events | files");
+    Console.Error.WriteLine("  context: auth | user | events | files | identity");
     return 1;
 }
 
@@ -34,6 +34,7 @@ try
         "user" => RunUserMigrations(connectionString),
         "events" => RunEventsMigrations(connectionString),
         "files" => RunFilesMigrations(connectionString),
+        "identity" => RunIdentityMigrations(connectionString),
         _ => throw new ArgumentException($"Unknown context: {contextType}")
     };
 
@@ -134,6 +135,30 @@ int RunFilesMigrations(string connString)
         .Options;
 
     using var context = new FilesDbContext(options);
+    var pending = context.Database.GetPendingMigrations().ToList();
+
+    using var migrationActivity = activitySource.StartActivity("migrations.apply");
+    migrationActivity?.SetTag("db.migrations.pending", pending.Count);
+
+    foreach (var migration in pending)
+    {
+        using var stepActivity = activitySource.StartActivity("migration.step");
+        stepActivity?.SetTag("db.migration.name", migration);
+        Console.WriteLine($"    Applying: {migration}");
+    }
+
+    context.Database.Migrate();
+    return pending.Count;
+}
+
+int RunIdentityMigrations(string connString)
+{
+    var options = new DbContextOptionsBuilder<IdentityDbContext>()
+        .UseNpgsql(connString)
+        .UseSnakeCaseNamingConvention()
+        .Options;
+
+    using var context = new IdentityDbContext(options);
     var pending = context.Database.GetPendingMigrations().ToList();
 
     using var migrationActivity = activitySource.StartActivity("migrations.apply");

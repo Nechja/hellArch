@@ -97,6 +97,8 @@ module Handlers =
                         let sessionId = TokenGenerator.generateToken 32
                         let session = { Request = request; CreatedAt = DateTime.UtcNow }
                         authSessions.[sessionId] <- session
+                        printfn $"[AUTH] Created session: {sessionId}"
+                        printfn $"[AUTH] Total sessions: {authSessions.Count}"
 
                         let loginUrl = Views.loginUrl config.ClientBaseUrl sessionId
                         ctx.Response.Redirect(loginUrl)
@@ -158,9 +160,12 @@ module Handlers =
     let handleRegister (config: Config) (ctx: HttpContext) =
         task {
             let! body = JsonSerializer.DeserializeAsync<RegisterBody>(ctx.Request.Body, jsonOptions)
+            printfn $"[REGISTER] Looking for session: {body.Session}"
+            printfn $"[REGISTER] Available sessions: {authSessions.Keys |> Seq.toList}"
 
             match authSessions.TryGetValue(body.Session) with
             | false, _ ->
+                printfn "[REGISTER] Session NOT found!"
                 do! writeJson ctx 400 {| error = "invalid_session" |}
             | true, session ->
                 if DateTime.UtcNow - session.CreatedAt > TimeSpan.FromMinutes(10.0) then

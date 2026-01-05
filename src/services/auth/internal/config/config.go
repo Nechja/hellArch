@@ -31,6 +31,15 @@ type OAuthConfig struct {
 	Apple     AppleConfig
 	Microsoft ProviderConfig
 	Twitch    ProviderConfig
+	HellArch  HellArchConfig
+}
+
+type HellArchConfig struct {
+	ClientID          string
+	ClientSecret      string
+	RedirectURI       string
+	IdentityURL       string // Internal URL for server-to-server (token, userinfo)
+	IdentityPublicURL string // Public URL for browser redirects (authorize)
 }
 
 type ProviderConfig struct {
@@ -94,6 +103,13 @@ func Load() (*Config, error) {
 				ClientSecret: os.Getenv("TWITCH_CLIENT_SECRET"),
 				RedirectURI:  sharedconfig.GetEnv("TWITCH_REDIRECT_URI", "http://localhost:5000/api/auth/twitch/callback"),
 			},
+			HellArch: HellArchConfig{
+				ClientID:          os.Getenv("HELLARCH_CLIENT_ID"),
+				ClientSecret:      os.Getenv("HELLARCH_CLIENT_SECRET"),
+				RedirectURI:       sharedconfig.GetEnv("HELLARCH_REDIRECT_URI", "http://localhost:5000/api/auth/hellarch/callback"),
+				IdentityURL:       sharedconfig.GetEnv("HELLARCH_IDENTITY_URL", "http://localhost:5010"),
+				IdentityPublicURL: sharedconfig.GetEnv("HELLARCH_IDENTITY_PUBLIC_URL", "http://localhost:5000"),
+			},
 		},
 	}
 
@@ -110,7 +126,8 @@ func (c *Config) validate() error {
 		c.OAuth.GitHub.ClientID != "" ||
 		c.OAuth.Apple.ClientID != "" ||
 		c.OAuth.Microsoft.ClientID != "" ||
-		c.OAuth.Twitch.ClientID != ""
+		c.OAuth.Twitch.ClientID != "" ||
+		c.OAuth.HellArch.ClientID != ""
 
 	if !hasProvider {
 		return fmt.Errorf("at least one OAuth provider must be configured")

@@ -95,6 +95,30 @@ services:
     networks:
       - hellarch
 
+  identity-db:
+    image: hellarch-identity-db
+    build:
+      context: ../..
+      dockerfile: infra/dbs/identity-db/Dockerfile
+    container_name: hellarch-identity-db
+    environment:
+      POSTGRES_USER: hellarch
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hellarch}
+      POSTGRES_DB: identity_db
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      HELLARCH_ENV: development
+    ports:
+      - "5437:5432"
+    volumes:
+      - identity-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hellarch -d identity_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hellarch
+
   minio:
     image: minio/minio:latest
     container_name: hellarch-minio
@@ -150,6 +174,7 @@ volumes:
   user-db-data:
   events-db-data:
   files-db-data:
+  identity-db-data:
   minio-data:
   redis-data:
   rabbitmq-data:

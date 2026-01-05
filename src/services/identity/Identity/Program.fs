@@ -7,11 +7,49 @@ open Microsoft.Extensions.Logging
 open OpenTelemetry.Resources
 open OpenTelemetry.Trace
 open Identity.Api
+open Identity.Infrastructure
 
 let getEnv name defaultValue =
     match Environment.GetEnvironmentVariable(name) with
     | null | "" -> defaultValue
     | value -> value
+
+let getEnvOpt name =
+    match Environment.GetEnvironmentVariable(name) with
+    | null | "" -> None
+    | value -> Some value
+
+let seedClientIfConfigured (connectionString: string) =
+    let clientId = getEnvOpt "IDENTITY_SEED_CLIENT_ID"
+    let clientSecret = getEnvOpt "IDENTITY_SEED_CLIENT_SECRET"
+    let redirectUris = getEnv "IDENTITY_SEED_REDIRECT_URIS" "http://localhost:5000/api/auth/hellarch/callback"
+
+    match clientId, clientSecret with
+    | Some id, Some secret ->
+        // Check if client already exists
+        match Database.getClient connectionString id |> Async.RunSynchronously with
+        | Ok (Some _) ->
+            printfn $"[Seed] Client '{id}' already exists, skipping"
+        | Ok None ->
+            // Hash the secret and create client
+            let secretHash = PasswordHasher.hash secret
+            let redirectUriList = redirectUris.Split(',') |> Array.map (fun s -> s.Trim()) |> Array.toList
+
+            let client: HellArch.DataTypes.Identity.OAuthClient = {
+                Id = id
+                SecretHash = secretHash
+                Name = "HellArch Auth Service"
+                RedirectUris = redirectUriList
+                IsActive = true
+                CreatedAt = DateTime.Now
+            }
+
+            match Database.createClient connectionString client |> Async.RunSynchronously with
+            | Ok () -> printfn $"[Seed] Created OAuth client '{id}' with {redirectUriList.Length} redirect URI(s)"
+            | Error err -> printfn $"[Seed] Failed to create client: {err}"
+        | Error err ->
+            printfn $"[Seed] Error checking for existing client: {err}"
+    | _ -> ()
 
 [<EntryPoint>]
 let main args =
@@ -68,6 +106,9 @@ let main args =
     app.MapGet("/identity/health", Func<HttpContext, _>(Handlers.handleHealth)) |> ignore
 
     app.Urls.Add($"http://0.0.0.0:{httpPort}")
+
+    // Seed client if configured
+    seedClientIfConfigured connectionString
 
     printfn $"Identity service starting on port {httpPort}"
     app.Run()
