@@ -41,7 +41,7 @@ let seedClientIfConfigured (connectionString: string) =
                 Name = "HellArch Auth Service"
                 RedirectUris = redirectUriList
                 IsActive = true
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             }
 
             match Database.createClient connectionString client |> Async.RunSynchronously with
