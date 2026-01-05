@@ -66,6 +66,21 @@ module Database =
                 return Error (IdentityError.DatabaseError ex.Message)
         }
 
+    let private isUniqueViolation (ex: exn) =
+        match ex with
+        | :? Npgsql.PostgresException as pgEx -> pgEx.SqlState = "23505"
+        | :? AggregateException as aggEx ->
+            aggEx.InnerExceptions
+            |> Seq.exists (fun inner ->
+                match inner with
+                | :? Npgsql.PostgresException as pgEx -> pgEx.SqlState = "23505"
+                | _ -> false)
+        | _ when ex.InnerException <> null ->
+            match ex.InnerException with
+            | :? Npgsql.PostgresException as pgEx -> pgEx.SqlState = "23505"
+            | _ -> false
+        | _ -> false
+
     let createUser (connectionString: string) (email: string) (username: string) (passwordHash: string) =
         async {
             try
@@ -86,7 +101,7 @@ module Database =
                     | [ id ] -> Ok id
                     | _ -> Error (IdentityError.DatabaseError "Failed to create user")
             with
-            | :? Npgsql.PostgresException as ex when ex.SqlState = "23505" ->
+            | ex when isUniqueViolation ex ->
                 return Error (IdentityError.UserExists email)
             | ex ->
                 return Error (IdentityError.DatabaseError ex.Message)

@@ -51,7 +51,7 @@ module Handlers =
         | IdentityError.NotFound msg -> msg
         | IdentityError.ValidationError msg -> msg
         | IdentityError.InvalidCredentials -> "Invalid email or password"
-        | IdentityError.UserExists email -> $"User with email {email} already exists"
+        | IdentityError.UserExists _ -> "Email already registered"
         | IdentityError.InvalidClient -> "Invalid client"
         | IdentityError.InvalidRedirectUri -> "Invalid redirect URI"
         | IdentityError.InvalidAuthorizationCode -> "Invalid authorization code"
@@ -97,8 +97,6 @@ module Handlers =
                         let sessionId = TokenGenerator.generateToken 32
                         let session = { Request = request; CreatedAt = DateTime.UtcNow }
                         authSessions.[sessionId] <- session
-                        printfn $"[AUTH] Created session: {sessionId}"
-                        printfn $"[AUTH] Total sessions: {authSessions.Count}"
 
                         let loginUrl = Views.loginUrl config.ClientBaseUrl sessionId
                         ctx.Response.Redirect(loginUrl)
@@ -109,12 +107,14 @@ module Handlers =
         task {
             let! body = JsonSerializer.DeserializeAsync<LoginBody>(ctx.Request.Body, jsonOptions)
 
-            match authSessions.TryRemove(body.Session) with
+            // Use TryGetValue first - only remove session on successful login
+            match authSessions.TryGetValue(body.Session) with
             | false, _ ->
                 do! writeJson ctx 400 {| error = "invalid_session" |}
             | true, session ->
                 // Check session expiry (10 minutes)
                 if DateTime.UtcNow - session.CreatedAt > TimeSpan.FromMinutes(10.0) then
+                    authSessions.TryRemove(body.Session) |> ignore
                     do! writeJson ctx 400 {| error = "session_expired" |}
                 else
                     let! userResult = Database.getUserByEmail config.ConnectionString body.Email |> Async.StartAsTask
@@ -130,7 +130,8 @@ module Handlers =
                         elif not (PasswordHasher.verify body.Password user.PasswordHash) then
                             do! writeJson ctx 401 {| error = "invalid_credentials" |}
                         else
-                            // Generate authorization code
+                            // Login successful - remove session and generate authorization code
+                            authSessions.TryRemove(body.Session) |> ignore
                             let code = TokenGenerator.generateAuthorizationCode()
                             let expiresAt = DateTime.UtcNow.Add(config.AuthCodeTtl)
                             let scope = session.Request.Scope |> Option.defaultValue "openid"
@@ -160,12 +161,9 @@ module Handlers =
     let handleRegister (config: Config) (ctx: HttpContext) =
         task {
             let! body = JsonSerializer.DeserializeAsync<RegisterBody>(ctx.Request.Body, jsonOptions)
-            printfn $"[REGISTER] Looking for session: {body.Session}"
-            printfn $"[REGISTER] Available sessions: {authSessions.Keys |> Seq.toList}"
 
             match authSessions.TryGetValue(body.Session) with
             | false, _ ->
-                printfn "[REGISTER] Session NOT found!"
                 do! writeJson ctx 400 {| error = "invalid_session" |}
             | true, session ->
                 if DateTime.UtcNow - session.CreatedAt > TimeSpan.FromMinutes(10.0) then
