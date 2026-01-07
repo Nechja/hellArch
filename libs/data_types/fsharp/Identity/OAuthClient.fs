@@ -7,7 +7,7 @@ type OAuthClient = {
     Id: string
     SecretHash: string
     Name: string
-    RedirectUris: string[]
+    RedirectUris: string list
     IsActive: bool
     CreatedAt: DateTime
 }

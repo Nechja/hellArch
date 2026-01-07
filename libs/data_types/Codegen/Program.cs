@@ -178,6 +178,14 @@ void GenerateGo(TypeDef def, string domain, string outDir)
 
 string CSharpToGo(string type, bool nullable)
 {
+    // Handle T[] array syntax
+    if (type.EndsWith("[]", StringComparison.Ordinal))
+    {
+        var elementType = type[..^2];
+        var goElement = CSharpToGo(elementType, false);
+        return $"[]{goElement}";
+    }
+
     if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
         type.StartsWith("List<", StringComparison.Ordinal) ||
         type.StartsWith("IEnumerable<", StringComparison.Ordinal))
@@ -284,6 +292,14 @@ void GeneratePython(TypeDef def, string domain, string outDir)
 
 string CSharpToPython(string type, bool nullable)
 {
+    // Handle T[] array syntax
+    if (type.EndsWith("[]", StringComparison.Ordinal))
+    {
+        var elementType = type[..^2];
+        var pyElement = CSharpToPython(elementType, false);
+        return $"list[{pyElement}]";
+    }
+
     if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
         type.StartsWith("List<", StringComparison.Ordinal) ||
         type.StartsWith("IEnumerable<", StringComparison.Ordinal))
@@ -374,6 +390,14 @@ void GenerateFSharp(TypeDef def, string domain, string outDir)
 
 string CSharpToFSharp(string type, bool nullable)
 {
+    // Handle T[] array syntax
+    if (type.EndsWith("[]", StringComparison.Ordinal))
+    {
+        var elementType = type[..^2];
+        var fsElement = CSharpToFSharp(elementType, false);
+        return $"{fsElement} list";
+    }
+
     // Handle collection types: ICollection<T>, List<T>, IEnumerable<T> -> T list
     if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
         type.StartsWith("List<", StringComparison.Ordinal) ||
@@ -511,6 +535,14 @@ bool IsPrimitiveType(string type) =>
 
 string CSharpToTypeScript(string type, bool nullable)
 {
+    // Handle T[] array syntax
+    if (type.EndsWith("[]", StringComparison.Ordinal))
+    {
+        var elementType = type[..^2];
+        var tsElement = CSharpToTypeScript(elementType, false);
+        return $"{tsElement}[]";
+    }
+
     if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
         type.StartsWith("List<", StringComparison.Ordinal) ||
         type.StartsWith("IEnumerable<", StringComparison.Ordinal))

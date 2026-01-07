@@ -11,6 +11,6 @@ class OAuthClient(BaseModel):
     id: str
     secret_hash: str
     name: str
-    redirect_uris: string[]
+    redirect_uris: list[str]
     created_at: datetime
     is_active: bool = True
