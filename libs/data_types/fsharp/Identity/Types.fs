@@ -13,6 +13,7 @@ type AuthorizationCode = {
     CodeChallengeMethod: string option
     ExpiresAt: DateTime
     CreatedAt: DateTime
+    User: IdentityUser option
 }
 
 /// OAuth 2.0 refresh token (long-lived, 30 days).
@@ -23,6 +24,7 @@ and RefreshToken = {
     Scope: string
     ExpiresAt: DateTime
     CreatedAt: DateTime
+    User: IdentityUser option
 }
 
 /// OAuth 2.0 access token (short-lived, 1 hour).
@@ -34,6 +36,7 @@ and AccessToken = {
     Scope: string
     ExpiresAt: DateTime
     CreatedAt: DateTime
+    User: IdentityUser option
 }
 
 /// OAuth 2.0 client application registration.
@@ -55,5 +58,6 @@ and IdentityUser = {
     IsActive: bool
     CreatedAt: DateTime
     UpdatedAt: DateTime
+    RefreshTokens: RefreshToken list
 }
 

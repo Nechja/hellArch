@@ -11,6 +11,8 @@ type User = {
     Permissions: Map<string, bool> option
     CreatedAt: DateTime
     UpdatedAt: DateTime
+    Sessions: Session list
+    LinkedAccounts: LinkedAccount list
 }
 
 /// User session for cookie-based authentication.
@@ -22,6 +24,7 @@ and Session = {
     UserAgent: string option
     ExpiresAt: DateTime
     CreatedAt: DateTime
+    User: User option
 }
 
 /// OAuth provider account linked to a user.
@@ -40,5 +43,6 @@ and LinkedAccount = {
     TokenExpiresAt: DateTime option
     CreatedAt: DateTime
     UpdatedAt: DateTime
+    User: User option
 }
 

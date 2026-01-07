@@ -11,6 +11,7 @@ type FileVariant = {
     MimeType: string
     SizeBytes: int64
     CreatedAt: DateTimeOffset
+    File: StoredFile option
 }
 
 /// Represents a file stored in the object storage system.
@@ -27,5 +28,6 @@ and StoredFile = {
     CreatedAt: DateTimeOffset
     UpdatedAt: DateTimeOffset
     DeletedAt: DateTimeOffset option
+    Variants: FileVariant list
 }
 

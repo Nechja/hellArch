@@ -366,9 +366,6 @@ void GenerateFSharpDomain(List<TypeDef> types, string domain, string outDir, Dic
     Directory.CreateDirectory(dir);
     var file = Path.Combine(dir, "Types.fs");
 
-    // Collect all type names in this domain to skip navigation properties
-    var domainTypes = new HashSet<string>(types.Select(t => t.Name));
-
     var sb = new System.Text.StringBuilder();
     sb.AppendLine($"namespace HellArch.DataTypes.{domain}");
     sb.AppendLine();
@@ -414,28 +411,6 @@ void GenerateFSharpDomain(List<TypeDef> types, string domain, string outDir, Dic
     Console.WriteLine($"  fsharp/{domain}/Types.fs: ok");
 }
 
-bool IsNavigationProperty(PropertyDef prop, HashSet<string> domainTypes)
-{
-    var baseType = prop.Type;
-
-    // Handle nullable types
-    if (baseType.EndsWith('?'))
-        baseType = baseType[..^1];
-
-    // Handle collection types
-    if (baseType.StartsWith("ICollection<", StringComparison.Ordinal) ||
-        baseType.StartsWith("List<", StringComparison.Ordinal) ||
-        baseType.StartsWith("IEnumerable<", StringComparison.Ordinal))
-    {
-#pragma warning disable CA1865, CA1307
-        var innerType = baseType.Substring(baseType.IndexOf('<') + 1).TrimEnd('>');
-#pragma warning restore CA1865, CA1307
-        return domainTypes.Contains(innerType);
-    }
-
-    // Direct type reference
-    return domainTypes.Contains(baseType);
-}
 
 string CSharpToFSharp(string type, bool nullable)
 {

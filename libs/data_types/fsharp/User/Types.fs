@@ -19,6 +19,7 @@ type UserProfile = {
     AvatarUrl: string option
     CreatedAt: DateTime
     UpdatedAt: DateTime
+    Preferences: UserPreferences option
 }
 
 /// User preferences and settings.
@@ -33,5 +34,6 @@ and UserPreferences = {
     InAppNotifications: bool
     CreatedAt: DateTime
     UpdatedAt: DateTime
+    UserProfile: UserProfile option
 }
 

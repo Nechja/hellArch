@@ -18,6 +18,7 @@ type Webhook = {
     IsActive: bool
     CreatedAt: DateTime
     UpdatedAt: DateTime
+    Deliveries: WebhookDelivery list
 }
 
 /// Record of a webhook delivery attempt.
@@ -32,6 +33,7 @@ and WebhookDelivery = {
     Success: bool
     Attempt: int
     CreatedAt: DateTime
+    Webhook: Webhook option
 }
 
 /// Dead letter entry for tracking failed events that exhausted retries.
