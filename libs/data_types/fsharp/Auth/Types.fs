@@ -7,6 +7,8 @@ type User = {
     Id: Guid
     Email: string
     Username: string
+    IsActive: bool
+    Permissions: Map<string, bool> option
     CreatedAt: DateTime
     UpdatedAt: DateTime
 }
@@ -20,7 +22,6 @@ and Session = {
     UserAgent: string option
     ExpiresAt: DateTime
     CreatedAt: DateTime
-    User: User option
 }
 
 /// OAuth provider account linked to a user.
@@ -39,5 +40,5 @@ and LinkedAccount = {
     TokenExpiresAt: DateTime option
     CreatedAt: DateTime
     UpdatedAt: DateTime
-    User: User option
 }
+

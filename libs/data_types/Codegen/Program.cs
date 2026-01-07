@@ -45,8 +45,16 @@ foreach (var (typeDef, domain) in typeDefs)
 
     GenerateGo(typeDef, domain, outputDir);
     GeneratePython(typeDef, domain, outputDir);
-    GenerateFSharp(typeDef, domain, outputDir);
     GenerateTypeScript(typeDef, domain, outputDir, typeMap);
+}
+
+// Third pass: generate unified F# Types.fs per domain
+var typesByDomain = typeDefs.GroupBy(t => t.Domain);
+foreach (var domainGroup in typesByDomain)
+{
+    var domain = domainGroup.Key;
+    var types = domainGroup.Select(t => t.Def).ToList();
+    GenerateFSharpDomain(types, domain, outputDir, typeMap);
 }
 
 Console.WriteLine("\nDone!");
@@ -352,11 +360,14 @@ string CSharpToPythonDefault(string value)
     return value;
 }
 
-void GenerateFSharp(TypeDef def, string domain, string outDir)
+void GenerateFSharpDomain(List<TypeDef> types, string domain, string outDir, Dictionary<string, string> typeMap)
 {
     var dir = Path.Combine(outDir, "fsharp", domain);
     Directory.CreateDirectory(dir);
-    var file = Path.Combine(dir, $"{def.Name}.fs");
+    var file = Path.Combine(dir, "Types.fs");
+
+    // Collect all type names in this domain to skip navigation properties
+    var domainTypes = new HashSet<string>(types.Select(t => t.Name));
 
     var sb = new System.Text.StringBuilder();
     sb.AppendLine($"namespace HellArch.DataTypes.{domain}");
@@ -364,28 +375,67 @@ void GenerateFSharp(TypeDef def, string domain, string outDir)
     sb.AppendLine("open System");
     sb.AppendLine();
 
-    foreach (var e in def.Enums)
+    // Collect all enums first
+    foreach (var def in types)
     {
-        sb.AppendLine($"type {e.Name} =");
-        foreach (var v in e.Values)
-            sb.AppendLine($"    | {v}");
+        foreach (var e in def.Enums)
+        {
+            sb.AppendLine($"type {e.Name} =");
+            foreach (var v in e.Values)
+                sb.AppendLine($"    | {v}");
+            sb.AppendLine();
+        }
+    }
+
+    // Generate types with 'and' for mutual recursion
+    var isFirst = true;
+    foreach (var def in types)
+    {
+        if (!string.IsNullOrEmpty(def.Doc))
+            foreach (var line in SplitDocLines(def.Doc))
+                sb.AppendLine($"/// {line}");
+
+        var keyword = isFirst ? "type" : "and";
+        sb.AppendLine($"{keyword} {def.Name} = {{");
+
+        // Filter out navigation properties (properties that reference types in this domain)
+        var props = def.Properties.Where(p => !IsNavigationProperty(p, domainTypes)).ToList();
+        foreach (var p in props)
+        {
+            var fsType = CSharpToFSharp(p.Type, p.IsNullable);
+            sb.AppendLine($"    {p.Name}: {fsType}");
+        }
+
+        sb.AppendLine("}");
         sb.AppendLine();
+        isFirst = false;
     }
 
-    if (!string.IsNullOrEmpty(def.Doc))
-        foreach (var line in SplitDocLines(def.Doc))
-            sb.AppendLine($"/// {line}");
-    sb.AppendLine($"type {def.Name} = {{");
-
-    foreach (var p in def.Properties)
-    {
-        var fsType = CSharpToFSharp(p.Type, p.IsNullable);
-        sb.AppendLine($"    {p.Name}: {fsType}");
-    }
-
-    sb.AppendLine("}");
     File.WriteAllText(file, sb.ToString());
-    Console.WriteLine($"    fsharp: ok");
+    Console.WriteLine($"  fsharp/{domain}/Types.fs: ok");
+}
+
+bool IsNavigationProperty(PropertyDef prop, HashSet<string> domainTypes)
+{
+    var baseType = prop.Type;
+
+    // Handle nullable types
+    if (baseType.EndsWith('?'))
+        baseType = baseType[..^1];
+
+    // Handle collection types
+    if (baseType.StartsWith("ICollection<", StringComparison.Ordinal) ||
+        baseType.StartsWith("List<", StringComparison.Ordinal) ||
+        baseType.StartsWith("IEnumerable<", StringComparison.Ordinal))
+    {
+#pragma warning disable CA1865, CA1307
+        var innerType = baseType.Substring(baseType.IndexOf('<') + 1).TrimEnd('>');
+#pragma warning restore CA1865, CA1307
+        return domainTypes.Contains(innerType);
+    }
+
+    // Direct type reference
+    return domainTypes.Contains(baseType);
 }
 
 string CSharpToFSharp(string type, bool nullable)
