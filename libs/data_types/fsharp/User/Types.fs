@@ -34,6 +34,5 @@ and UserPreferences = {
     InAppNotifications: bool
     CreatedAt: DateTime
     UpdatedAt: DateTime
-    UserProfile: UserProfile option
 }
 

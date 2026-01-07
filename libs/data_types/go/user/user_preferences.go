@@ -22,5 +22,4 @@ type UserPreferences struct {
 	InAppNotifications bool `json:"in_app_notifications"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	UserProfile *UserProfile `json:"user_profile,omitempty"`
 }
