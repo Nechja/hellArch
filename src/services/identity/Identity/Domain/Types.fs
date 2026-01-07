@@ -65,9 +65,9 @@ type TokenResponse = {
     Scope: string option
 }
 
-/// UserInfo endpoint response
+/// UserInfo endpoint response (OIDC standard uses "sub" for subject identifier)
 type UserInfoResponse = {
-    Id: string
+    Sub: string
     Email: string
     Username: string
     AvatarUrl: string option

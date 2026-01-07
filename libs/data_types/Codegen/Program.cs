@@ -398,9 +398,8 @@ void GenerateFSharpDomain(List<TypeDef> types, string domain, string outDir, Dic
         var keyword = isFirst ? "type" : "and";
         sb.AppendLine($"{keyword} {def.Name} = {{");
 
-        // Filter out navigation properties (properties that reference types in this domain)
-        var props = def.Properties.Where(p => !IsNavigationProperty(p, domainTypes)).ToList();
-        foreach (var p in props)
+        // Include all properties - mutual recursion handled via 'and' keyword
+        foreach (var p in def.Properties)
         {
             var fsType = CSharpToFSharp(p.Type, p.IsNullable);
             sb.AppendLine($"    {p.Name}: {fsType}");

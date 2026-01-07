@@ -121,13 +121,17 @@ module Handlers =
 
                     match userResult with
                     | Error e ->
+                        printfn "DEBUG: Database error for email '%s': %A" body.Email e
                         do! writeJson ctx (errorToStatus e) {| error = errorToMessage e |}
                     | Ok None ->
+                        printfn "DEBUG: No user found for email '%s'" body.Email
                         do! writeJson ctx 401 {| error = "invalid_credentials" |}
                     | Ok (Some user) ->
+                        printfn "DEBUG: Found user '%s', active=%b, checking password..." user.Email user.IsActive
                         if not user.IsActive then
                             do! writeJson ctx 401 {| error = "account_disabled" |}
                         elif not (PasswordHasher.verify body.Password user.PasswordHash) then
+                            printfn "DEBUG: Password verification FAILED for '%s'" user.Email
                             do! writeJson ctx 401 {| error = "invalid_credentials" |}
                         else
                             // Login successful - remove session and generate authorization code
@@ -366,7 +370,7 @@ module Handlers =
                             do! writeJson ctx 404 {| error = "user_not_found" |}
                         | Ok (Some user) ->
                             let response: UserInfoResponse = {
-                                Id = user.Id.ToString()
+                                Sub = user.Id.ToString()
                                 Email = user.Email
                                 Username = user.Username
                                 AvatarUrl = None
