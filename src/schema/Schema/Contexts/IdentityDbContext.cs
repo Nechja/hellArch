@@ -66,6 +66,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             entity.Property(e => e.TokenHash).HasMaxLength(64);
             entity.Property(e => e.ClientId).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Scope).IsRequired();
+            entity.Property(e => e.ClientFingerprint).HasMaxLength(64);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
             entity.HasIndex(e => e.ExpiresAt);
             entity.HasIndex(e => e.UserId);
@@ -79,9 +80,13 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             entity.Property(e => e.TokenHash).HasMaxLength(64);
             entity.Property(e => e.ClientId).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Scope).IsRequired();
+            entity.Property(e => e.FamilyId).IsRequired();
+            entity.Property(e => e.IsRevoked).HasDefaultValue(false);
+            entity.Property(e => e.ClientFingerprint).HasMaxLength(64);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
             entity.HasIndex(e => e.ExpiresAt);
             entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.FamilyId); // For family revocation queries
             entity.HasOne(e => e.User).WithMany(u => u.RefreshTokens).HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }

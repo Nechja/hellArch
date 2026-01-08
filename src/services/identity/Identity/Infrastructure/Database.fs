@@ -229,20 +229,21 @@ module Database =
 
     // Access token operations
 
-    let createAccessToken (connectionString: string) (token: string) (userId: Guid) (clientId: string) (scope: string) (expiresAt: DateTime) =
+    let createAccessToken (connectionString: string) (token: string) (userId: Guid) (clientId: string) (scope: string) (expiresAt: DateTime) (fingerprint: string option) =
         async {
             try
                 let tokenHash = TokenGenerator.hashToken token
                 do!
                     connectionString
                     |> Sql.connect
-                    |> Sql.query "INSERT INTO access_tokens (token_hash, user_id, client_id, scope, expires_at) VALUES (@token_hash, @user_id, @client_id, @scope, @expires_at)"
+                    |> Sql.query "INSERT INTO access_tokens (token_hash, user_id, client_id, scope, expires_at, client_fingerprint) VALUES (@token_hash, @user_id, @client_id, @scope, @expires_at, @fingerprint)"
                     |> Sql.parameters [
                         "token_hash", Sql.string tokenHash
                         "user_id", Sql.uuid userId
                         "client_id", Sql.string clientId
                         "scope", Sql.string scope
                         "expires_at", Sql.timestamptz expiresAt
+                        "fingerprint", Sql.stringOrNone fingerprint
                     ]
                     |> Sql.executeNonQueryAsync
                     |> Async.AwaitTask
@@ -260,7 +261,7 @@ module Database =
                 let! result =
                     connectionString
                     |> Sql.connect
-                    |> Sql.query "SELECT user_id, client_id, scope, expires_at FROM access_tokens WHERE token_hash = @token_hash"
+                    |> Sql.query "SELECT user_id, client_id, scope, expires_at, client_fingerprint FROM access_tokens WHERE token_hash = @token_hash"
                     |> Sql.parameters [ "token_hash", Sql.string tokenHash ]
                     |> Sql.executeAsync (fun read ->
                         {|
@@ -268,6 +269,7 @@ module Database =
                             ClientId = read.string "client_id"
                             Scope = read.string "scope"
                             ExpiresAt = read.dateTime "expires_at"
+                            ClientFingerprint = read.stringOrNone "client_fingerprint"
                         |})
                     |> Async.AwaitTask
 
@@ -282,20 +284,23 @@ module Database =
 
     // Refresh token operations
 
-    let createRefreshToken (connectionString: string) (token: string) (userId: Guid) (clientId: string) (scope: string) (expiresAt: DateTime) =
+    /// Create a new refresh token with family tracking
+    let createRefreshToken (connectionString: string) (token: string) (userId: Guid) (clientId: string) (scope: string) (expiresAt: DateTime) (familyId: Guid) (fingerprint: string option) =
         async {
             try
                 let tokenHash = TokenGenerator.hashToken token
                 do!
                     connectionString
                     |> Sql.connect
-                    |> Sql.query "INSERT INTO refresh_tokens (token_hash, user_id, client_id, scope, expires_at) VALUES (@token_hash, @user_id, @client_id, @scope, @expires_at)"
+                    |> Sql.query "INSERT INTO refresh_tokens (token_hash, user_id, client_id, scope, expires_at, family_id, is_revoked, client_fingerprint) VALUES (@token_hash, @user_id, @client_id, @scope, @expires_at, @family_id, false, @fingerprint)"
                     |> Sql.parameters [
                         "token_hash", Sql.string tokenHash
                         "user_id", Sql.uuid userId
                         "client_id", Sql.string clientId
                         "scope", Sql.string scope
                         "expires_at", Sql.timestamptz expiresAt
+                        "family_id", Sql.uuid familyId
+                        "fingerprint", Sql.stringOrNone fingerprint
                     ]
                     |> Sql.executeNonQueryAsync
                     |> Async.AwaitTask
@@ -306,14 +311,40 @@ module Database =
                 return Error (IdentityError.DatabaseError ex.Message)
         }
 
-    let getAndDeleteRefreshToken (connectionString: string) (token: string) =
+    /// Revoke all tokens in a family (used when reuse is detected)
+    let revokeTokenFamily (connectionString: string) (familyId: Guid) =
+        async {
+            try
+                do!
+                    connectionString
+                    |> Sql.connect
+                    |> Sql.query "UPDATE refresh_tokens SET is_revoked = true WHERE family_id = @family_id"
+                    |> Sql.parameters [ "family_id", Sql.uuid familyId ]
+                    |> Sql.executeNonQueryAsync
+                    |> Async.AwaitTask
+                    |> Async.Ignore
+
+                return Ok ()
+            with ex ->
+                return Error (IdentityError.DatabaseError ex.Message)
+        }
+
+    /// Get refresh token and mark as revoked (for rotation)
+    /// Returns None if token not found, Error if already revoked (reuse detected)
+    type RefreshTokenResult =
+        | Valid of {| UserId: Guid; ClientId: string; Scope: string; ExpiresAt: DateTime; FamilyId: Guid; ClientFingerprint: string option |}
+        | ReuseDetected of Guid // Returns FamilyId for revocation
+        | NotFound
+
+    let useRefreshToken (connectionString: string) (token: string) =
         async {
             try
                 let tokenHash = TokenGenerator.hashToken token
+                // First, get the token info
                 let! result =
                     connectionString
                     |> Sql.connect
-                    |> Sql.query "DELETE FROM refresh_tokens WHERE token_hash = @token_hash RETURNING user_id, client_id, scope, expires_at"
+                    |> Sql.query "SELECT user_id, client_id, scope, expires_at, family_id, is_revoked, client_fingerprint FROM refresh_tokens WHERE token_hash = @token_hash"
                     |> Sql.parameters [ "token_hash", Sql.string tokenHash ]
                     |> Sql.executeAsync (fun read ->
                         {|
@@ -321,16 +352,51 @@ module Database =
                             ClientId = read.string "client_id"
                             Scope = read.string "scope"
                             ExpiresAt = read.dateTime "expires_at"
+                            FamilyId = read.uuid "family_id"
+                            IsRevoked = read.bool "is_revoked"
+                            ClientFingerprint = read.stringOrNone "client_fingerprint"
                         |})
                     |> Async.AwaitTask
 
-                return
-                    match result with
-                    | [ t ] -> Ok (Some t)
-                    | [] -> Ok None
-                    | _ -> Error (IdentityError.DatabaseError "Multiple tokens found")
+                match result with
+                | [] -> return Ok NotFound
+                | [ t ] when t.IsRevoked ->
+                    // Token was already used! This is a reuse attack.
+                    // Return the family ID so caller can revoke entire family
+                    return Ok (ReuseDetected t.FamilyId)
+                | [ t ] ->
+                    // Mark token as revoked (it's being used now)
+                    do!
+                        connectionString
+                        |> Sql.connect
+                        |> Sql.query "UPDATE refresh_tokens SET is_revoked = true WHERE token_hash = @token_hash"
+                        |> Sql.parameters [ "token_hash", Sql.string tokenHash ]
+                        |> Sql.executeNonQueryAsync
+                        |> Async.AwaitTask
+                        |> Async.Ignore
+
+                    return Ok (Valid {|
+                        UserId = t.UserId
+                        ClientId = t.ClientId
+                        Scope = t.Scope
+                        ExpiresAt = t.ExpiresAt
+                        FamilyId = t.FamilyId
+                        ClientFingerprint = t.ClientFingerprint
+                    |})
+                | _ -> return Error (IdentityError.DatabaseError "Multiple tokens found")
             with ex ->
                 return Error (IdentityError.DatabaseError ex.Message)
+        }
+
+    // Legacy function for compatibility - wraps useRefreshToken
+    let getAndDeleteRefreshToken (connectionString: string) (token: string) =
+        async {
+            let! result = useRefreshToken connectionString token
+            match result with
+            | Ok (Valid t) -> return Ok (Some {| UserId = t.UserId; ClientId = t.ClientId; Scope = t.Scope; ExpiresAt = t.ExpiresAt |})
+            | Ok NotFound -> return Ok None
+            | Ok (ReuseDetected _) -> return Error IdentityError.InvalidRefreshToken
+            | Error e -> return Error e
         }
 
     // Token revocation

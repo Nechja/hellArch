@@ -63,7 +63,7 @@ function goToRegister() {
       <v-row align="center" justify="center" class="fill-height">
         <v-col cols="12" sm="10" md="6" lg="4" xl="3">
           <div class="text-center mb-8">
-            <h1 class="text-h4 font-weight-bold mb-2">HellArch</h1>
+            <img src="/logo.png" alt="HellArch" class="login-logo mb-4" />
             <p class="text-body-1 text-medium-emphasis">
               Sign in with your account
             </p>
@@ -167,5 +167,16 @@ function goToRegister() {
   background: rgba(22, 22, 30, 0.8) !important;
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.login-logo {
+  max-width: 280px;
+  height: auto;
+}
+
+@media (max-width: 480px) {
+  .login-logo {
+    max-width: 200px;
+  }
 }
 </style>

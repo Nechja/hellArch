@@ -2,12 +2,24 @@ namespace Identity.Api
 
 open System
 open System.Collections.Concurrent
+open System.Security.Cryptography
+open System.Text
 open System.Text.Json
 open Microsoft.AspNetCore.Http
 open Identity.Domain
 open Identity.Infrastructure
 
 module Handlers =
+
+    /// Generate client fingerprint from IP + User-Agent for token binding
+    let private getClientFingerprint (ctx: HttpContext) =
+        let ip = ctx.Connection.RemoteIpAddress |> Option.ofObj |> Option.map string |> Option.defaultValue "unknown"
+        let ua = ctx.Request.Headers.["User-Agent"].ToString()
+        let combined = $"{ip}|{ua}"
+        use sha256 = SHA256.Create()
+        let hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(combined))
+        Convert.ToBase64String(hash).Replace("+", "-").Replace("/", "_").TrimEnd('=')
+        |> Some
 
     // In-memory session storage for authorization requests
     // In production, use Redis
@@ -270,14 +282,16 @@ module Handlers =
                                 if not pkceValid then
                                     do! writeJson ctx 400 {| error = "invalid_grant"; error_description = "pkce_failed" |}
                                 else
-                                    // Generate tokens
+                                    // Generate tokens with fingerprint binding
                                     let accessToken = TokenGenerator.generateAccessToken()
                                     let refreshToken = TokenGenerator.generateRefreshToken()
                                     let accessExpiresAt = DateTime.UtcNow.Add(config.AccessTokenTtl)
                                     let refreshExpiresAt = DateTime.UtcNow.Add(config.RefreshTokenTtl)
+                                    let fingerprint = getClientFingerprint ctx
+                                    let familyId = Guid.NewGuid() // New token family
 
-                                    let! accessResult = Database.createAccessToken config.ConnectionString accessToken authCode.UserId clientId authCode.Scope accessExpiresAt |> Async.StartAsTask
-                                    let! refreshResult = Database.createRefreshToken config.ConnectionString refreshToken authCode.UserId clientId authCode.Scope refreshExpiresAt |> Async.StartAsTask
+                                    let! accessResult = Database.createAccessToken config.ConnectionString accessToken authCode.UserId clientId authCode.Scope accessExpiresAt fingerprint |> Async.StartAsTask
+                                    let! refreshResult = Database.createRefreshToken config.ConnectionString refreshToken authCode.UserId clientId authCode.Scope refreshExpiresAt familyId fingerprint |> Async.StartAsTask
 
                                     match accessResult, refreshResult with
                                     | Ok (), Ok () ->
@@ -295,40 +309,58 @@ module Handlers =
                     | "refresh_token" ->
                         let refreshToken = form.["refresh_token"].ToString()
 
-                        let! tokenResult = Database.getAndDeleteRefreshToken config.ConnectionString refreshToken |> Async.StartAsTask
+                        let! tokenResult = Database.useRefreshToken config.ConnectionString refreshToken |> Async.StartAsTask
 
                         match tokenResult with
                         | Error e ->
                             do! writeJson ctx (errorToStatus e) {| error = errorToMessage e |}
-                        | Ok None ->
+                        | Ok Database.NotFound ->
                             do! writeJson ctx 401 {| error = "invalid_grant" |}
-                        | Ok (Some oldToken) ->
+                        | Ok (Database.ReuseDetected familyId) ->
+                            // Token reuse detected! Revoke entire family.
+                            let! _ = Database.revokeTokenFamily config.ConnectionString familyId |> Async.StartAsTask
+                            do! writeJson ctx 401 {| error = "invalid_grant"; error_description = "token_reuse_detected" |}
+                        | Ok (Database.Valid oldToken) ->
                             if oldToken.ClientId <> clientId then
                                 do! writeJson ctx 401 {| error = "invalid_grant" |}
                             elif oldToken.ExpiresAt < DateTime.UtcNow then
                                 do! writeJson ctx 401 {| error = "invalid_grant"; error_description = "token_expired" |}
                             else
-                                // Generate new tokens
-                                let newAccessToken = TokenGenerator.generateAccessToken()
-                                let newRefreshToken = TokenGenerator.generateRefreshToken()
-                                let accessExpiresAt = DateTime.UtcNow.Add(config.AccessTokenTtl)
-                                let refreshExpiresAt = DateTime.UtcNow.Add(config.RefreshTokenTtl)
+                                // Optional: Validate fingerprint matches
+                                let currentFingerprint = getClientFingerprint ctx
+                                let fingerprintValid =
+                                    match oldToken.ClientFingerprint, currentFingerprint with
+                                    | Some stored, Some current -> stored = current
+                                    | None, _ -> true // No fingerprint stored, allow
+                                    | Some _, None -> false // Had fingerprint but none now
 
-                                let! accessResult = Database.createAccessToken config.ConnectionString newAccessToken oldToken.UserId clientId oldToken.Scope accessExpiresAt |> Async.StartAsTask
-                                let! refreshResult = Database.createRefreshToken config.ConnectionString newRefreshToken oldToken.UserId clientId oldToken.Scope refreshExpiresAt |> Async.StartAsTask
+                                if not fingerprintValid then
+                                    // Fingerprint mismatch - possible token theft, revoke family
+                                    let! _ = Database.revokeTokenFamily config.ConnectionString oldToken.FamilyId |> Async.StartAsTask
+                                    do! writeJson ctx 401 {| error = "invalid_grant"; error_description = "client_mismatch" |}
+                                else
+                                    // Generate new tokens with same family
+                                    let newAccessToken = TokenGenerator.generateAccessToken()
+                                    let newRefreshToken = TokenGenerator.generateRefreshToken()
+                                    let accessExpiresAt = DateTime.UtcNow.Add(config.AccessTokenTtl)
+                                    let refreshExpiresAt = DateTime.UtcNow.Add(config.RefreshTokenTtl)
+                                    let fingerprint = getClientFingerprint ctx
 
-                                match accessResult, refreshResult with
-                                | Ok (), Ok () ->
-                                    let response: TokenResponse = {
-                                        AccessToken = newAccessToken
-                                        TokenType = "Bearer"
-                                        ExpiresIn = int config.AccessTokenTtl.TotalSeconds
-                                        RefreshToken = Some newRefreshToken
-                                        Scope = Some oldToken.Scope
-                                    }
-                                    do! writeJson ctx 200 response
-                                | _ ->
-                                    do! writeJson ctx 500 {| error = "server_error" |}
+                                    let! accessResult = Database.createAccessToken config.ConnectionString newAccessToken oldToken.UserId clientId oldToken.Scope accessExpiresAt fingerprint |> Async.StartAsTask
+                                    let! refreshResult = Database.createRefreshToken config.ConnectionString newRefreshToken oldToken.UserId clientId oldToken.Scope refreshExpiresAt oldToken.FamilyId fingerprint |> Async.StartAsTask
+
+                                    match accessResult, refreshResult with
+                                    | Ok (), Ok () ->
+                                        let response: TokenResponse = {
+                                            AccessToken = newAccessToken
+                                            TokenType = "Bearer"
+                                            ExpiresIn = int config.AccessTokenTtl.TotalSeconds
+                                            RefreshToken = Some newRefreshToken
+                                            Scope = Some oldToken.Scope
+                                        }
+                                        do! writeJson ctx 200 response
+                                    | _ ->
+                                        do! writeJson ctx 500 {| error = "server_error" |}
 
                     | _ ->
                         do! writeJson ctx 400 {| error = "unsupported_grant_type" |}

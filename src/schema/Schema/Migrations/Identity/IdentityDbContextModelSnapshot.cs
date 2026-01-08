@@ -29,6 +29,11 @@ namespace Schema.Migrations.Identity
                         .HasColumnType("character varying(64)")
                         .HasColumnName("token_hash");
 
+                    b.Property<string>("ClientFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("client_fingerprint");
+
                     b.Property<string>("ClientId")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -226,6 +231,11 @@ namespace Schema.Migrations.Identity
                         .HasColumnType("character varying(64)")
                         .HasColumnName("token_hash");
 
+                    b.Property<string>("ClientFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("client_fingerprint");
+
                     b.Property<string>("ClientId")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -242,6 +252,16 @@ namespace Schema.Migrations.Identity
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_id");
+
+                    b.Property<bool>("IsRevoked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_revoked");
+
                     b.Property<string>("Scope")
                         .IsRequired()
                         .HasColumnType("text")
@@ -256,6 +276,9 @@ namespace Schema.Migrations.Identity
 
                     b.HasIndex("ExpiresAt")
                         .HasDatabaseName("ix_refresh_tokens_expires_at");
+
+                    b.HasIndex("FamilyId")
+                        .HasDatabaseName("ix_refresh_tokens_family_id");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_refresh_tokens_user_id");

@@ -18,6 +18,7 @@ type AuthorizationCode = {
 
 /// OAuth 2.0 refresh token (long-lived, 30 days).
 /// Stored as SHA-256 hash for security.
+/// Supports token rotation with reuse detection.
 and RefreshToken = {
     TokenHash: string
     UserId: Guid
@@ -25,11 +26,15 @@ and RefreshToken = {
     Scope: string
     ExpiresAt: DateTime
     CreatedAt: DateTime
+    FamilyId: Guid
+    IsRevoked: bool
+    ClientFingerprint: string option
     User: IdentityUser option
 }
 
 /// OAuth 2.0 access token (short-lived, 1 hour).
 /// Stored as SHA-256 hash for security.
+/// Bound to client fingerprint to prevent token theft.
 and AccessToken = {
     TokenHash: string
     UserId: Guid
@@ -37,6 +42,7 @@ and AccessToken = {
     Scope: string
     ExpiresAt: DateTime
     CreatedAt: DateTime
+    ClientFingerprint: string option
     User: IdentityUser option
 }
 
