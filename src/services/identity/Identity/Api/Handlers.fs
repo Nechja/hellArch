@@ -121,17 +121,13 @@ module Handlers =
 
                     match userResult with
                     | Error e ->
-                        printfn "DEBUG: Database error for email '%s': %A" body.Email e
                         do! writeJson ctx (errorToStatus e) {| error = errorToMessage e |}
                     | Ok None ->
-                        printfn "DEBUG: No user found for email '%s'" body.Email
                         do! writeJson ctx 401 {| error = "invalid_credentials" |}
                     | Ok (Some user) ->
-                        printfn "DEBUG: Found user '%s', active=%b, checking password..." user.Email user.IsActive
                         if not user.IsActive then
                             do! writeJson ctx 401 {| error = "account_disabled" |}
                         elif not (PasswordHasher.verify body.Password user.PasswordHash) then
-                            printfn "DEBUG: Password verification FAILED for '%s'" user.Email
                             do! writeJson ctx 401 {| error = "invalid_credentials" |}
                         else
                             // Login successful - remove session and generate authorization code
@@ -259,7 +255,7 @@ module Handlers =
                             elif authCode.ExpiresAt < DateTime.UtcNow then
                                 do! writeJson ctx 400 {| error = "invalid_grant"; error_description = "code_expired" |}
                             else
-                                // Validate PKCE if present
+                                // Validate PKCE (required for all token requests)
                                 let pkceValid =
                                     match authCode.CodeChallenge, authCode.CodeChallengeMethod, codeVerifier with
                                     | Some challenge, Some method, Some verifier ->
@@ -269,7 +265,7 @@ module Handlers =
                                     | Some _, None, _ ->
                                         false // Challenge without method is invalid
                                     | None, _, _ ->
-                                        true // No PKCE required
+                                        false // PKCE is mandatory
 
                                 if not pkceValid then
                                     do! writeJson ctx 400 {| error = "invalid_grant"; error_description = "pkce_failed" |}

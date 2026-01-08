@@ -30,7 +30,17 @@ module TokenGenerator =
     let generateClientSecret () =
         generateToken 32
 
-    /// Verify PKCE code challenge (S256 method)
+    /// Hash a token using SHA-256 for secure storage
+    /// Tokens are looked up by their hash, not the raw value
+    let hashToken (token: string) =
+        use sha256 = SHA256.Create()
+        let hash = sha256.ComputeHash(Encoding.ASCII.GetBytes(token))
+        Convert.ToBase64String(hash)
+            .Replace("+", "-")
+            .Replace("/", "_")
+            .TrimEnd('=')
+
+    /// Verify PKCE code challenge (S256 method only - PLAIN is not secure)
     let verifyCodeChallenge (codeVerifier: string) (codeChallenge: string) (method: string) =
         match method.ToUpperInvariant() with
         | "S256" ->
@@ -42,6 +52,4 @@ module TokenGenerator =
                     .Replace("/", "_")
                     .TrimEnd('=')
             String.Equals(computed, codeChallenge, StringComparison.Ordinal)
-        | "PLAIN" ->
-            String.Equals(codeVerifier, codeChallenge, StringComparison.Ordinal)
         | _ -> false

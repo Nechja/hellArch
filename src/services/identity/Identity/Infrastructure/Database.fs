@@ -232,12 +232,13 @@ module Database =
     let createAccessToken (connectionString: string) (token: string) (userId: Guid) (clientId: string) (scope: string) (expiresAt: DateTime) =
         async {
             try
+                let tokenHash = TokenGenerator.hashToken token
                 do!
                     connectionString
                     |> Sql.connect
-                    |> Sql.query "INSERT INTO access_tokens (token, user_id, client_id, scope, expires_at) VALUES (@token, @user_id, @client_id, @scope, @expires_at)"
+                    |> Sql.query "INSERT INTO access_tokens (token_hash, user_id, client_id, scope, expires_at) VALUES (@token_hash, @user_id, @client_id, @scope, @expires_at)"
                     |> Sql.parameters [
-                        "token", Sql.string token
+                        "token_hash", Sql.string tokenHash
                         "user_id", Sql.uuid userId
                         "client_id", Sql.string clientId
                         "scope", Sql.string scope
@@ -255,11 +256,12 @@ module Database =
     let getAccessToken (connectionString: string) (token: string) =
         async {
             try
+                let tokenHash = TokenGenerator.hashToken token
                 let! result =
                     connectionString
                     |> Sql.connect
-                    |> Sql.query "SELECT user_id, client_id, scope, expires_at FROM access_tokens WHERE token = @token"
-                    |> Sql.parameters [ "token", Sql.string token ]
+                    |> Sql.query "SELECT user_id, client_id, scope, expires_at FROM access_tokens WHERE token_hash = @token_hash"
+                    |> Sql.parameters [ "token_hash", Sql.string tokenHash ]
                     |> Sql.executeAsync (fun read ->
                         {|
                             UserId = read.uuid "user_id"
@@ -283,12 +285,13 @@ module Database =
     let createRefreshToken (connectionString: string) (token: string) (userId: Guid) (clientId: string) (scope: string) (expiresAt: DateTime) =
         async {
             try
+                let tokenHash = TokenGenerator.hashToken token
                 do!
                     connectionString
                     |> Sql.connect
-                    |> Sql.query "INSERT INTO refresh_tokens (token, user_id, client_id, scope, expires_at) VALUES (@token, @user_id, @client_id, @scope, @expires_at)"
+                    |> Sql.query "INSERT INTO refresh_tokens (token_hash, user_id, client_id, scope, expires_at) VALUES (@token_hash, @user_id, @client_id, @scope, @expires_at)"
                     |> Sql.parameters [
-                        "token", Sql.string token
+                        "token_hash", Sql.string tokenHash
                         "user_id", Sql.uuid userId
                         "client_id", Sql.string clientId
                         "scope", Sql.string scope
@@ -306,11 +309,12 @@ module Database =
     let getAndDeleteRefreshToken (connectionString: string) (token: string) =
         async {
             try
+                let tokenHash = TokenGenerator.hashToken token
                 let! result =
                     connectionString
                     |> Sql.connect
-                    |> Sql.query "DELETE FROM refresh_tokens WHERE token = @token RETURNING user_id, client_id, scope, expires_at"
-                    |> Sql.parameters [ "token", Sql.string token ]
+                    |> Sql.query "DELETE FROM refresh_tokens WHERE token_hash = @token_hash RETURNING user_id, client_id, scope, expires_at"
+                    |> Sql.parameters [ "token_hash", Sql.string tokenHash ]
                     |> Sql.executeAsync (fun read ->
                         {|
                             UserId = read.uuid "user_id"
