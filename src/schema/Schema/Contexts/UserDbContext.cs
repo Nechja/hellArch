@@ -37,7 +37,7 @@ public sealed class UserDbContext(DbContextOptions<UserDbContext> options) : DbC
             entity.Property(e => e.Timezone).HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
-            entity.HasOne(e => e.UserProfile).WithOne(p => p.Preferences).HasForeignKey<UserPreferences>(e => e.UserProfileId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<UserProfile>().WithOne(p => p.Preferences).HasForeignKey<UserPreferences>(e => e.UserProfileId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

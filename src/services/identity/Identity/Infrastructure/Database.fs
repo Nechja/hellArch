@@ -333,6 +333,58 @@ module Database =
                 return Error (IdentityError.DatabaseError ex.Message)
         }
 
+    // Token revocation
+    let revokeAccessToken (connectionString: string) (token: string) =
+        async {
+            try
+                let tokenHash = TokenGenerator.hashToken token
+                let! rowsAffected =
+                    connectionString
+                    |> Sql.connect
+                    |> Sql.query "DELETE FROM access_tokens WHERE token_hash = @token_hash"
+                    |> Sql.parameters [ "token_hash", Sql.string tokenHash ]
+                    |> Sql.executeNonQueryAsync
+                    |> Async.AwaitTask
+
+                return Ok (rowsAffected > 0)
+            with ex ->
+                return Error (IdentityError.DatabaseError ex.Message)
+        }
+
+    let revokeRefreshToken (connectionString: string) (token: string) =
+        async {
+            try
+                let tokenHash = TokenGenerator.hashToken token
+                let! rowsAffected =
+                    connectionString
+                    |> Sql.connect
+                    |> Sql.query "DELETE FROM refresh_tokens WHERE token_hash = @token_hash"
+                    |> Sql.parameters [ "token_hash", Sql.string tokenHash ]
+                    |> Sql.executeNonQueryAsync
+                    |> Async.AwaitTask
+
+                return Ok (rowsAffected > 0)
+            with ex ->
+                return Error (IdentityError.DatabaseError ex.Message)
+        }
+
+    let revokeAllUserTokens (connectionString: string) (userId: Guid) =
+        async {
+            try
+                do!
+                    connectionString
+                    |> Sql.connect
+                    |> Sql.query "DELETE FROM access_tokens WHERE user_id = @user_id; DELETE FROM refresh_tokens WHERE user_id = @user_id;"
+                    |> Sql.parameters [ "user_id", Sql.uuid userId ]
+                    |> Sql.executeNonQueryAsync
+                    |> Async.AwaitTask
+                    |> Async.Ignore
+
+                return Ok ()
+            with ex ->
+                return Error (IdentityError.DatabaseError ex.Message)
+        }
+
     // Cleanup expired tokens
     let cleanupExpiredTokens (connectionString: string) =
         async {

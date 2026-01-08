@@ -24,10 +24,10 @@ namespace Schema.Migrations.Identity
 
             modelBuilder.Entity("HellArch.DataTypes.Identity.AccessToken", b =>
                 {
-                    b.Property<string>("Token")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("token");
+                    b.Property<string>("TokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
 
                     b.Property<string>("ClientId")
                         .IsRequired()
@@ -54,7 +54,7 @@ namespace Schema.Migrations.Identity
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.HasKey("Token")
+                    b.HasKey("TokenHash")
                         .HasName("pk_access_tokens");
 
                     b.HasIndex("ExpiresAt")
@@ -221,10 +221,10 @@ namespace Schema.Migrations.Identity
 
             modelBuilder.Entity("HellArch.DataTypes.Identity.RefreshToken", b =>
                 {
-                    b.Property<string>("Token")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("token");
+                    b.Property<string>("TokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
 
                     b.Property<string>("ClientId")
                         .IsRequired()
@@ -251,7 +251,7 @@ namespace Schema.Migrations.Identity
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.HasKey("Token")
+                    b.HasKey("TokenHash")
                         .HasName("pk_refresh_tokens");
 
                     b.HasIndex("ExpiresAt")

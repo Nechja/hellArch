@@ -374,6 +374,45 @@ module Handlers =
                             do! writeJson ctx 200 response
         }
 
+    /// POST /identity/revoke - OAuth 2.0 Token Revocation (RFC 7009)
+    let handleRevoke (config: Config) (ctx: HttpContext) =
+        task {
+            let! form = ctx.Request.ReadFormAsync()
+
+            let token = form.["token"].ToString()
+            let tokenTypeHint = if form.ContainsKey("token_type_hint") then Some (form.["token_type_hint"].ToString()) else None
+
+            if String.IsNullOrWhiteSpace(token) then
+                do! writeJson ctx 400 {| error = "invalid_request"; error_description = "token is required" |}
+            else
+                // Try to revoke based on hint, or try both
+                let! result =
+                    match tokenTypeHint with
+                    | Some "access_token" ->
+                        Database.revokeAccessToken config.ConnectionString token |> Async.StartAsTask
+                    | Some "refresh_token" ->
+                        Database.revokeRefreshToken config.ConnectionString token |> Async.StartAsTask
+                    | _ ->
+                        // No hint or unknown hint - try refresh token first (more common), then access token
+                        task {
+                            let! refreshResult = Database.revokeRefreshToken config.ConnectionString token |> Async.StartAsTask
+                            match refreshResult with
+                            | Ok true -> return Ok true
+                            | Ok false ->
+                                let! accessResult = Database.revokeAccessToken config.ConnectionString token |> Async.StartAsTask
+                                return accessResult
+                            | Error e -> return Error e
+                        }
+
+                match result with
+                | Error e ->
+                    do! writeJson ctx (errorToStatus e) {| error = errorToMessage e |}
+                | Ok _ ->
+                    // RFC 7009: Always return 200 OK, even if token was not found
+                    // This prevents token fishing attacks
+                    ctx.Response.StatusCode <- 200
+        }
+
     /// GET /identity/health
     let handleHealth (ctx: HttpContext) =
         task {

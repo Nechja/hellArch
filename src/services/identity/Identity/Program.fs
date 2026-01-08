@@ -83,13 +83,15 @@ let main args =
                 |> ignore)
         |> ignore
 
-    // CORS for the identity client
+    // CORS - restricted to known origins (gateway handles external CORS)
+    let allowedOrigins = getEnv "IDENTITY_ALLOWED_ORIGINS" "http://localhost:5000,http://localhost:3000"
+    let origins = allowedOrigins.Split(',') |> Array.map (fun s -> s.Trim())
     builder.Services.AddCors(fun options ->
         options.AddDefaultPolicy(fun policy ->
             policy
-                .AllowAnyOrigin()
-                .AllowAnyMethod()
-                .AllowAnyHeader()
+                .WithOrigins(origins)
+                .WithMethods("GET", "POST", "OPTIONS")
+                .WithHeaders("Content-Type", "Authorization")
             |> ignore))
     |> ignore
 
@@ -102,6 +104,7 @@ let main args =
     app.MapPost("/identity/login", Func<HttpContext, _>(Handlers.handleLogin config)) |> ignore
     app.MapPost("/identity/register", Func<HttpContext, _>(Handlers.handleRegister config)) |> ignore
     app.MapPost("/identity/token", Func<HttpContext, _>(Handlers.handleToken config)) |> ignore
+    app.MapPost("/identity/revoke", Func<HttpContext, _>(Handlers.handleRevoke config)) |> ignore
     app.MapGet("/identity/userinfo", Func<HttpContext, _>(Handlers.handleUserInfo config)) |> ignore
     app.MapGet("/identity/health", Func<HttpContext, _>(Handlers.handleHealth)) |> ignore
 

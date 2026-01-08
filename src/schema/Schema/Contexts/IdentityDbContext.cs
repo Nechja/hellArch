@@ -62,8 +62,8 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
         modelBuilder.Entity<AccessToken>(entity =>
         {
             entity.ToTable("access_tokens");
-            entity.HasKey(e => e.Token);
-            entity.Property(e => e.Token).HasMaxLength(128);
+            entity.HasKey(e => e.TokenHash);
+            entity.Property(e => e.TokenHash).HasMaxLength(64);
             entity.Property(e => e.ClientId).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Scope).IsRequired();
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
@@ -75,8 +75,8 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
         modelBuilder.Entity<RefreshToken>(entity =>
         {
             entity.ToTable("refresh_tokens");
-            entity.HasKey(e => e.Token);
-            entity.Property(e => e.Token).HasMaxLength(128);
+            entity.HasKey(e => e.TokenHash);
+            entity.Property(e => e.TokenHash).HasMaxLength(64);
             entity.Property(e => e.ClientId).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Scope).IsRequired();
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
