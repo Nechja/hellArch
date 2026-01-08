@@ -2,6 +2,9 @@ package oauth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/nechja/hellarch/auth/internal/config"
@@ -143,15 +146,40 @@ func NewService(cfg config.OAuthConfig) *Service {
 	}
 }
 
-func (s *Service) GetAuthURL(provider Provider, state string) (string, error) {
+// GeneratePKCEVerifier creates a cryptographically random PKCE code verifier
+func GeneratePKCEVerifier() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// generatePKCEChallenge creates S256 challenge from verifier
+func generatePKCEChallenge(verifier string) string {
+	h := sha256.Sum256([]byte(verifier))
+	return base64.RawURLEncoding.EncodeToString(h[:])
+}
+
+func (s *Service) GetAuthURL(provider Provider, state string, pkceVerifier string) (string, error) {
 	cfg, ok := s.configs[provider]
 	if !ok {
 		return "", fmt.Errorf("provider %s not configured", provider)
 	}
-	return cfg.AuthCodeURL(state), nil
+
+	opts := []oauth2.AuthCodeOption{}
+	if pkceVerifier != "" {
+		challenge := generatePKCEChallenge(pkceVerifier)
+		opts = append(opts,
+			oauth2.SetAuthURLParam("code_challenge", challenge),
+			oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+		)
+	}
+
+	return cfg.AuthCodeURL(state, opts...), nil
 }
 
-func (s *Service) Exchange(ctx context.Context, provider Provider, code string) (*oauth2.Token, error) {
+func (s *Service) Exchange(ctx context.Context, provider Provider, code string, pkceVerifier string) (*oauth2.Token, error) {
 	cfg, ok := s.configs[provider]
 	if !ok {
 		return nil, fmt.Errorf("provider %s not configured", provider)
@@ -165,7 +193,12 @@ func (s *Service) Exchange(ctx context.Context, provider Provider, code string) 
 		cfg.ClientSecret = clientSecret
 	}
 
-	return cfg.Exchange(ctx, code)
+	opts := []oauth2.AuthCodeOption{}
+	if pkceVerifier != "" {
+		opts = append(opts, oauth2.SetAuthURLParam("code_verifier", pkceVerifier))
+	}
+
+	return cfg.Exchange(ctx, code, opts...)
 }
 
 func (s *Service) GetUserInfo(ctx context.Context, provider Provider, token *oauth2.Token) (*UserInfo, error) {

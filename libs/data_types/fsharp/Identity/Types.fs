@@ -17,8 +17,9 @@ type AuthorizationCode = {
 }
 
 /// OAuth 2.0 refresh token (long-lived, 30 days).
+/// Stored as SHA-256 hash for security.
 and RefreshToken = {
-    Token: string
+    TokenHash: string
     UserId: Guid
     ClientId: string
     Scope: string
@@ -28,9 +29,9 @@ and RefreshToken = {
 }
 
 /// OAuth 2.0 access token (short-lived, 1 hour).
-/// Stored for validation until expiry.
+/// Stored as SHA-256 hash for security.
 and AccessToken = {
-    Token: string
+    TokenHash: string
     UserId: Guid
     ClientId: string
     Scope: string

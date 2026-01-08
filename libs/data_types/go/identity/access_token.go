@@ -3,9 +3,9 @@ package identity
 import "time"
 
 // OAuth 2.0 access token (short-lived, 1 hour).
-// Stored for validation until expiry.
+// Stored as SHA-256 hash for security.
 type AccessToken struct {
-	Token string `json:"token"`
+	TokenHash string `json:"token_hash"`
 	UserID string `json:"user_id"`
 	ClientID string `json:"client_id"`
 	Scope string `json:"scope"`

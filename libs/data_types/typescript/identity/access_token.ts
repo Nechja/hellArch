@@ -1,9 +1,9 @@
 import type { IdentityUser } from './identity_user';
 
 /** OAuth 2.0 access token (short-lived, 1 hour).
-Stored for validation until expiry. */
+Stored as SHA-256 hash for security. */
 export interface AccessToken {
-  token: string;
+  token_hash: string;
   user_id: string;
   client_id: string;
   scope: string;

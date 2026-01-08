@@ -5,10 +5,12 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 class RefreshToken(BaseModel):
-    """OAuth 2.0 refresh token (long-lived, 30 days)."""
+    """OAuth 2.0 refresh token (long-lived, 30 days).
+    Stored as SHA-256 hash for security.
+    """
     model_config = ConfigDict(populate_by_name=True)
 
-    token: str
+    token_hash: str
     user_id: str
     client_id: str
     scope: str

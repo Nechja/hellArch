@@ -261,11 +261,11 @@ module Handlers =
                                     | Some challenge, Some method, Some verifier ->
                                         TokenGenerator.verifyCodeChallenge verifier challenge method
                                     | Some _, Some _, None ->
-                                        false // PKCE required but no verifier
+                                        false // PKCE was used at auth time but no verifier provided
                                     | Some _, None, _ ->
                                         false // Challenge without method is invalid
                                     | None, _, _ ->
-                                        false // PKCE is mandatory
+                                        false // PKCE is mandatory - reject requests without it
 
                                 if not pkceValid then
                                     do! writeJson ctx 400 {| error = "invalid_grant"; error_description = "pkce_failed" |}
