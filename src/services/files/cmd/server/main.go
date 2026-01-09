@@ -13,6 +13,7 @@ import (
 	"github.com/nechja/hellarch/golibs/telemetry"
 	"github.com/nechja/hellarch/services/files/internal/config"
 	"github.com/nechja/hellarch/services/files/internal/handler"
+	"github.com/nechja/hellarch/services/files/internal/service"
 	"github.com/nechja/hellarch/services/files/internal/storage"
 	"github.com/nechja/hellarch/services/files/internal/store"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -93,8 +94,13 @@ func main() {
 		}
 	}
 
+	// Create services
+	uploadService := service.NewUpload(st, minioStorage, publisher, cfg.MaxUploadSize)
+	fileService := service.NewFile(st, minioStorage, publisher)
+	variantService := service.NewVariant(st, minioStorage)
+
 	// Setup HTTP server
-	h := handler.New(st, minioStorage, publisher, cfg.MaxUploadSize)
+	h := handler.New(uploadService, fileService, variantService)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 

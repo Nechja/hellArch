@@ -6,16 +6,14 @@ import (
 	"net/http"
 	"strconv"
 
-	cloudevents "github.com/nechja/hellarch/cloudevents"
-	"github.com/nechja/hellarch/cloudevents/files"
-	"github.com/nechja/hellarch/services/files/internal/store"
+	"github.com/nechja/hellarch/services/files/internal/service"
 )
 
 func (h *Handler) getFileMeta(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	fileID := r.PathValue("id")
 
-	file, err := h.store.GetFile(ctx, fileID)
+	file, err := h.fileService.Get(ctx, fileID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "file not found")
 		return
@@ -36,19 +34,15 @@ func (h *Handler) listFiles(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 
-	if limit <= 0 {
-		limit = 50
-	}
-
-	filesList, err := h.store.ListFiles(ctx, store.ListFilesParams{
-		OwnerID: ownerID,
-		Limit:   limit,
-		Offset:  offset,
-	})
+	filesList, err := h.fileService.List(ctx, ownerID, limit, offset)
 	if err != nil {
 		slog.Error("failed to list files", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to list files")
 		return
+	}
+
+	if limit <= 0 {
+		limit = 50
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -62,31 +56,10 @@ func (h *Handler) deleteFile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	fileID := r.PathValue("id")
 
-	// Get file first for event publishing
-	file, err := h.store.GetFile(ctx, fileID)
-	if err != nil {
+	if err := h.fileService.Delete(ctx, fileID); err != nil {
+		slog.Error("failed to delete file", "error", err)
 		writeError(w, http.StatusNotFound, "file not found")
 		return
-	}
-
-	// Soft delete in database
-	if err := h.store.SoftDeleteFile(ctx, fileID); err != nil {
-		slog.Error("failed to delete file", "error", err)
-		writeError(w, http.StatusInternalServerError, "failed to delete file")
-		return
-	}
-
-	// Publish event
-	if h.publisher != nil {
-		event := files.FileDeleted{
-			FileID:    file.ID,
-			Filename:  file.Filename,
-			OwnerID:   file.OwnerID,
-			DeletedAt: file.UpdatedAt,
-		}
-		if err := h.publisher.Publish(ctx, cloudevents.EventTypeFileDeleted, event); err != nil {
-			slog.Warn("failed to publish file deleted event", "error", err)
-		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -96,7 +69,7 @@ func (h *Handler) listVariants(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	fileID := r.PathValue("id")
 
-	variants, err := h.store.ListVariants(ctx, fileID)
+	variants, err := h.variantService.List(ctx, fileID)
 	if err != nil {
 		slog.Error("failed to list variants", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to list variants")
@@ -125,14 +98,7 @@ func (h *Handler) createVariant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify the file exists
-	_, err := h.store.GetFile(ctx, fileID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "file not found")
-		return
-	}
-
-	variant, err := h.store.CreateVariant(ctx, store.CreateVariantParams{
+	variant, err := h.variantService.Create(ctx, service.CreateParams{
 		FileID:      fileID,
 		VariantType: req.VariantType,
 		ObjectKey:   req.ObjectKey,
@@ -141,7 +107,7 @@ func (h *Handler) createVariant(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Error("failed to create variant", "error", err)
-		writeError(w, http.StatusInternalServerError, "failed to create variant")
+		writeError(w, http.StatusNotFound, "file not found")
 		return
 	}
 
