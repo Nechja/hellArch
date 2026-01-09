@@ -187,39 +187,45 @@ module Handlers =
                     | Error e ->
                         do! writeJson ctx (errorToStatus e) {| error = errorToMessage e |}
                     | Ok validated ->
-                        let passwordHash = PasswordHasher.hash validated.Password
-                        let! createResult = Database.createUser config.ConnectionString validated.Email validated.Username passwordHash |> Async.StartAsTask
+                        // Check if password has been exposed in data breaches
+                        let! breachResult = BreachDetection.validateNotBreached validated.Password |> Async.StartAsTask
+                        match breachResult with
+                        | Error msg ->
+                            do! writeJson ctx 400 {| error = "weak_password"; error_description = msg |}
+                        | Ok () ->
+                            let passwordHash = PasswordHasher.hash validated.Password
+                            let! createResult = Database.createUser config.ConnectionString validated.Email validated.Username passwordHash |> Async.StartAsTask
 
-                        match createResult with
-                        | Error e ->
-                            do! writeJson ctx (errorToStatus e) {| error = errorToMessage e |}
-                        | Ok userId ->
-                            // Remove session from memory, generate auth code
-                            authSessions.TryRemove(body.Session) |> ignore
-
-                            let code = TokenGenerator.generateAuthorizationCode()
-                            let expiresAt = DateTime.UtcNow.Add(config.AuthCodeTtl)
-                            let scope = session.Request.Scope |> Option.defaultValue "openid"
-
-                            let! codeResult =
-                                Database.createAuthorizationCode
-                                    config.ConnectionString
-                                    code
-                                    session.Request.ClientId
-                                    userId
-                                    session.Request.RedirectUri
-                                    scope
-                                    session.Request.CodeChallenge
-                                    session.Request.CodeChallengeMethod
-                                    expiresAt
-                                |> Async.StartAsTask
-
-                            match codeResult with
+                            match createResult with
                             | Error e ->
                                 do! writeJson ctx (errorToStatus e) {| error = errorToMessage e |}
-                            | Ok () ->
-                                let callbackUrl = Views.callbackUrl session.Request.RedirectUri code session.Request.State
-                                do! writeJson ctx 201 {| redirect_url = callbackUrl |}
+                            | Ok userId ->
+                                // Remove session from memory, generate auth code
+                                authSessions.TryRemove(body.Session) |> ignore
+
+                                let code = TokenGenerator.generateAuthorizationCode()
+                                let expiresAt = DateTime.UtcNow.Add(config.AuthCodeTtl)
+                                let scope = session.Request.Scope |> Option.defaultValue "openid"
+
+                                let! codeResult =
+                                    Database.createAuthorizationCode
+                                        config.ConnectionString
+                                        code
+                                        session.Request.ClientId
+                                        userId
+                                        session.Request.RedirectUri
+                                        scope
+                                        session.Request.CodeChallenge
+                                        session.Request.CodeChallengeMethod
+                                        expiresAt
+                                    |> Async.StartAsTask
+
+                                match codeResult with
+                                | Error e ->
+                                    do! writeJson ctx (errorToStatus e) {| error = errorToMessage e |}
+                                | Ok () ->
+                                    let callbackUrl = Views.callbackUrl session.Request.RedirectUri code session.Request.State
+                                    do! writeJson ctx 201 {| redirect_url = callbackUrl |}
         }
 
     /// POST /identity/token - OAuth 2.0 Token Endpoint

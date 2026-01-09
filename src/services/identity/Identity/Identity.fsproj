@@ -11,6 +11,7 @@
     <Compile Include="Domain/Validation.fs" />
     <Compile Include="Infrastructure/PasswordHasher.fs" />
     <Compile Include="Infrastructure/TokenGenerator.fs" />
+    <Compile Include="Infrastructure/BreachDetection.fs" />
     <Compile Include="Infrastructure/Database.fs" />
     <Compile Include="Api/Views.fs" />
     <Compile Include="Api/Handlers.fs" />

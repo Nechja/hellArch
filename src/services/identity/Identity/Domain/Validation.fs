@@ -30,10 +30,16 @@ module Validation =
     let validatePassword (password: string) =
         if String.IsNullOrWhiteSpace(password) then
             Error (IdentityError.ValidationError "Password is required")
-        elif password.Length < 8 then
-            Error (IdentityError.ValidationError "Password must be at least 8 characters")
+        elif password.Length < 10 then
+            Error (IdentityError.ValidationError "Password must be at least 10 characters")
         elif password.Length > 128 then
             Error (IdentityError.ValidationError "Password must be 128 characters or less")
+        elif not (password |> Seq.exists Char.IsUpper) then
+            Error (IdentityError.ValidationError "Password must contain at least one uppercase letter")
+        elif not (password |> Seq.exists Char.IsLower) then
+            Error (IdentityError.ValidationError "Password must contain at least one lowercase letter")
+        elif not (password |> Seq.exists Char.IsDigit) then
+            Error (IdentityError.ValidationError "Password must contain at least one number")
         else
             Ok password
 
