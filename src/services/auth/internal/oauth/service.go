@@ -2,6 +2,9 @@ package oauth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/nechja/hellarch/auth/internal/config"
@@ -17,6 +20,7 @@ const (
 	ProviderApple     Provider = "apple"
 	ProviderMicrosoft Provider = "microsoft"
 	ProviderTwitch    Provider = "twitch"
+	ProviderHellArch  Provider = "hellarch"
 )
 
 type UserInfo struct {
@@ -28,8 +32,9 @@ type UserInfo struct {
 }
 
 type Service struct {
-	configs     map[Provider]*oauth2.Config
-	appleConfig *config.AppleConfig
+	configs         map[Provider]*oauth2.Config
+	appleConfig     *config.AppleConfig
+	hellarchBaseURL string
 }
 
 func NewService(cfg config.OAuthConfig) *Service {
@@ -114,21 +119,67 @@ func NewService(cfg config.OAuthConfig) *Service {
 		}
 	}
 
+	var hellarchBaseURL string
+	if cfg.HellArch.ClientID != "" {
+		hellarchBaseURL = cfg.HellArch.IdentityURL
+		// AuthURL uses public URL (browser redirect), TokenURL uses internal URL (server-to-server)
+		publicURL := cfg.HellArch.IdentityPublicURL
+		if publicURL == "" {
+			publicURL = hellarchBaseURL
+		}
+		configs[ProviderHellArch] = &oauth2.Config{
+			ClientID:     cfg.HellArch.ClientID,
+			ClientSecret: cfg.HellArch.ClientSecret,
+			RedirectURL:  cfg.HellArch.RedirectURI,
+			Scopes:       []string{"openid", "profile", "email"},
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  publicURL + "/api/identity/authorize",
+				TokenURL: hellarchBaseURL + "/identity/token",
+			},
+		}
+	}
+
 	return &Service{
-		configs:     configs,
-		appleConfig: appleConfig,
+		configs:         configs,
+		appleConfig:     appleConfig,
+		hellarchBaseURL: hellarchBaseURL,
 	}
 }
 
-func (s *Service) GetAuthURL(provider Provider, state string) (string, error) {
+// GeneratePKCEVerifier creates a cryptographically random PKCE code verifier
+func GeneratePKCEVerifier() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// generatePKCEChallenge creates S256 challenge from verifier
+func generatePKCEChallenge(verifier string) string {
+	h := sha256.Sum256([]byte(verifier))
+	return base64.RawURLEncoding.EncodeToString(h[:])
+}
+
+func (s *Service) GetAuthURL(provider Provider, state string, pkceVerifier string) (string, error) {
 	cfg, ok := s.configs[provider]
 	if !ok {
 		return "", fmt.Errorf("provider %s not configured", provider)
 	}
-	return cfg.AuthCodeURL(state), nil
+
+	opts := []oauth2.AuthCodeOption{}
+	if pkceVerifier != "" {
+		challenge := generatePKCEChallenge(pkceVerifier)
+		opts = append(opts,
+			oauth2.SetAuthURLParam("code_challenge", challenge),
+			oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+		)
+	}
+
+	return cfg.AuthCodeURL(state, opts...), nil
 }
 
-func (s *Service) Exchange(ctx context.Context, provider Provider, code string) (*oauth2.Token, error) {
+func (s *Service) Exchange(ctx context.Context, provider Provider, code string, pkceVerifier string) (*oauth2.Token, error) {
 	cfg, ok := s.configs[provider]
 	if !ok {
 		return nil, fmt.Errorf("provider %s not configured", provider)
@@ -142,7 +193,12 @@ func (s *Service) Exchange(ctx context.Context, provider Provider, code string) 
 		cfg.ClientSecret = clientSecret
 	}
 
-	return cfg.Exchange(ctx, code)
+	opts := []oauth2.AuthCodeOption{}
+	if pkceVerifier != "" {
+		opts = append(opts, oauth2.SetAuthURLParam("code_verifier", pkceVerifier))
+	}
+
+	return cfg.Exchange(ctx, code, opts...)
 }
 
 func (s *Service) GetUserInfo(ctx context.Context, provider Provider, token *oauth2.Token) (*UserInfo, error) {
@@ -159,6 +215,8 @@ func (s *Service) GetUserInfo(ctx context.Context, provider Provider, token *oau
 		return s.getMicrosoftUserInfo(ctx, token)
 	case ProviderTwitch:
 		return s.getTwitchUserInfo(ctx, token)
+	case ProviderHellArch:
+		return s.getHellArchUserInfo(ctx, token)
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", provider)
 	}

@@ -65,11 +65,25 @@ docker_build(
     ignore=['**/bin', '**/obj'],
 )
 
+docker_build(
+    'hellarch-identity-db',
+    '.',
+    dockerfile='infra/dbs/identity-db/Dockerfile',
+    only=[
+        'src/schema/Schema/',
+        'src/schema/MigrationRunner/',
+        'libs/data_types/csharp/',
+        'infra/dbs/identity-db/',
+    ],
+    ignore=['**/bin', '**/obj'],
+)
+
 # Label infrastructure resources
 dc_resource('auth-db', labels=['infra'])
 dc_resource('user-db', labels=['infra'])
 dc_resource('events-db', labels=['infra'])
 dc_resource('files-db', labels=['infra'])
+dc_resource('identity-db', labels=['infra', 'identity'])
 dc_resource('minio', labels=['infra'], links=['http://localhost:9001'])
 dc_resource('redis', labels=['infra'])
 dc_resource('rabbitmq', labels=['infra'])
@@ -99,6 +113,9 @@ dc_resource('images-worker', labels=['workers'], resource_deps=['rabbitmq', 'min
 # Files service
 dc_resource('files', labels=['services'], resource_deps=['files-db', 'minio', 'rabbitmq'], links=['http://localhost:5006'])
 
+# Identity service (optional - for self-hosted auth)
+dc_resource('identity', labels=['services', 'identity'], resource_deps=['identity-db'], links=['http://localhost:5010'])
+
 # Frontend clients (Vue app with Vuetify)
 # Built to src/gateway/Gateway/wwwroot/ - volume mount picks up changes immediately
 local_resource(
@@ -108,6 +125,9 @@ local_resource(
         'src/clients/App/src',
         'src/clients/App/index.html',
         'src/clients/App/package.json',
+        'src/clients/Identity/src',
+        'src/clients/Identity/index.html',
+        'src/clients/Identity/package.json',
     ],
     ignore=[
         '**/bin', '**/obj', '**/node_modules', '**/dist',

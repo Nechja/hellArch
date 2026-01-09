@@ -59,3 +59,17 @@ public sealed class FilesDbContextFactory : IDesignTimeDbContextFactory<FilesDbC
         return new FilesDbContext(optionsBuilder.Options);
     }
 }
+
+public sealed class IdentityDbContextFactory : IDesignTimeDbContextFactory<IdentityDbContext>
+{
+    public IdentityDbContext CreateDbContext(string[] args)
+    {
+        var connectionString = Environment.GetEnvironmentVariable("IDENTITY_DATABASE_URL")
+            ?? "Host=localhost;Port=5437;Database=identity_db;Username=hellarch;Password=hellarch";
+
+        var optionsBuilder = new DbContextOptionsBuilder<IdentityDbContext>();
+        optionsBuilder.UseNpgsql(connectionString);
+
+        return new IdentityDbContext(optionsBuilder.Options);
+    }
+}

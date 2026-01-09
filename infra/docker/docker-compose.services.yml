@@ -41,7 +41,8 @@ services:
       - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
       - JWT_PRIVATE_KEY_PATH=/keys/dev-private.pem
       - JWT_PUBLIC_KEY_PATH=/keys/dev-public.pem
-      # Discord vars loaded from env_file
+      # OAuth vars loaded from env_file
+      - HELLARCH_IDENTITY_URL=http://hellarch-identity:5010
       - HELLARCH_ENV=development
       - LOG_LEVEL=debug
       - OTEL_SERVICE_NAME=auth
@@ -76,6 +77,37 @@ services:
       - ../../src/services/user:/app
       - ../../libs:/libs
       - user-nuget:/root/.nuget
+    networks:
+      - hellarch
+    restart: unless-stopped
+
+  identity:
+    build:
+      context: ../../src/services/identity
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hellarch-identity
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "5010:5010"
+    env_file:
+      - ../../.env
+    environment:
+      - ASPNETCORE_URLS=http://+:5010
+      - ASPNETCORE_ENVIRONMENT=Development
+      - IDENTITY_DATABASE_URL=Host=identity-db;Port=5432;Database=identity_db;Username=hellarch;Password=hellarch
+      - IDENTITY_CLIENT_URL=http://localhost:5000/identity
+      # Seed client for auth service - set these in .env
+      - IDENTITY_SEED_CLIENT_ID=${HELLARCH_CLIENT_ID:-}
+      - IDENTITY_SEED_CLIENT_SECRET=${HELLARCH_CLIENT_SECRET:-}
+      - IDENTITY_SEED_REDIRECT_URIS=http://localhost:5000/api/auth/hellarch/callback,http://hellarch-gateway:5000/api/auth/hellarch/callback
+      - LOG_LEVEL=debug
+      - OTEL_SERVICE_NAME=identity
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    volumes:
+      - ../../src/services/identity:/app
+      - ../../libs:/libs
+      - identity-nuget:/root/.nuget
     networks:
       - hellarch
     restart: unless-stopped
@@ -338,6 +370,7 @@ volumes:
   gateway-nuget:
   auth-go-cache:
   user-nuget:
+  identity-nuget:
   admin-nuget:
   events-go-cache:
   audit-go-cache:

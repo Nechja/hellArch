@@ -23,6 +23,7 @@
     <Compile Include="..\..\..\libs\data_types\csharp\User\*.cs" Link="Generated\User\%(Filename)%(Extension)" />
     <Compile Include="..\..\..\libs\data_types\csharp\Events\*.cs" Link="Generated\Events\%(Filename)%(Extension)" />
     <Compile Include="..\..\..\libs\data_types\csharp\Files\*.cs" Link="Generated\Files\%(Filename)%(Extension)" />
+    <Compile Include="..\..\..\libs\data_types\csharp\Identity\*.cs" Link="Generated\Identity\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

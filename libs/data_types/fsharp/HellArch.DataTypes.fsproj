@@ -8,6 +8,9 @@
   <ItemGroup>
     <Compile Include="Auth/Types.fs" />
     <Compile Include="User/Types.fs" />
+    <Compile Include="Identity/Types.fs" />
+    <Compile Include="Events/Types.fs" />
+    <Compile Include="Files/Types.fs" />
   </ItemGroup>
 
 </Project>

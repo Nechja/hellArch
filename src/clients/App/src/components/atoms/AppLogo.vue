@@ -4,11 +4,11 @@ defineProps<{
   linkTo?: string
 }>()
 
-const sizeClasses = {
-  sm: 'text-body-1',
-  md: 'text-h6',
-  lg: 'text-h5',
-  xl: 'text-h4',
+const sizeWidths = {
+  sm: '100px',
+  md: '140px',
+  lg: '200px',
+  xl: '280px',
 }
 </script>
 
@@ -18,17 +18,22 @@ const sizeClasses = {
     :to="linkTo"
     class="app-logo text-decoration-none d-inline-block"
   >
-    <span
-      class="font-weight-bold gradient-text"
-      :class="sizeClasses[size ?? 'md']"
-    >
-      HellArch
-    </span>
+    <img
+      src="/logo.png"
+      alt="HellArch"
+      class="logo-img"
+      :style="{ maxWidth: sizeWidths[size ?? 'md'] }"
+    />
   </component>
 </template>
 
 <style scoped>
 .app-logo {
-  letter-spacing: -0.02em;
+  display: inline-flex;
+  align-items: center;
+}
+
+.logo-img {
+  height: auto;
 }
 </style>

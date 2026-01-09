@@ -45,8 +45,16 @@ foreach (var (typeDef, domain) in typeDefs)
 
     GenerateGo(typeDef, domain, outputDir);
     GeneratePython(typeDef, domain, outputDir);
-    GenerateFSharp(typeDef, domain, outputDir);
     GenerateTypeScript(typeDef, domain, outputDir, typeMap);
+}
+
+// Third pass: generate unified F# Types.fs per domain
+var typesByDomain = typeDefs.GroupBy(t => t.Domain);
+foreach (var domainGroup in typesByDomain)
+{
+    var domain = domainGroup.Key;
+    var types = domainGroup.Select(t => t.Def).ToList();
+    GenerateFSharpDomain(types, domain, outputDir, typeMap);
 }
 
 Console.WriteLine("\nDone!");
@@ -178,6 +186,14 @@ void GenerateGo(TypeDef def, string domain, string outDir)
 
 string CSharpToGo(string type, bool nullable)
 {
+    // Handle T[] array syntax
+    if (type.EndsWith("[]", StringComparison.Ordinal))
+    {
+        var elementType = type[..^2];
+        var goElement = CSharpToGo(elementType, false);
+        return $"[]{goElement}";
+    }
+
     if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
         type.StartsWith("List<", StringComparison.Ordinal) ||
         type.StartsWith("IEnumerable<", StringComparison.Ordinal))
@@ -284,6 +300,14 @@ void GeneratePython(TypeDef def, string domain, string outDir)
 
 string CSharpToPython(string type, bool nullable)
 {
+    // Handle T[] array syntax
+    if (type.EndsWith("[]", StringComparison.Ordinal))
+    {
+        var elementType = type[..^2];
+        var pyElement = CSharpToPython(elementType, false);
+        return $"list[{pyElement}]";
+    }
+
     if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
         type.StartsWith("List<", StringComparison.Ordinal) ||
         type.StartsWith("IEnumerable<", StringComparison.Ordinal))
@@ -336,11 +360,11 @@ string CSharpToPythonDefault(string value)
     return value;
 }
 
-void GenerateFSharp(TypeDef def, string domain, string outDir)
+void GenerateFSharpDomain(List<TypeDef> types, string domain, string outDir, Dictionary<string, string> typeMap)
 {
     var dir = Path.Combine(outDir, "fsharp", domain);
     Directory.CreateDirectory(dir);
-    var file = Path.Combine(dir, $"{def.Name}.fs");
+    var file = Path.Combine(dir, "Types.fs");
 
     var sb = new System.Text.StringBuilder();
     sb.AppendLine($"namespace HellArch.DataTypes.{domain}");
@@ -348,32 +372,56 @@ void GenerateFSharp(TypeDef def, string domain, string outDir)
     sb.AppendLine("open System");
     sb.AppendLine();
 
-    foreach (var e in def.Enums)
+    // Collect all enums first
+    foreach (var def in types)
     {
-        sb.AppendLine($"type {e.Name} =");
-        foreach (var v in e.Values)
-            sb.AppendLine($"    | {v}");
+        foreach (var e in def.Enums)
+        {
+            sb.AppendLine($"type {e.Name} =");
+            foreach (var v in e.Values)
+                sb.AppendLine($"    | {v}");
+            sb.AppendLine();
+        }
+    }
+
+    // Generate types with 'and' for mutual recursion
+    var isFirst = true;
+    foreach (var def in types)
+    {
+        if (!string.IsNullOrEmpty(def.Doc))
+            foreach (var line in SplitDocLines(def.Doc))
+                sb.AppendLine($"/// {line}");
+
+        var keyword = isFirst ? "type" : "and";
+        sb.AppendLine($"{keyword} {def.Name} = {{");
+
+        // Include all properties - mutual recursion handled via 'and' keyword
+        foreach (var p in def.Properties)
+        {
+            var fsType = CSharpToFSharp(p.Type, p.IsNullable);
+            sb.AppendLine($"    {p.Name}: {fsType}");
+        }
+
+        sb.AppendLine("}");
         sb.AppendLine();
+        isFirst = false;
     }
 
-    if (!string.IsNullOrEmpty(def.Doc))
-        foreach (var line in SplitDocLines(def.Doc))
-            sb.AppendLine($"/// {line}");
-    sb.AppendLine($"type {def.Name} = {{");
-
-    foreach (var p in def.Properties)
-    {
-        var fsType = CSharpToFSharp(p.Type, p.IsNullable);
-        sb.AppendLine($"    {p.Name}: {fsType}");
-    }
-
-    sb.AppendLine("}");
     File.WriteAllText(file, sb.ToString());
-    Console.WriteLine($"    fsharp: ok");
+    Console.WriteLine($"  fsharp/{domain}/Types.fs: ok");
 }
+
 
 string CSharpToFSharp(string type, bool nullable)
 {
+    // Handle T[] array syntax
+    if (type.EndsWith("[]", StringComparison.Ordinal))
+    {
+        var elementType = type[..^2];
+        var fsElement = CSharpToFSharp(elementType, false);
+        return $"{fsElement} list";
+    }
+
     // Handle collection types: ICollection<T>, List<T>, IEnumerable<T> -> T list
     if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
         type.StartsWith("List<", StringComparison.Ordinal) ||
@@ -511,6 +559,14 @@ bool IsPrimitiveType(string type) =>
 
 string CSharpToTypeScript(string type, bool nullable)
 {
+    // Handle T[] array syntax
+    if (type.EndsWith("[]", StringComparison.Ordinal))
+    {
+        var elementType = type[..^2];
+        var tsElement = CSharpToTypeScript(elementType, false);
+        return $"{tsElement}[]";
+    }
+
     if (type.StartsWith("ICollection<", StringComparison.Ordinal) ||
         type.StartsWith("List<", StringComparison.Ordinal) ||
         type.StartsWith("IEnumerable<", StringComparison.Ordinal))

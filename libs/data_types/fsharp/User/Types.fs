@@ -7,8 +7,23 @@ type Theme =
     | Light
     | Dark
 
+/// Extended user profile information.
+/// Linked to auth user via AuthUserId.
+/// Email is denormalized from auth for read performance.
+type UserProfile = {
+    Id: Guid
+    AuthUserId: Guid
+    Email: string
+    DisplayName: string option
+    Bio: string option
+    AvatarUrl: string option
+    CreatedAt: DateTime
+    UpdatedAt: DateTime
+    Preferences: UserPreferences option
+}
+
 /// User preferences and settings.
-type UserPreferences = {
+and UserPreferences = {
     Id: Guid
     UserProfileId: Guid
     Theme: Theme
@@ -21,17 +36,3 @@ type UserPreferences = {
     UpdatedAt: DateTime
 }
 
-/// Extended user profile information.
-/// Linked to auth user via AuthUserId.
-/// Email is denormalized from auth for read performance.
-and UserProfile = {
-    Id: Guid
-    AuthUserId: Guid
-    Email: string
-    DisplayName: string option
-    Bio: string option
-    AvatarUrl: string option
-    CreatedAt: DateTime
-    UpdatedAt: DateTime
-    Preferences: UserPreferences option
-}

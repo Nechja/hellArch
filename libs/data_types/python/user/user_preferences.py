@@ -24,4 +24,3 @@ class UserPreferences(BaseModel):
     email_notifications: bool = True
     push_notifications: bool = True
     in_app_notifications: bool = True
-    user_profile: UserProfile | None = None

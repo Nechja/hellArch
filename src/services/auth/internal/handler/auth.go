@@ -75,18 +75,25 @@ func (h *AuthHandler) GetOAuthURL(ctx context.Context, provider oauth.Provider, 
 		return nil, status.Error(codes.Internal, "failed to generate csrf token")
 	}
 
+	// Generate PKCE verifier for secure code exchange
+	pkceVerifier, err := oauth.GeneratePKCEVerifier()
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to generate pkce verifier")
+	}
+
 	csrfHash := sha256.Sum256([]byte(csrfToken))
 
 	stateData, _ := json.Marshal(map[string]string{
-		"redirect_uri": redirectURI,
-		"csrf_hash":    base64.URLEncoding.EncodeToString(csrfHash[:]),
-		"created_at":   time.Now().Format(time.RFC3339),
+		"redirect_uri":  redirectURI,
+		"csrf_hash":     base64.URLEncoding.EncodeToString(csrfHash[:]),
+		"pkce_verifier": pkceVerifier,
+		"created_at":    time.Now().Format(time.RFC3339),
 	})
 	if err := h.oauthState.SetOAuthState(ctx, state, string(stateData), OAuthStateTTL); err != nil {
 		return nil, status.Error(codes.Internal, "failed to store state")
 	}
 
-	authURL, err := h.oauthService.GetAuthURL(provider, state)
+	authURL, err := h.oauthService.GetAuthURL(provider, state, pkceVerifier)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -115,7 +122,10 @@ func (h *AuthHandler) HandleOAuthCallback(ctx context.Context, provider oauth.Pr
 		return nil, status.Error(codes.InvalidArgument, "CSRF validation failed")
 	}
 
-	token, err := h.oauthService.Exchange(ctx, provider, code)
+	// Retrieve PKCE verifier from stored state
+	pkceVerifier := stateInfo["pkce_verifier"]
+
+	token, err := h.oauthService.Exchange(ctx, provider, code, pkceVerifier)
 	if err != nil {
 		slog.Error("oauth exchange failed", "error", err, "provider", provider)
 		return nil, status.Error(codes.Unauthenticated, "failed to exchange code")

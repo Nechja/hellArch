@@ -19,9 +19,6 @@ public class UserPreferences
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-
-    // Navigation properties (EF Core)
-    public UserProfile? UserProfile { get; set; }
 }
 
 public enum Theme

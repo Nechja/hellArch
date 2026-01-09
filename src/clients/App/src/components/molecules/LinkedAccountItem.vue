@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import Badge from '../atoms/Badge.vue'
 
-type Provider = 'discord' | 'github' | 'google' | 'apple' | 'microsoft' | 'twitch'
+type Provider = 'discord' | 'github' | 'google' | 'apple' | 'microsoft' | 'twitch' | 'hellarch'
 
 const props = defineProps<{
   provider: Provider
@@ -45,6 +45,11 @@ const providerConfig = {
     color: '#9146ff',
     icon: 'mdi-twitch',
     label: 'Twitch',
+  },
+  hellarch: {
+    color: '#ff4d8d',
+    icon: 'mdi-key',
+    label: 'HellArch',
   },
 }
 
