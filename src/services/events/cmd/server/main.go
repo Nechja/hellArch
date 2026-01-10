@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nechja/hellarch/golibs/logging"
 	"github.com/nechja/hellarch/golibs/rabbitmq"
 	"github.com/nechja/hellarch/golibs/telemetry"
 	"github.com/nechja/hellarch/services/events/internal/config"
@@ -22,22 +23,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Setup logging
-	logLevel := os.Getenv("LOG_LEVEL")
-	var level slog.Level
-	switch logLevel {
-	case "debug":
-		level = slog.LevelDebug
-	case "warn", "warning":
-		level = slog.LevelWarn
-	case "error":
-		level = slog.LevelError
-	default:
-		level = slog.LevelInfo
-	}
-
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
-	slog.SetDefault(logger)
+	logging.Setup()
 
 	// Load config
 	cfg, err := config.Load()

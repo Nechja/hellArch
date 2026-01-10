@@ -10,6 +10,7 @@ import (
 	sharedconfig "github.com/nechja/hellarch/golibs/config"
 	"github.com/nechja/hellarch/golibs/events"
 	"github.com/nechja/hellarch/golibs/health"
+	"github.com/nechja/hellarch/golibs/logging"
 	"github.com/nechja/hellarch/golibs/telemetry"
 	"github.com/nechja/hellarch/workers/webhooks/internal/config"
 	"github.com/nechja/hellarch/workers/webhooks/internal/consumer"
@@ -24,10 +25,7 @@ func main() {
 }
 
 func run() error {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
-	slog.SetDefault(logger)
+	logging.Setup()
 
 	cfg, err := config.Load()
 	if err != nil {

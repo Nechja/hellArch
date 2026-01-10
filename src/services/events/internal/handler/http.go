@@ -1,11 +1,11 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
+	"github.com/nechja/hellarch/golibs/health"
+	"github.com/nechja/hellarch/golibs/httputil"
 	"github.com/nechja/hellarch/golibs/rabbitmq"
-	"github.com/nechja/hellarch/golibs/status"
 	"github.com/nechja/hellarch/services/events/internal/store"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -63,19 +63,14 @@ func (r *Router) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /workers/status", otelhttp.NewHandler(http.HandlerFunc(r.worker.workersStatus), "workers_status"))
 
 	// Health
-	mux.HandleFunc("GET /health", health)
+	health.RegisterRoutes(mux)
 }
 
+// Convenience wrappers for httputil functions
 func writeJSON(w http.ResponseWriter, statusCode int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(data)
+	httputil.WriteJSON(w, statusCode, data)
 }
 
 func writeError(w http.ResponseWriter, statusCode int, message string) {
-	writeJSON(w, statusCode, map[string]string{"error": message})
-}
-
-func health(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": status.Healthy})
+	httputil.WriteError(w, statusCode, message)
 }
