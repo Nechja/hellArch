@@ -14,12 +14,19 @@
     <Compile Include="Infrastructure/BreachDetection.fs" />
     <Compile Include="Infrastructure/Database.fs" />
     <Compile Include="Api/Views.fs" />
-    <Compile Include="Api/Handlers.fs" />
+    <Compile Include="Api/HttpUtils.fs" />
+    <Compile Include="Api/Config.fs" />
+    <Compile Include="Api/AuthHandlers.fs" />
+    <Compile Include="Api/TokenHandlers.fs" />
+    <Compile Include="Api/ResourceHandlers.fs" />
+    <Compile Include="Api/HealthHandlers.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../../../libs/data_types/fsharp/HellArch.DataTypes.fsproj" />
+    <!-- Shared HTTP utilities -->
+    <ProjectReference Include="../../../../libs/fsharp/httputil/HellArch.HttpUtil.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

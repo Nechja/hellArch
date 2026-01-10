@@ -24,6 +24,8 @@
     <ProjectReference Include="../../../../libs/cloud_events/fsharp/HellArch.CloudEvents.fsproj" />
     <!-- DTO types from proto (F# generated) -->
     <ProjectReference Include="../../../../libs/protos/fsharp/HellArch.Protos.FSharp.fsproj" />
+    <!-- Shared HTTP utilities -->
+    <ProjectReference Include="../../../../libs/fsharp/httputil/HellArch.HttpUtil.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
