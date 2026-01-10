@@ -10,7 +10,10 @@
     <Compile Include="Domain/Mapping.fs" />
     <Compile Include="Infrastructure/Database.fs" />
     <Compile Include="Infrastructure/Events.fs" />
-    <Compile Include="Api/Handlers.fs" />
+    <Compile Include="Api/HttpUtils.fs" />
+    <Compile Include="Api/ProfileHandlers.fs" />
+    <Compile Include="Api/PreferencesHandlers.fs" />
+    <Compile Include="Api/HealthHandlers.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

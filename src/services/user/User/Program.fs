@@ -12,7 +12,9 @@ open OpenTelemetry
 open OpenTelemetry.Context.Propagation
 open OpenTelemetry.Resources
 open OpenTelemetry.Trace
-open User.Api
+open User.Api.ProfileHandlers
+open User.Api.PreferencesHandlers
+open User.Api.HealthHandlers
 open User.Infrastructure
 
 let private getRequiredEnv name =
@@ -82,38 +84,38 @@ let main args =
     let dbConfig: Database.DatabaseConfig =
         { ConnectionString = getRequiredEnv "USER_DATABASE_URL" }
 
-    app.MapGet("/user/health", Func<HttpContext, _>(fun ctx -> Handlers.health dbConfig ctx)) |> ignore
+    app.MapGet("/user/health", Func<HttpContext, _>(fun ctx -> health dbConfig ctx)) |> ignore
 
-    app.MapGet("/user/me", Func<HttpContext, _>(fun ctx -> Handlers.getMe dbConfig ctx))
+    app.MapGet("/user/me", Func<HttpContext, _>(fun ctx -> getMe dbConfig ctx))
     |> ignore
 
-    app.MapPut("/user/me", Func<HttpContext, _>(fun ctx -> Handlers.updateMe dbConfig ctx))
+    app.MapPut("/user/me", Func<HttpContext, _>(fun ctx -> updateMe dbConfig ctx))
     |> ignore
 
     app.MapGet(
         "/user/{userId:guid}",
-        Func<Guid, HttpContext, _>(fun userId ctx -> Handlers.getProfile dbConfig userId ctx)
+        Func<Guid, HttpContext, _>(fun userId ctx -> getProfile dbConfig userId ctx)
     )
     |> ignore
 
-    app.MapPost("/user", Func<HttpContext, _>(fun ctx -> Handlers.createProfile dbConfig ctx))
+    app.MapPost("/user", Func<HttpContext, _>(fun ctx -> createProfile dbConfig ctx))
     |> ignore
 
     app.MapPut(
         "/user/{userId:guid}",
-        Func<Guid, HttpContext, _>(fun userId ctx -> Handlers.updateProfile dbConfig userId ctx)
+        Func<Guid, HttpContext, _>(fun userId ctx -> updateProfile dbConfig userId ctx)
     )
     |> ignore
 
     app.MapGet(
         "/user/{userId:guid}/preferences",
-        Func<Guid, HttpContext, _>(fun userId ctx -> Handlers.getPreferences dbConfig userId ctx)
+        Func<Guid, HttpContext, _>(fun userId ctx -> getPreferences dbConfig userId ctx)
     )
     |> ignore
 
     app.MapPut(
         "/user/{userId:guid}/preferences",
-        Func<Guid, HttpContext, _>(fun userId ctx -> Handlers.updatePreferences dbConfig userId ctx)
+        Func<Guid, HttpContext, _>(fun userId ctx -> updatePreferences dbConfig userId ctx)
     )
     |> ignore
 
