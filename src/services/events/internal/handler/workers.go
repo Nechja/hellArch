@@ -7,7 +7,15 @@ import (
 	"github.com/nechja/hellarch/golibs/status"
 )
 
-func (h *Handler) workersStatus(w http.ResponseWriter, r *http.Request) {
+type WorkerHandler struct {
+	mgmt *rabbitmq.ManagementClient
+}
+
+func NewWorkerHandler(mgmt *rabbitmq.ManagementClient) *WorkerHandler {
+	return &WorkerHandler{mgmt: mgmt}
+}
+
+func (h *WorkerHandler) workersStatus(w http.ResponseWriter, r *http.Request) {
 	statuses := h.mgmt.GetWorkersStatus(r.Context())
 
 	// Calculate overall status

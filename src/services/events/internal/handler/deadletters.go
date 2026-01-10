@@ -9,6 +9,14 @@ import (
 	"github.com/nechja/hellarch/services/events/internal/store"
 )
 
+type DeadLetterHandler struct {
+	store *store.Store
+}
+
+func NewDeadLetterHandler(store *store.Store) *DeadLetterHandler {
+	return &DeadLetterHandler{store: store}
+}
+
 type CreateDeadLetterRequest struct {
 	EventType     string          `json:"event_type"`
 	EventID       string          `json:"event_id"`
@@ -20,7 +28,7 @@ type CreateDeadLetterRequest struct {
 	ErrorMessage  string          `json:"error_message,omitempty"`
 }
 
-func (h *Handler) listDeadLetters(w http.ResponseWriter, r *http.Request) {
+func (h *DeadLetterHandler) listDeadLetters(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 
@@ -45,7 +53,7 @@ func (h *Handler) listDeadLetters(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) createDeadLetter(w http.ResponseWriter, r *http.Request) {
+func (h *DeadLetterHandler) createDeadLetter(w http.ResponseWriter, r *http.Request) {
 	var req CreateDeadLetterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -79,7 +87,7 @@ func (h *Handler) createDeadLetter(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, dl)
 }
 
-func (h *Handler) deleteDeadLetter(w http.ResponseWriter, r *http.Request) {
+func (h *DeadLetterHandler) deleteDeadLetter(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
 		writeError(w, http.StatusBadRequest, "id is required")

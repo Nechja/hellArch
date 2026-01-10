@@ -9,6 +9,14 @@ import (
 	"github.com/nechja/hellarch/services/events/internal/store"
 )
 
+type DeliveryHandler struct {
+	store *store.Store
+}
+
+func NewDeliveryHandler(store *store.Store) *DeliveryHandler {
+	return &DeliveryHandler{store: store}
+}
+
 type createDeliveryRequest struct {
 	WebhookID    string          `json:"webhook_id"`
 	EventID      string          `json:"event_id"`
@@ -20,7 +28,7 @@ type createDeliveryRequest struct {
 	Attempt      int             `json:"attempt"`
 }
 
-func (h *Handler) listDeliveries(w http.ResponseWriter, r *http.Request) {
+func (h *DeliveryHandler) listDeliveries(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	webhookID := r.URL.Query().Get("webhook_id")
@@ -53,7 +61,7 @@ func (h *Handler) listDeliveries(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) createDelivery(w http.ResponseWriter, r *http.Request) {
+func (h *DeliveryHandler) createDelivery(w http.ResponseWriter, r *http.Request) {
 	var req createDeliveryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid request body")

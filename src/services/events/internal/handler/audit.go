@@ -9,6 +9,14 @@ import (
 	"github.com/nechja/hellarch/services/events/internal/store"
 )
 
+type AuditHandler struct {
+	store *store.Store
+}
+
+func NewAuditHandler(store *store.Store) *AuditHandler {
+	return &AuditHandler{store: store}
+}
+
 type createAuditLogRequest struct {
 	EventType string          `json:"event_type"`
 	EventID   string          `json:"event_id"`
@@ -18,7 +26,7 @@ type createAuditLogRequest struct {
 	Metadata  json.RawMessage `json:"metadata,omitempty"`
 }
 
-func (h *Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
+func (h *AuditHandler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	eventType := r.URL.Query().Get("event_type")
@@ -44,7 +52,7 @@ func (h *Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) createAuditLog(w http.ResponseWriter, r *http.Request) {
+func (h *AuditHandler) createAuditLog(w http.ResponseWriter, r *http.Request) {
 	var req createAuditLogRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid request body")

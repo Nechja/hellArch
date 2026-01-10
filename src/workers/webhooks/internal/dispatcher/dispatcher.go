@@ -6,7 +6,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -24,16 +23,14 @@ import (
 var tracer = otel.Tracer("webhooks-dispatcher")
 
 type Dispatcher struct {
-	httpClient   *http.Client
-	eventsClient *events.Client
-	timeout      time.Duration
+	httpClient *http.Client
+	recorder   *DeliveryRecorder
 }
 
 func New(eventsClient *events.Client, timeout time.Duration) *Dispatcher {
 	return &Dispatcher{
-		httpClient:   httpclient.New(timeout),
-		eventsClient: eventsClient,
-		timeout:      timeout,
+		httpClient: httpclient.New(timeout),
+		recorder:   NewDeliveryRecorder(eventsClient),
 	}
 }
 
@@ -107,25 +104,16 @@ func (d *Dispatcher) Deliver(ctx context.Context, req DeliveryRequest) error {
 }
 
 func (d *Dispatcher) recordDelivery(ctx context.Context, req DeliveryRequest, statusCode int, responseBody string, success bool) error {
-	var respBody *string
-	if responseBody != "" {
-		respBody = &responseBody
-	}
-
-	deliveryReq := events.CreateDeliveryRequest{
+	_ = d.recorder.Record(ctx, RecordParams{
 		WebhookID:    req.Webhook.ID,
 		EventID:      req.EventID,
 		EventType:    req.EventType,
-		Payload:      json.RawMessage(req.Payload),
+		Payload:      req.Payload,
 		StatusCode:   statusCode,
-		ResponseBody: respBody,
+		ResponseBody: responseBody,
 		Success:      success,
 		Attempt:      req.Attempt,
-	}
-
-	if err := d.eventsClient.CreateDelivery(ctx, deliveryReq); err != nil {
-		slog.Error("failed to record delivery", "error", err)
-	}
+	})
 
 	if !success {
 		return fmt.Errorf("delivery failed with status %d", statusCode)
