@@ -12,6 +12,8 @@ pub const unhealthy_failure_threshold = 3
 
 pub const history_depth = 10
 
+pub const default_config_path = "/config/services.json"
+
 pub fn get_poll_interval() -> Int {
   envoy.get("POLL_INTERVAL_MS")
   |> result.try(int.parse)
@@ -21,4 +23,9 @@ pub fn get_poll_interval() -> Int {
 pub fn get_events_url() -> String {
   envoy.get("EVENTS_SERVICE_URL")
   |> result.unwrap("http://events:5005")
+}
+
+pub fn get_config_path() -> String {
+  envoy.get("HEALTH_CONFIG_PATH")
+  |> result.unwrap(default_config_path)
 }
