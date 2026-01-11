@@ -35,6 +35,67 @@ Supported providers configured via environment:
 | Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
 | GitHub | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` |
 | Microsoft | `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` |
+| Apple | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` |
+| Twitch | `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` |
+| HellArch | `HELLARCH_CLIENT_ID`, `HELLARCH_CLIENT_SECRET`, `HELLARCH_IDENTITY_URL` |
+
+::: tip HellArch Provider
+The `hellarch` provider uses the [Identity Service](/guide/services/identity) as an OAuth provider, enabling local username/password authentication.
+:::
+
+## Linked Accounts
+
+Users can link multiple OAuth providers to a single account. This allows signing in with any linked provider.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant App
+    participant Auth as Auth Service
+    participant Provider as OAuth Provider
+
+    User->>App: Click "Link {provider}"
+    App->>Auth: GET /oauth/{provider}/link
+    Auth->>Auth: Verify existing session
+    Auth-->>User: Redirect to provider
+
+    User->>Provider: Authorize
+    Provider-->>Auth: Callback with code
+    Auth->>Auth: Link account to user
+    Auth-->>User: Redirect to settings
+```
+
+**Linking flow:**
+1. User must be authenticated (valid session)
+2. GET `/oauth/{provider}/link` initiates linking
+3. After OAuth callback, account is linked to current user
+4. User can now sign in with any linked provider
+
+**Get linked accounts:**
+```http
+GET /linked-accounts
+Cookie: hellarch_session=xxx
+```
+
+**Response:**
+```json
+{
+  "accounts": [
+    {
+      "provider": "discord",
+      "provider_user_id": "123456789",
+      "email": "user@example.com",
+      "linked_at": "2024-01-15T10:30:00Z"
+    },
+    {
+      "provider": "github",
+      "provider_user_id": "987654321",
+      "email": "user@example.com",
+      "linked_at": "2024-01-16T14:20:00Z"
+    }
+  ]
+}
+```
 
 ## Endpoints
 
@@ -44,6 +105,8 @@ Supported providers configured via environment:
 |--------|------|-------------|
 | GET | `/oauth/{provider}` | Start OAuth flow |
 | GET | `/oauth/{provider}/callback` | OAuth callback |
+| GET | `/oauth/{provider}/link` | Link additional OAuth account |
+| GET | `/linked-accounts` | Get user's linked accounts |
 | POST | `/refresh` | Refresh tokens |
 | POST | `/logout` | End session |
 | GET | `/health` | Health check |

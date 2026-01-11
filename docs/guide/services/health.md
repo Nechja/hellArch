@@ -111,10 +111,14 @@ flowchart TD
 | user | HTTP GET | `/user/health` | Yes |
 | admin | HTTP GET | `/health` | No |
 | events | HTTP GET | `/health` | Yes |
+| files | HTTP GET | `/health` | Yes |
+| identity | HTTP GET | `/identity/health` | No |
 | redis | TCP Connect | `:6379` | Yes |
 | auth-db | TCP Connect | `:5432` | Yes |
 | user-db | TCP Connect | `:5432` | Yes |
 | events-db | TCP Connect | `:5432` | Yes |
+| files-db | TCP Connect | `:5432` | Yes |
+| identity-db | TCP Connect | `:5432` | No |
 | rabbitmq | TCP Connect | `:5672` | Yes |
 
 ## API Endpoints
@@ -220,6 +224,43 @@ Returns detailed status for a single service with history.
 |----------|---------|-------------|
 | `PORT` | `5004` | HTTP listen port |
 | `POLL_INTERVAL_MS` | `10000` | Poll interval in milliseconds |
+| `HEALTH_CONFIG_PATH` | `/app/config/health-services.json` | Path to service configuration JSON |
+
+## Service Configuration
+
+Services are configured via a JSON file at `HEALTH_CONFIG_PATH`. The file is mounted into the container from `infra/config/health-services.json`.
+
+**Example configuration:**
+
+```json
+{
+  "services": [
+    {
+      "name": "gateway",
+      "url": "http://gateway:5000",
+      "checkType": "http",
+      "healthPath": "/health",
+      "critical": true
+    },
+    {
+      "name": "redis",
+      "url": "redis:6379",
+      "checkType": "tcp",
+      "critical": true
+    }
+  ]
+}
+```
+
+**Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Service identifier |
+| `url` | string | Service URL (host:port for TCP) |
+| `checkType` | `"http"` \| `"tcp"` | Health check method |
+| `healthPath` | string | HTTP endpoint path (HTTP only) |
+| `critical` | boolean | Affects overall status calculation |
 
 ## Code Structure
 
@@ -268,11 +309,13 @@ stateDiagram-v2
 |---------|---------|
 | mist | HTTP server |
 | gleam_http | HTTP types |
-| gleam_json | JSON encoding |
+| gleam_json | JSON encoding/decoding |
 | birl | Time/date handling |
 | envoy | Environment variables |
 | gleam_otp | Actor model |
 | gleam_erlang | Erlang interop |
+| simplifile | File system operations |
+| filepath | File path manipulation |
 
 ## Admin Console Integration
 
@@ -305,15 +348,16 @@ COPY --from=builder /app/build/erlang-shipment ./
 
 ## Adding a New Service
 
-1. Add to `registry.gleam`:
+1. Edit `infra/config/health-services.json`:
 
-```gleam
-Service(
-  name: "my-service",
-  url: "http://my-service:8080",
-  check_type: HttpGet("/health"),
-  critical: True,
-)
+```json
+{
+  "name": "my-service",
+  "url": "http://my-service:8080",
+  "checkType": "http",
+  "healthPath": "/health",
+  "critical": true
+}
 ```
 
-2. Rebuild and deploy - the poller will automatically start monitoring it.
+2. Restart the health service - it will load the updated configuration on startup.
