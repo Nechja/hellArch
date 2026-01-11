@@ -3,6 +3,7 @@ import gleam/io
 import gleam/json
 import gleam/list
 import gleam/result
+import gleam/string
 import health/config
 import health/types.{type Service, HttpGet, Service, TcpConnect}
 import simplifile
@@ -23,9 +24,7 @@ pub fn services() -> List(Service) {
   case load_services(config_path) {
     Ok(svcs) -> svcs
     Error(reason) -> {
-      io.println("Failed to load services config: " <> reason)
-      io.println("Using empty service list")
-      []
+      panic as { "Failed to load services config: " <> reason }
     }
   }
 }
@@ -37,8 +36,9 @@ fn load_services(path: String) -> Result(List(Service), String) {
   )
 
   use configs <- result.try(parse_config(content))
+  use services <- result.try(validate_and_convert(configs))
 
-  Ok(list.map(configs, config_to_service))
+  Ok(services)
 }
 
 fn parse_config(content: String) -> Result(List(ServiceConfig), String) {
@@ -68,36 +68,51 @@ fn json_error_to_string(err: json.DecodeError) -> String {
     json.UnexpectedByte(byte) -> "Unexpected byte: " <> byte
     json.UnexpectedSequence(seq) -> "Unexpected sequence: " <> seq
     json.UnableToDecode(errs) -> {
-      "Unable to decode: "
-      <> list.map(errs, fn(e) { e.expected <> " at " <> e.path |> list.map(decode_path_to_string) |> string_join("/") })
-      |> string_join(", ")
+      let error_strings =
+        list.map(errs, fn(e) {
+          e.expected <> " at " <> string.join(e.path, "/")
+        })
+      "Unable to decode: " <> string.join(error_strings, ", ")
     }
   }
 }
 
-fn decode_path_to_string(segment: String) -> String {
-  segment
+fn validate_and_convert(
+  configs: List(ServiceConfig),
+) -> Result(List(Service), String) {
+  list.try_map(configs, config_to_service)
 }
 
-fn string_join(strs: List(String), sep: String) -> String {
-  case strs {
-    [] -> ""
-    [first, ..rest] ->
-      list.fold(rest, first, fn(acc, s) { acc <> sep <> s })
-  }
-}
+fn config_to_service(cfg: ServiceConfig) -> Result(Service, String) {
+  use check_type <- result.try(case cfg.check_type {
+    "http" -> {
+      case cfg.health_path {
+        "" ->
+          Error(
+            "Service \""
+            <> cfg.name
+            <> "\" has checkType \"http\" but missing healthPath",
+          )
+        path -> Ok(HttpGet(path))
+      }
+    }
+    "tcp" -> Ok(TcpConnect)
+    unknown -> {
+      io.println(
+        "Warning: Unknown checkType \""
+        <> unknown
+        <> "\" for service \""
+        <> cfg.name
+        <> "\", defaulting to tcp",
+      )
+      Ok(TcpConnect)
+    }
+  })
 
-fn config_to_service(cfg: ServiceConfig) -> Service {
-  let check_type = case cfg.check_type {
-    "http" -> HttpGet(cfg.health_path)
-    "tcp" -> TcpConnect
-    _ -> TcpConnect
-  }
-
-  Service(
+  Ok(Service(
     name: cfg.name,
     url: cfg.url,
     check_type: check_type,
     critical: cfg.critical,
-  )
+  ))
 }

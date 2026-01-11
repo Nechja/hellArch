@@ -46,7 +46,7 @@
       "name": "identity",
       "url": "http://identity:5010",
       "checkType": "http",
-      "healthPath": "/health",
+      "healthPath": "/identity/health",
       "critical": false
     },
     {
