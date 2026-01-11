@@ -1,0 +1,95 @@
+{
+  "services": [
+    {
+      "name": "gateway",
+      "url": "http://gateway:5000",
+      "checkType": "http",
+      "healthPath": "/health",
+      "critical": true
+    },
+    {
+      "name": "auth",
+      "url": "http://auth:5001",
+      "checkType": "http",
+      "healthPath": "/auth/health",
+      "critical": true
+    },
+    {
+      "name": "user",
+      "url": "http://user:5002",
+      "checkType": "http",
+      "healthPath": "/user/health",
+      "critical": true
+    },
+    {
+      "name": "admin",
+      "url": "http://admin:5003",
+      "checkType": "http",
+      "healthPath": "/health",
+      "critical": false
+    },
+    {
+      "name": "events",
+      "url": "http://events:5005",
+      "checkType": "http",
+      "healthPath": "/health",
+      "critical": true
+    },
+    {
+      "name": "files",
+      "url": "http://files:5006",
+      "checkType": "http",
+      "healthPath": "/health",
+      "critical": true
+    },
+    {
+      "name": "identity",
+      "url": "http://identity:5010",
+      "checkType": "http",
+      "healthPath": "/identity/health",
+      "critical": false
+    },
+    {
+      "name": "redis",
+      "url": "redis:6379",
+      "checkType": "tcp",
+      "critical": true
+    },
+    {
+      "name": "auth-db",
+      "url": "auth-db:5432",
+      "checkType": "tcp",
+      "critical": true
+    },
+    {
+      "name": "user-db",
+      "url": "user-db:5432",
+      "checkType": "tcp",
+      "critical": true
+    },
+    {
+      "name": "events-db",
+      "url": "events-db:5432",
+      "checkType": "tcp",
+      "critical": true
+    },
+    {
+      "name": "files-db",
+      "url": "files-db:5432",
+      "checkType": "tcp",
+      "critical": true
+    },
+    {
+      "name": "identity-db",
+      "url": "identity-db:5432",
+      "checkType": "tcp",
+      "critical": false
+    },
+    {
+      "name": "rabbitmq",
+      "url": "rabbitmq:5672",
+      "checkType": "tcp",
+      "critical": true
+    }
+  ]
+}

@@ -132,8 +132,11 @@ services:
       - PORT=5004
       - POLL_INTERVAL_MS=10000
       - EVENTS_SERVICE_URL=http://events:5005
+      - HEALTH_CONFIG_PATH=/config/services.json
       - OTEL_SERVICE_NAME=health
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    volumes:
+      - ../../infra/config/health-services.json:/config/services.json:ro
     networks:
       - hellarch
     restart: unless-stopped
