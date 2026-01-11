@@ -20,6 +20,7 @@ graph LR
     subgraph Services
         AUTH[Auth]
         USER[User]
+        EVENTS[Events]
         FILES[Files]
     end
 
@@ -53,6 +54,7 @@ graph LR
 
     AUTH -->|publish| EX
     USER -->|publish| EX
+    EVENTS -->|publish| EX
     FILES -->|publish| EX
     EX -->|hellarch.#| AQ
     EX -->|hellarch.#| WQ

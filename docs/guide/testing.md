@@ -697,6 +697,9 @@ sequenceDiagram
 | `IDENTITY_URL` | `http://localhost:5010` | Identity service URL |
 | `AUTH_DATABASE_URL` | `postgres://...localhost:5434/auth_db` | Auth DB connection |
 | `USER_DATABASE_URL` | `postgres://...localhost:5433/user_db` | User DB connection |
+| `DATABASE_URL` | `postgres://...localhost:5435/events_db` | Events DB connection |
+| `FILES_DATABASE_URL` | `postgres://...localhost:5436/files_db` | Files DB connection |
+| `IDENTITY_DATABASE_URL` | `postgres://...localhost:5437/identity_db` | Identity DB connection |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection |
 | `RABBITMQ_URL` | `amqp://hellarch:hellarch@localhost:5672/` | RabbitMQ connection |
 

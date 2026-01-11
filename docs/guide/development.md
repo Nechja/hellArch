@@ -89,6 +89,9 @@ graph TB
 Key variables:
 - `AUTH_DATABASE_URL` - Auth PostgreSQL (port 5434)
 - `USER_DATABASE_URL` - User PostgreSQL (port 5433)
+- `DATABASE_URL` - Events PostgreSQL (port 5435)
+- `FILES_DATABASE_URL` - Files PostgreSQL (port 5436)
+- `IDENTITY_DATABASE_URL` - Identity PostgreSQL (port 5437)
 - `REDIS_URL` - Redis connection
 - `JWT_PRIVATE_KEY_PATH` / `JWT_PUBLIC_KEY_PATH` - RSA keys
 
@@ -111,30 +114,45 @@ graph TB
         GATEWAY[Gateway :5000]
         AUTH[Auth Service :5001]
         USER[User Service :5002]
+        EVENTS[Events Service :5005]
+        FILES[Files Service :5006]
         IDENTITY[Identity Service :5010]
     end
 
     subgraph Infrastructure
         PG_AUTH[(PostgreSQL :5434)]
         PG_USER[(PostgreSQL :5433)]
+        PG_EVENTS[(PostgreSQL :5435)]
+        PG_FILES[(PostgreSQL :5436)]
         PG_IDENTITY[(PostgreSQL :5437)]
         REDIS[(Redis :6379)]
         RABBIT[(RabbitMQ :5672)]
+        MINIO[(MinIO :9000)]
     end
 
     INFRA --> PG_AUTH
     INFRA --> PG_USER
+    INFRA --> PG_EVENTS
+    INFRA --> PG_FILES
     INFRA --> PG_IDENTITY
     INFRA --> REDIS
     INFRA --> RABBIT
+    INFRA --> MINIO
 
     GATEWAY --> AUTH
     GATEWAY --> USER
+    GATEWAY --> EVENTS
+    GATEWAY --> FILES
     GATEWAY --> IDENTITY
     AUTH --> PG_AUTH
     AUTH --> REDIS
     AUTH --> IDENTITY
     USER --> PG_USER
+    EVENTS --> PG_EVENTS
+    EVENTS --> RABBIT
+    FILES --> PG_FILES
+    FILES --> MINIO
+    FILES --> RABBIT
     IDENTITY --> PG_IDENTITY
 ```
 

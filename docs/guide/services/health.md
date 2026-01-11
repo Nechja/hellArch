@@ -28,14 +28,19 @@ graph TB
         USER[User :5002]
         ADMIN[Admin :5003]
         EVENTS[Events :5005]
+        FILES[Files :5006]
+        IDENTITY[Identity :5010]
     end
 
     subgraph Infrastructure
         REDIS[(Redis :6379)]
-        AUTHDB[(Auth DB :5432)]
-        USERDB[(User DB :5432)]
-        EVENTSDB[(Events DB :5432)]
+        AUTHDB[(Auth DB :5434)]
+        USERDB[(User DB :5433)]
+        EVENTSDB[(Events DB :5435)]
+        FILESDB[(Files DB :5436)]
+        IDENTITYDB[(Identity DB :5437)]
         RMQ[(RabbitMQ :5672)]
+        MINIO[(MinIO :9000)]
     end
 
     subgraph Consumers
@@ -48,11 +53,16 @@ graph TB
     POLLER -->|HTTP GET| USER
     POLLER -->|HTTP GET| ADMIN
     POLLER -->|HTTP GET| EVENTS
+    POLLER -->|HTTP GET| FILES
+    POLLER -->|HTTP GET| IDENTITY
     POLLER -->|TCP Connect| REDIS
     POLLER -->|TCP Connect| AUTHDB
     POLLER -->|TCP Connect| USERDB
     POLLER -->|TCP Connect| EVENTSDB
+    POLLER -->|TCP Connect| FILESDB
+    POLLER -->|TCP Connect| IDENTITYDB
     POLLER -->|TCP Connect| RMQ
+    POLLER -->|TCP Connect| MINIO
     ROUTER --> POLLER
     DASHBOARD --> ROUTER
 ```

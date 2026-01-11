@@ -119,7 +119,7 @@ graph LR
 
 ## Connection Strings
 
-From `.envrc`:
+Local development connection strings:
 ```bash
 AUTH_DATABASE_URL="postgres://hellarch:hellarch@localhost:5434/auth_db"
 USER_DATABASE_URL="postgres://hellarch:hellarch@localhost:5433/user_db"

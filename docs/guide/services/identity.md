@@ -276,7 +276,7 @@ sequenceDiagram
     participant Auth as Auth Service
     participant Identity as Identity Service
 
-    User->>Auth: GET /oauth/hellarch
+    User->>Auth: GET /auth/hellarch/login
     Auth->>Identity: Redirect to /authorize
     Note over Identity: User logs in
     Identity-->>Auth: Callback with code

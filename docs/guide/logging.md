@@ -6,10 +6,24 @@ HellArch uses structured JSON logging across all services for consistency and ob
 
 ```mermaid
 graph LR
-    subgraph Services
-        AUTH[Auth Service<br/>Go slog]
-        GW[Gateway<br/>.NET ILogger]
-        USER[User Service<br/>F# ILogger]
+    subgraph Go Services
+        AUTH[Auth<br/>slog]
+        EVENTS[Events<br/>slog]
+        FILES[Files<br/>slog]
+    end
+
+    subgraph .NET Services
+        GW[Gateway<br/>ILogger]
+        ADMIN[Admin<br/>ILogger]
+    end
+
+    subgraph F# Services
+        USER[User<br/>ILogger]
+        IDENTITY[Identity<br/>ILogger]
+    end
+
+    subgraph Gleam
+        HEALTH[Health<br/>logging]
     end
 
     subgraph Output
@@ -17,8 +31,13 @@ graph LR
     end
 
     AUTH -->|structured| JSON
+    EVENTS -->|structured| JSON
+    FILES -->|structured| JSON
     GW -->|structured| JSON
+    ADMIN -->|structured| JSON
     USER -->|structured| JSON
+    IDENTITY -->|structured| JSON
+    HEALTH -->|structured| JSON
 ```
 
 ## Core Principles
