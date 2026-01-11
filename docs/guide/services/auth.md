@@ -35,7 +35,7 @@ Supported providers configured via environment:
 | Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
 | GitHub | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` |
 | Microsoft | `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` |
-| Apple | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` |
+| Apple | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY_PATH` |
 | Twitch | `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` |
 | HellArch | `HELLARCH_CLIENT_ID`, `HELLARCH_CLIENT_SECRET`, `HELLARCH_IDENTITY_URL` |
 
@@ -85,42 +85,22 @@ Cookie: hellarch_session=xxx
 }
 ```
 
-## Endpoints
+## API Reference
 
-### HTTP (Port 5001)
+See [Auth API](/api/auth) for complete endpoint documentation.
 
 ::: tip Gateway Routing
 Clients access these endpoints via the Gateway at `/api/auth/...`. The Gateway strips the `/api` prefix before forwarding.
 :::
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/auth/{provider}/login` | Start OAuth flow |
-| GET | `/auth/{provider}/callback` | OAuth callback |
-| POST | `/auth/refresh` | Refresh tokens |
-| POST | `/auth/validate` | Validate session or JWT |
-| GET | `/auth/me` | Get current user + linked providers |
-| GET | `/auth/providers` | List configured OAuth providers |
-| GET/POST | `/auth/logout` | End session |
-| GET | `/auth/health` | Health check |
+**Key endpoints:**
+- `GET /api/auth/{provider}/login` - Start OAuth flow
+- `GET /api/auth/{provider}/callback` - OAuth callback
+- `POST /api/auth/refresh` - Refresh tokens
+- `POST /api/auth/validate` - Validate session/JWT
+- `GET /api/auth/me` - Get current user + linked providers
 
-### Admin API (Internal)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/auth/admin/users` | List users (paginated) |
-| GET | `/auth/admin/users/{id}` | Get user with linked accounts |
-| GET | `/auth/admin/users/{id}/sessions` | Get user's sessions |
-| DELETE | `/auth/admin/sessions/{id}` | Revoke a session |
-| GET | `/auth/admin/stats` | Get system statistics |
-| GET | `/auth/admin/users/{id}/permissions` | Get user permissions |
-| PUT | `/auth/admin/users/{id}/permissions` | Set all permissions |
-| POST | `/auth/admin/users/{id}/permissions/grant` | Grant permission |
-| POST | `/auth/admin/users/{id}/permissions/revoke` | Revoke permission |
-| POST | `/auth/admin/users/{id}/activate` | Activate user |
-| POST | `/auth/admin/users/{id}/deactivate` | Deactivate user + invalidate sessions |
-
-See [Permissions Guide](/guide/permissions) for details.
+**Admin endpoints:** See [Auth API - Admin](/api/auth#admin-endpoints-internal) and [Permissions Guide](/guide/permissions).
 
 ### gRPC (Port 50051)
 
@@ -196,11 +176,21 @@ src/services/auth/
 └── go.mod
 ```
 
-## Environment
+## Environment Variables
 
-```bash
-RABBITMQ_URL="amqp://guest:guest@localhost:5672/"
-```
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HTTP_ADDRESS` | `:5001` | HTTP listen address |
+| `GRPC_ADDRESS` | `:50051` | gRPC listen address |
+| `AUTH_DATABASE_URL` | `postgres://...localhost:5432/auth_db` | PostgreSQL connection |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection |
+| `RABBITMQ_URL` | `amqp://hellarch:hellarch@localhost:5672` | RabbitMQ connection |
+| `JWT_PRIVATE_KEY_PATH` | `./infra/keys/dev-private.pem` | RSA private key |
+| `JWT_PUBLIC_KEY_PATH` | `./infra/keys/dev-public.pem` | RSA public key |
+| `ALLOWED_REDIRECT_URIS` | `http://localhost:5000,http://localhost:5003` | Valid OAuth redirect URIs |
+| `SECURE_COOKIES` | `false` | Use secure cookies (HTTPS) |
+| `MAX_SESSIONS_PER_USER` | `5` | Maximum concurrent sessions |
+| `SESSION_DURATION_HOURS` | `24` | Session lifetime in hours |
 
 ## Location
 

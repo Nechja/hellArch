@@ -156,31 +156,18 @@ graph TB
     IDENTITY --> PG_IDENTITY
 ```
 
-### Service Ports
+### Quick Links
 
-| Service | Port | URL |
-|---------|------|-----|
-| Tilt UI | 10350 | http://localhost:10350 |
-| Gateway | 5000 | http://localhost:5000 |
-| Auth | 5001 | http://localhost:5001 |
-| Auth gRPC | 50051 | - |
-| User | 5002 | http://localhost:5002 |
-| Admin Console | 5003 | http://localhost:5003 |
-| Health | 5004 | http://localhost:5004 |
-| Events | 5005 | http://localhost:5005 |
-| Files | 5006 | http://localhost:5006 |
-| Identity | 5010 | http://localhost:5010 |
-| PostgreSQL (Auth) | 5434 | - |
-| PostgreSQL (User) | 5433 | - |
-| PostgreSQL (Events) | 5435 | - |
-| PostgreSQL (Files) | 5436 | - |
-| PostgreSQL (Identity) | 5437 | - |
-| Redis | 6379 | - |
-| RabbitMQ | 5672 | - |
-| RabbitMQ UI | 15672 | http://localhost:15672 |
-| MinIO | 9000 | http://localhost:9000 |
-| MinIO Console | 9001 | http://localhost:9001 |
-| Jaeger | 16686 | http://localhost:16686 |
+| Service | URL |
+|---------|-----|
+| Tilt UI | http://localhost:10350 |
+| Gateway | http://localhost:5000 |
+| Admin Console | http://localhost:5003 |
+| RabbitMQ UI | http://localhost:15672 |
+| MinIO Console | http://localhost:9001 |
+| Jaeger | http://localhost:16686 |
+
+See [Service Ports](/guide/#ports) for complete port reference and [Configuration](/guide/configuration) for environment variables.
 
 ## Image Rebuilds
 

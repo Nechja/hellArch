@@ -70,74 +70,21 @@ sequenceDiagram
     Auth-->>User: Set session cookie
 ```
 
-## Endpoints
+## API Reference
+
+See [Identity API](/api/identity) for complete endpoint documentation.
 
 ::: tip Gateway Routing
 Clients access these endpoints via the Gateway at `/api/identity/...`. The Gateway strips the `/api` prefix before forwarding.
 :::
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/identity/authorize` | Start OAuth authorization flow |
-| POST | `/identity/login` | Authenticate user, issue authorization code |
-| POST | `/identity/register` | Register user, issue authorization code |
-| POST | `/identity/token` | Exchange code or refresh token for tokens |
-| POST | `/identity/revoke` | Revoke access or refresh token |
-| GET | `/identity/userinfo` | Get authenticated user info (OIDC) |
-| GET | `/identity/health` | Health check |
-
-### Authorization Request
-
-```http
-GET /identity/authorize?client_id=xxx&redirect_uri=xxx&response_type=code&code_challenge=xxx&code_challenge_method=S256&state=xxx
-```
-
-Validates the OAuth client and redirects to the login UI.
-
-### Token Request
-
-```http
-POST /identity/token
-Content-Type: application/x-www-form-urlencoded
-
-grant_type=authorization_code&code=xxx&redirect_uri=xxx&client_id=xxx&client_secret=xxx&code_verifier=xxx
-```
-
-**Response:**
-```json
-{
-  "access_token": "...",
-  "refresh_token": "...",
-  "token_type": "Bearer",
-  "expires_in": 3600
-}
-```
-
-### Refresh Token
-
-```http
-POST /identity/token
-Content-Type: application/x-www-form-urlencoded
-
-grant_type=refresh_token&refresh_token=xxx&client_id=xxx&client_secret=xxx
-```
-
-### UserInfo
-
-```http
-GET /identity/userinfo
-Authorization: Bearer {access_token}
-```
-
-**Response:**
-```json
-{
-  "sub": "user-uuid",
-  "email": "user@example.com",
-  "username": "username",
-  "avatar_url": null
-}
-```
+**Key endpoints:**
+- `GET /api/identity/authorize` - Start OAuth authorization flow
+- `POST /api/identity/login` - Authenticate user
+- `POST /api/identity/register` - Register new user
+- `POST /api/identity/token` - Exchange code/refresh for tokens
+- `POST /api/identity/revoke` - Revoke tokens
+- `GET /api/identity/userinfo` - Get user info (OIDC)
 
 ## Security Features
 
@@ -198,7 +145,7 @@ Integrates with Have I Been Pwned API:
 | `HTTP_PORT` | `5010` | HTTP listen port |
 | `IDENTITY_DATABASE_URL` | - | PostgreSQL connection string |
 | `IDENTITY_CLIENT_URL` | `http://localhost:5000/identity` | Frontend login/register page URL |
-| `IDENTITY_ALLOWED_ORIGINS` | `http://localhost:5000` | CORS allowed origins |
+| `IDENTITY_ALLOWED_ORIGINS` | `http://localhost:5000,http://localhost:3000` | CORS allowed origins |
 | `IDENTITY_SEED_CLIENT_ID` | - | OAuth client ID to seed on startup |
 | `IDENTITY_SEED_CLIENT_SECRET` | - | OAuth client secret to seed |
 | `IDENTITY_SEED_REDIRECT_URIS` | - | Comma-separated redirect URIs |
@@ -206,39 +153,9 @@ Integrates with Have I Been Pwned API:
 
 ## Database Schema
 
-The Identity service uses its own PostgreSQL database (`identity-db`).
+See [Identity Database](/guide/database#identity-database) for full schema.
 
-### Tables
-
-**identity_users**
-- `id` (uuid, PK)
-- `email` (unique)
-- `username`
-- `password_hash` (Argon2id)
-- `is_active`
-- `created_at`, `updated_at`
-
-**oauth_clients**
-- `id` (text, PK)
-- `secret_hash` (Argon2id)
-- `name`
-- `redirect_uris` (array)
-- `is_active`
-
-**authorization_codes**
-- `code` (text, PK)
-- `client_id`, `user_id`
-- `redirect_uri`, `scope`
-- `code_challenge`, `code_challenge_method`
-- `expires_at`
-
-**access_tokens** / **refresh_tokens**
-- `token_hash` (SHA-256, PK)
-- `user_id`, `client_id`
-- `scope`, `expires_at`
-- `client_fingerprint`
-- `family_id` (refresh tokens only)
-- `is_revoked` (refresh tokens only)
+**Tables:** `identity_users`, `oauth_clients`, `authorization_codes`, `access_tokens`, `refresh_tokens`
 
 ## Code Structure
 

@@ -51,62 +51,17 @@ graph TB
     MON --> PUB
 ```
 
-## API Endpoints
+## API Reference
 
-::: tip Gateway Routing
-Clients access these endpoints via the Gateway at `/api/events/...`. The Gateway strips the `/api/events` prefix before forwarding.
-:::
+See [Events API](/api/events) for complete endpoint documentation.
 
-### Audit Logs
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/audit-logs` | List audit logs (paginated) |
-| POST | `/audit-logs` | Create audit log entry |
-
-### Webhooks
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/webhooks` | List webhooks (paginated) |
-| POST | `/webhooks` | Create webhook |
-| GET | `/webhooks/{id}` | Get webhook by ID |
-| PUT | `/webhooks/{id}` | Update webhook |
-| DELETE | `/webhooks/{id}` | Delete webhook |
-| GET | `/webhooks/by-event/{type}` | Get webhooks for event type |
-
-### Webhook Deliveries
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/webhook-deliveries` | List deliveries (paginated, filterable) |
-| POST | `/webhook-deliveries` | Record delivery attempt |
-
-### Event Publishing
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/publish` | Publish event to RabbitMQ |
-
-### Dead Letters
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/dead-letters` | List dead letter events |
-| POST | `/dead-letters` | Record dead letter |
-| DELETE | `/dead-letters/{id}` | Delete dead letter |
-
-### Workers
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/workers/status` | Get worker queue status |
-
-### Health
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check |
+**Key endpoints:**
+- `/api/events/audit-logs` - Audit log CRUD
+- `/api/events/webhooks` - Webhook management
+- `/api/events/webhook-deliveries` - Delivery tracking
+- `/api/events/dead-letters` - Failed event management
+- `/api/events/workers/status` - Worker queue status
+- `/api/events/publish` - Event publishing
 
 ## Worker Monitor
 
@@ -140,54 +95,9 @@ sequenceDiagram
 
 ## Database Schema
 
-### audit_logs
+See [Events Database](/guide/database#events-database) for full schema.
 
-```sql
-CREATE TABLE audit_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    event_type TEXT NOT NULL,
-    event_id TEXT NOT NULL UNIQUE,
-    source TEXT NOT NULL,
-    actor_id UUID,
-    target_id UUID,
-    metadata JSONB,
-    created_at TIMESTAMPTZ NOT NULL
-);
-```
-
-### webhooks
-
-```sql
-CREATE TABLE webhooks (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    url TEXT NOT NULL,
-    secret TEXT NOT NULL,
-    event_types TEXT[] NOT NULL,
-    format TEXT NOT NULL DEFAULT 'raw',
-    is_active BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-```
-
-### webhook_deliveries
-
-```sql
-CREATE TABLE webhook_deliveries (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    webhook_id UUID NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
-    event_id TEXT NOT NULL,
-    event_type TEXT NOT NULL,
-    payload JSONB NOT NULL,
-    status_code INTEGER,
-    response_body TEXT,
-    error TEXT,
-    attempt INTEGER NOT NULL DEFAULT 1,
-    success BOOLEAN NOT NULL DEFAULT false,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-```
+**Tables:** `audit_logs`, `webhooks`, `webhook_deliveries`, `dead_letters`
 
 ## Environment Variables
 
