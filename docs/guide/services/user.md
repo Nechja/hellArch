@@ -48,6 +48,10 @@ type LinkedAccount = {
 
 ## Endpoints
 
+::: tip Gateway Routing
+Clients access these endpoints via the Gateway at `/api/user/...`. The Gateway strips the `/api` prefix before forwarding.
+:::
+
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/user/health` | Health check (includes DB status) |
@@ -140,15 +144,21 @@ activity.SetTag("messaging.cloudevents.type", eventType)
 
 ```
 src/services/user/
+├── Dockerfile
 └── User/
-    ├── Program.fs           # Entry point
+    ├── Program.fs               # Entry point
+    ├── User.fsproj
     ├── Domain/
-    │   └── Types.fs         # Domain types
+    │   ├── Types.fs             # Domain types
+    │   └── Mapping.fs           # DTO to domain mapping
     ├── Infrastructure/
-    │   ├── Database.fs      # Npgsql.FSharp access
-    │   └── Events.fs        # RabbitMQ consumer
+    │   ├── Database.fs          # Npgsql.FSharp access
+    │   └── Events.fs            # RabbitMQ consumer
     └── Api/
-        └── Handlers.fs      # HTTP handlers
+        ├── HealthHandlers.fs    # Health check handler
+        ├── HttpUtils.fs         # HTTP utilities
+        ├── ProfileHandlers.fs   # User profile handlers
+        └── PreferencesHandlers.fs # User preferences handlers
 ```
 
 ## Database

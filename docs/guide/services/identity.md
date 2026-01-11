@@ -72,6 +72,10 @@ sequenceDiagram
 
 ## Endpoints
 
+::: tip Gateway Routing
+Clients access these endpoints via the Gateway at `/api/identity/...`. The Gateway strips the `/api` prefix before forwarding.
+:::
+
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/identity/authorize` | Start OAuth authorization flow |
@@ -240,25 +244,26 @@ The Identity service uses its own PostgreSQL database (`identity-db`).
 
 ```
 src/services/identity/
-├── Identity.fsproj
-├── Program.fs              # Entry point, DI setup
 ├── Dockerfile
-├── Api/
-│   ├── AuthHandlers.fs     # /authorize, /login, /register
-│   ├── TokenHandlers.fs    # /token, /revoke
-│   ├── ResourceHandlers.fs # /userinfo
-│   ├── HealthHandlers.fs   # /health
-│   ├── Config.fs           # Configuration types
-│   ├── HttpUtils.fs        # Error handling
-│   └── Views.fs            # URL builders
-├── Domain/
-│   ├── Types.fs            # Domain models, errors
-│   └── Validation.fs       # Input validation
-└── Infrastructure/
-    ├── Database.fs         # PostgreSQL operations
-    ├── PasswordHasher.fs   # Argon2id hashing
-    ├── TokenGenerator.fs   # Secure token generation
-    └── BreachDetection.fs  # HIBP integration
+└── Identity/
+    ├── Identity.fsproj
+    ├── Program.fs              # Entry point, DI setup
+    ├── Api/
+    │   ├── AuthHandlers.fs     # /authorize, /login, /register
+    │   ├── TokenHandlers.fs    # /token, /revoke
+    │   ├── ResourceHandlers.fs # /userinfo
+    │   ├── HealthHandlers.fs   # /health
+    │   ├── Config.fs           # Configuration types
+    │   ├── HttpUtils.fs        # Error handling
+    │   └── Views.fs            # URL builders
+    ├── Domain/
+    │   ├── Types.fs            # Domain models, errors
+    │   └── Validation.fs       # Input validation
+    └── Infrastructure/
+        ├── Database.fs         # PostgreSQL operations
+        ├── PasswordHasher.fs   # Argon2id hashing
+        ├── TokenGenerator.fs   # Secure token generation
+        └── BreachDetection.fs  # HIBP integration
 ```
 
 ## Integration with Auth Service
