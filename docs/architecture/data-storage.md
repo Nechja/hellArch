@@ -119,13 +119,4 @@ graph LR
 
 ## Connection Strings
 
-Local development connection strings:
-```bash
-AUTH_DATABASE_URL="postgres://hellarch:hellarch@localhost:5434/auth_db"
-USER_DATABASE_URL="postgres://hellarch:hellarch@localhost:5433/user_db"
-DATABASE_URL="postgres://hellarch:hellarch@localhost:5435/events_db"  # Events
-FILES_DATABASE_URL="postgres://hellarch:hellarch@localhost:5436/files_db"
-IDENTITY_DATABASE_URL="postgres://hellarch:hellarch@localhost:5437/identity_db"
-REDIS_URL="redis://localhost:6379"
-MINIO_ENDPOINT="localhost:9000"
-```
+See [Configuration Reference](/guide/configuration#database-connection-strings) for connection string details.

@@ -110,6 +110,53 @@ These variables are used across multiple services:
 | `RABBITMQ_USER` | `hellarch` | RabbitMQ username |
 | `RABBITMQ_PASSWORD` | `hellarch` | RabbitMQ password |
 
+## Workers
+
+All workers share common configuration:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RABBITMQ_URL` | `amqp://guest:guest@localhost:5672` | RabbitMQ connection |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `localhost:4318` | OpenTelemetry collector |
+
+**Audit & Webhooks Workers:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | - | PostgreSQL connection (events_db) |
+
+**Realtime Worker:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `JWT_SECRET` | - | JWT signing key for WebSocket auth |
+| `JWT_ISSUER` | `hellarch` | Expected JWT issuer |
+| `JWT_AUDIENCE` | `hellarch` | Expected JWT audience |
+| `CORS_ORIGINS` | `localhost:5000,5010` | Allowed CORS origins |
+
+**DLQ Worker:**
+
+Uses common configuration only (`RABBITMQ_URL`, `OTEL_EXPORTER_OTLP_ENDPOINT`).
+
+**Images Worker:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MINIO_ENDPOINT` | `localhost:9000` | MinIO endpoint |
+| `MINIO_ACCESS_KEY` | `hellarch` | MinIO access key |
+| `MINIO_SECRET_KEY` | - | MinIO secret key |
+| `FILES_SERVICE_URL` | `http://localhost:5006` | Files service URL |
+
+**Infra Worker:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ORCHESTRATOR_BACKEND` | `docker` | `docker` or `kubernetes` |
+| `RESTART_COOLDOWN_SECONDS` | `60` | Cooldown between restarts |
+| `MAX_RESTARTS` | `3` | Max restarts in time window |
+| `RESTART_WINDOW_SECONDS` | `300` | Window for max restart count |
+| `EXCLUDE_SERVICES` | - | Comma-separated service exclusions |
+
 ## Database Connection Strings
 
 | Service | Variable | Default Port |

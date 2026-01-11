@@ -149,15 +149,9 @@ func (k *KubernetesOrchestrator) RestartService(ctx context.Context, name string
 
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `RABBITMQ_URL` | No | `amqp://hellarch:hellarch@localhost:5672` | RabbitMQ connection |
-| `ORCHESTRATOR_BACKEND` | No | `docker` | `docker` or `kubernetes` |
-| `RESTART_COOLDOWN_SECONDS` | No | `60` | Cooldown between restarts |
-| `MAX_RESTARTS` | No | `3` | Max restarts in window |
-| `RESTART_WINDOW_SECONDS` | No | `300` | Window for max restarts |
-| `EXCLUDE_SERVICES` | No | - | Comma-separated exclusions |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | `localhost:4318` | OTLP endpoint |
+See [Workers Configuration](/guide/configuration#workers).
+
+All variables are optional with sensible defaults.
 
 ## Docker
 

@@ -91,11 +91,9 @@ RabbitMQ attaches metadata to dead-lettered messages:
 
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `RABBITMQ_URL` | Yes | - | RabbitMQ connection string |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | `localhost:4318` | OTLP endpoint |
-| `LOG_LEVEL` | No | `debug` | Logging level |
+See [Workers Configuration](/guide/configuration#workers).
+
+**Required:** `RABBITMQ_URL`
 
 ## Docker
 

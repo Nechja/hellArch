@@ -286,11 +286,9 @@ if !hmac.Equal([]byte(expected), []byte(request.Header.Get("X-Webhook-Signature"
 
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DATABASE_URL` | Yes | - | PostgreSQL connection |
-| `RABBITMQ_URL` | No | `amqp://guest:guest@localhost:5672` | RabbitMQ connection |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | `localhost:4318` | OTLP endpoint |
+See [Workers Configuration](/guide/configuration#workers).
+
+**Required:** `DATABASE_URL`, `RABBITMQ_URL`
 
 ## OpenTelemetry
 
