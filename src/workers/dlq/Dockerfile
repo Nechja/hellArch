@@ -1,10 +1,3 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS dev
-
-ENV DOTNET_USE_POLLING_FILE_WATCHER=1
-
-# Dev stage runs via docker-compose with volume mounts and working_dir set
-CMD ["dotnet", "watch", "run", "--no-launch-profile"]
-
 FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
 
 WORKDIR /repo

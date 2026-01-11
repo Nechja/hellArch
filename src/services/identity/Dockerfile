@@ -1,23 +1,3 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS dev
-
-WORKDIR /repo
-
-ENV DOTNET_USE_POLLING_FILE_WATCHER=1
-
-# Copy fsproj files for restore
-COPY libs/data_types/fsharp/*.fsproj libs/data_types/fsharp/
-COPY libs/fsharp/httputil/*.fsproj libs/fsharp/httputil/
-COPY src/services/identity/Identity/*.fsproj src/services/identity/Identity/
-RUN dotnet restore src/services/identity/Identity/Identity.fsproj
-
-# Copy source
-COPY libs/data_types/fsharp/ libs/data_types/fsharp/
-COPY libs/fsharp/httputil/ libs/fsharp/httputil/
-COPY src/services/identity/ src/services/identity/
-
-WORKDIR /repo/src/services/identity/Identity
-CMD ["dotnet", "watch", "run", "--no-launch-profile"]
-
 FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
 
 WORKDIR /repo

@@ -1,15 +1,3 @@
-FROM golang:1.24-alpine AS dev
-
-WORKDIR /repo
-
-RUN go install github.com/air-verse/air@v1.62.0
-RUN mkdir -p /.cache/go-build /go/pkg/mod && chmod -R 777 /.cache /go
-
-COPY . .
-
-WORKDIR /repo/src/services/auth
-CMD ["air", "-c", ".air.toml"]
-
 FROM golang:1.24-alpine AS build
 
 WORKDIR /repo
