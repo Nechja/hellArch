@@ -1,6 +1,5 @@
 import birl
 import gleam/bytes_tree
-import gleam/dict
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
@@ -29,30 +28,21 @@ pub fn handler(
 }
 
 fn health_response() -> Response(ResponseData) {
-  let body =
-    json.object([#("status", json.string("healthy"))])
-    |> json.to_string
-
-  response.new(200)
-  |> response.set_header("content-type", "application/json")
-  |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+  json.object([#("status", json.string("healthy"))])
+  |> json.to_string
+  |> json_response(200, _)
 }
 
 fn status_response(poller: Poller) -> Response(ResponseData) {
   case poller.get_status(poller) {
     Ok(status) -> {
-      let body = encode_aggregated_status(status)
-      response.new(200)
-      |> response.set_header("content-type", "application/json")
-      |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+      encode_aggregated_status(status)
+      |> json_response(200, _)
     }
     Error(_) -> {
-      let body =
-        json.object([#("error", json.string("Poller unavailable"))])
-        |> json.to_string
-      response.new(503)
-      |> response.set_header("content-type", "application/json")
-      |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+      json.object([#("error", json.string("Poller unavailable"))])
+      |> json.to_string
+      |> json_response(503, _)
     }
   }
 }
@@ -63,10 +53,8 @@ fn service_status_response(
 ) -> Response(ResponseData) {
   case poller.get_service_status(poller, name) {
     Some(status) -> {
-      let body = encode_service_status(status)
-      response.new(200)
-      |> response.set_header("content-type", "application/json")
-      |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+      encode_service_status(status)
+      |> json_response(200, _)
     }
     None -> not_found_response()
   }
@@ -78,58 +66,43 @@ fn workers_response() -> Response(ResponseData) {
 
   case http_client.get(url, 5000) {
     http_client.HttpOk(status, body) if status >= 200 && status < 300 -> {
-      response.new(200)
-      |> response.set_header("content-type", "application/json")
-      |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+      json_response(200, body)
     }
     http_client.HttpOk(status, _) -> {
-      let body =
-        json.object([#("error", json.string("Events API error"))])
-        |> json.to_string
-      response.new(status)
-      |> response.set_header("content-type", "application/json")
-      |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+      json.object([#("error", json.string("Events API error"))])
+      |> json.to_string
+      |> json_response(status, _)
     }
     http_client.HttpError(reason) -> {
-      let body =
-        json.object([#("error", json.string(reason))])
-        |> json.to_string
-      response.new(503)
-      |> response.set_header("content-type", "application/json")
-      |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+      json.object([#("error", json.string(reason))])
+      |> json.to_string
+      |> json_response(503, _)
     }
   }
 }
 
 fn not_found_response() -> Response(ResponseData) {
-  let body =
-    json.object([#("error", json.string("Not found"))])
-    |> json.to_string
+  json.object([#("error", json.string("Not found"))])
+  |> json.to_string
+  |> json_response(404, _)
+}
 
-  response.new(404)
+fn json_response(status: Int, body: String) -> Response(ResponseData) {
+  response.new(status)
   |> response.set_header("content-type", "application/json")
   |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
 }
 
 fn encode_aggregated_status(status: AggregatedStatus) -> String {
-  let services_json =
-    status.services
-    |> list.map(fn(svc) { #(svc.name, encode_service_status_json(svc)) })
-    |> dict.from_list
+  let services_pairs =
+    list.map(status.services, fn(svc) {
+      #(svc.name, encode_service_status_json(svc))
+    })
 
   json.object([
     #("overall", json.string(types.status_to_string(status.overall))),
     #("checked_at", json.string(birl.to_iso8601(status.checked_at))),
-    #(
-      "services",
-      json.object(
-        dict.to_list(services_json)
-        |> list.map(fn(pair) {
-          let #(k, v) = pair
-          #(k, v)
-        }),
-      ),
-    ),
+    #("services", json.object(services_pairs)),
   ])
   |> json.to_string
 }
@@ -140,13 +113,7 @@ fn encode_service_status(status: ServiceStatus) -> String {
     #("status", json.string(types.status_to_string(status.status))),
     #("latency_ms", json.int(status.latency_ms)),
     #("last_check", json.string(birl.to_iso8601(status.last_check))),
-    #(
-      "error",
-      case status.error {
-        Some(e) -> json.string(e)
-        None -> json.null()
-      },
-    ),
+    #("error", encode_optional_string(status.error)),
     #("history", json.array(status.history, encode_health_check)),
   ])
   |> json.to_string
@@ -157,13 +124,7 @@ fn encode_service_status_json(status: ServiceStatus) -> json.Json {
     #("status", json.string(types.status_to_string(status.status))),
     #("latency_ms", json.int(status.latency_ms)),
     #("last_check", json.string(birl.to_iso8601(status.last_check))),
-    #(
-      "error",
-      case status.error {
-        Some(e) -> json.string(e)
-        None -> json.null()
-      },
-    ),
+    #("error", encode_optional_string(status.error)),
   ])
 }
 
@@ -172,12 +133,13 @@ fn encode_health_check(check: HealthCheck) -> json.Json {
     #("status", json.string(types.status_to_string(check.status))),
     #("latency_ms", json.int(check.latency_ms)),
     #("checked_at", json.string(birl.to_iso8601(check.checked_at))),
-    #(
-      "error",
-      case check.error {
-        Some(e) -> json.string(e)
-        None -> json.null()
-      },
-    ),
+    #("error", encode_optional_string(check.error)),
   ])
+}
+
+fn encode_optional_string(opt: option.Option(String)) -> json.Json {
+  case opt {
+    Some(s) -> json.string(s)
+    None -> json.null()
+  }
 }

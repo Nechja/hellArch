@@ -1,9 +1,9 @@
 import birl
-import gleam/io
 import gleam/json
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import health/config
+import logging
 
 pub type EventPublisher {
   EventPublisher(events_url: String)
@@ -91,16 +91,16 @@ fn publish_event(
 
   case do_http_post(url, body, 5000) {
     Ok(status) if status >= 200 && status < 300 -> {
-      io.println("Event published successfully")
+      logging.log(logging.Debug, "Event published successfully")
       Ok(Nil)
     }
     Ok(status) -> {
       let msg = "Events API returned status " <> string.inspect(status)
-      io.println(msg)
+      logging.log(logging.Warning, msg)
       Error(msg)
     }
     Error(reason) -> {
-      io.println("Failed to publish event: " <> reason)
+      logging.log(logging.Error, "Failed to publish event: " <> reason)
       Error(reason)
     }
   }
