@@ -8,10 +8,14 @@ hellArch/
 │   ├── gateway/           # .NET YARP Gateway
 │   ├── services/
 │   │   ├── auth/          # Go Auth Service
-│   │   ├── user/          # F# User Service
-│   │   └── health/        # Gleam Health Service
+│   │   ├── events/        # Go Events Service
+│   │   ├── files/         # Go Files Service
+│   │   ├── health/        # Gleam Health Service
+│   │   ├── identity/      # F# Identity Service
+│   │   └── user/          # F# User Service
 │   ├── workers/           # Background workers
 │   │   ├── audit/         # Go Audit Worker
+│   │   ├── images/        # Go Image Processing Worker
 │   │   └── webhooks/      # Go Webhooks Worker
 │   ├── schema/
 │   │   ├── Schema/        # EF Core contexts + migrations
@@ -23,21 +27,11 @@ hellArch/
 ├── libs/
 │   ├── protos/            # gRPC definitions
 │   ├── data_types/        # Entity types (persistence)
-│   │   ├── csharp/        # Source of truth
-│   │   ├── go/            # Generated
-│   │   ├── fsharp/        # Generated
-│   │   ├── python/        # Generated
-│   │   ├── typescript/    # Generated
-│   │   └── Codegen/       # Roslyn codegen
 │   ├── cloud_events/      # CloudEvent payloads
-│   │   ├── csharp/        # Source of truth
-│   │   ├── go/            # Generated
-│   │   ├── fsharp/        # Generated
-│   │   ├── python/        # Generated
-│   │   └── Codegen/       # Roslyn codegen
+│   ├── go/                # Go shared libraries
+│   ├── csharp/            # C# shared libraries
+│   ├── fsharp/            # F# shared libraries
 │   └── design/            # Shared design system
-│       ├── tokens.css     # CSS custom properties
-│       └── colors.json    # Color palette reference
 ├── tests/                 # pytest test suite
 │   ├── api/               # API tests
 │   ├── integration/       # Integration tests
@@ -90,8 +84,14 @@ tilt up
 | User | 5002 | - |
 | Admin Console | 5003 | - |
 | Health | 5004 | - |
+| Events | 5005 | - |
+| Files | 5006 | - |
+| Identity | 5010 | - |
 | PostgreSQL (Auth) | 5434 | - |
 | PostgreSQL (User) | 5433 | - |
+| PostgreSQL (Events) | 5435 | - |
+| PostgreSQL (Files) | 5436 | - |
+| PostgreSQL (Identity) | 5437 | - |
 | Redis | 6379 | - |
 | RabbitMQ | 5672 | 15672 (UI) |
 | Jaeger | 16686 | - |

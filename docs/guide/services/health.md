@@ -266,18 +266,20 @@ Services are configured via a JSON file at `HEALTH_CONFIG_PATH`. The file is mou
 
 ```
 src/services/health/
-├── gleam.toml           # Dependencies (mist, gleam_json, birl)
+├── gleam.toml           # Dependencies
 ├── manifest.toml        # Lock file
 ├── Dockerfile           # Multi-stage build
 └── src/
     ├── health.gleam     # Entry point
     └── health/
+        ├── checker.gleam     # Health check execution
         ├── config.gleam      # Configuration constants
-        ├── types.gleam       # Type definitions
-        ├── registry.gleam    # Service registry
+        ├── events.gleam      # SSE event streaming
+        ├── http_client.gleam # HTTP/TCP client
         ├── poller.gleam      # OTP actor for polling
+        ├── registry.gleam    # Service registry (loads JSON config)
         ├── router.gleam      # HTTP request handler
-        └── http_client.gleam # HTTP/TCP client
+        └── types.gleam       # Type definitions
 ```
 
 ## OTP Actor Model
