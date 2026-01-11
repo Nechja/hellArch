@@ -207,6 +207,14 @@ Returns detailed status for a single service with history.
 }
 ```
 
+### Worker Status
+
+```http
+GET /workers
+```
+
+Proxies to the Events service `/workers/status` endpoint to get RabbitMQ worker queue status.
+
 ## Configuration
 
 | Constant | Default | Description |
