@@ -1,11 +1,11 @@
 import gleam/dynamic/decode
-import gleam/io
 import gleam/json
 import gleam/list
 import gleam/result
 import gleam/string
 import health/config
 import health/types.{type Service, HttpGet, Service, TcpConnect}
+import logging
 import simplifile
 
 type ServiceConfig {
@@ -32,7 +32,9 @@ pub fn services() -> List(Service) {
 fn load_services(path: String) -> Result(List(Service), String) {
   use content <- result.try(
     simplifile.read(path)
-    |> result.map_error(fn(_) { "Failed to read config file: " <> path }),
+    |> result.map_error(fn(err) {
+      "Failed to read config file: " <> path <> " - " <> string.inspect(err)
+    }),
   )
 
   use configs <- result.try(parse_config(content))
@@ -98,12 +100,13 @@ fn config_to_service(cfg: ServiceConfig) -> Result(Service, String) {
     }
     "tcp" -> Ok(TcpConnect)
     unknown -> {
-      io.println(
-        "Warning: Unknown checkType \""
-        <> unknown
-        <> "\" for service \""
-        <> cfg.name
-        <> "\", defaulting to tcp",
+      logging.log(
+        logging.Warning,
+        "Unknown checkType \""
+          <> unknown
+          <> "\" for service \""
+          <> cfg.name
+          <> "\", defaulting to tcp",
       )
       Ok(TcpConnect)
     }
