@@ -9,6 +9,7 @@ Type definitions generated from JSON schemas for all supported languages.
 ## Domains
 
 - [Auth Types](./auth/) - User, Session, LinkedAccount
+- [Identity Types](./identity/) - IdentityUser, OAuthClient, Tokens
 - [User Types](./user/) - UserProfile, UserPreferences
 
 ## Languages

@@ -164,14 +164,25 @@ graph TB
 | MinIO Console | 9001 | http://localhost:9001 |
 | Jaeger | 16686 | http://localhost:16686 |
 
-## Live Reload
+## Image Rebuilds
 
-Tilt watches for file changes and rebuilds automatically:
+Tilt watches for file changes and rebuilds container images automatically:
 
-- **Go** - Rebuilds auth service
-- **Gleam** - Rebuilds health service
-- **.NET** - Rebuilds gateway and user service
-- **Proto** - Regenerates gRPC code
+```mermaid
+flowchart LR
+    CODE[Source Code] -->|change detected| TILT[Tilt]
+    TILT -->|docker_build| IMAGE[Container Image]
+    IMAGE -->|restart| SERVICE[Running Service]
+```
+
+| Language | Services |
+|----------|----------|
+| Go | Auth, Events, Files, Workers |
+| F# | Identity, User |
+| C# | Gateway, Admin |
+| Gleam | Health |
+
+Tilt uses `docker_build` for all services - no volume mounts or hot reload. This ensures the development environment matches production.
 
 ## Stopping
 
