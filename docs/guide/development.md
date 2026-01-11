@@ -111,25 +111,31 @@ graph TB
         GATEWAY[Gateway :5000]
         AUTH[Auth Service :5001]
         USER[User Service :5002]
+        IDENTITY[Identity Service :5010]
     end
 
     subgraph Infrastructure
         PG_AUTH[(PostgreSQL :5434)]
         PG_USER[(PostgreSQL :5433)]
+        PG_IDENTITY[(PostgreSQL :5437)]
         REDIS[(Redis :6379)]
         RABBIT[(RabbitMQ :5672)]
     end
 
     INFRA --> PG_AUTH
     INFRA --> PG_USER
+    INFRA --> PG_IDENTITY
     INFRA --> REDIS
     INFRA --> RABBIT
 
     GATEWAY --> AUTH
     GATEWAY --> USER
+    GATEWAY --> IDENTITY
     AUTH --> PG_AUTH
     AUTH --> REDIS
+    AUTH --> IDENTITY
     USER --> PG_USER
+    IDENTITY --> PG_IDENTITY
 ```
 
 ### Service Ports
@@ -145,10 +151,12 @@ graph TB
 | Health | 5004 | http://localhost:5004 |
 | Events | 5005 | http://localhost:5005 |
 | Files | 5006 | http://localhost:5006 |
+| Identity | 5010 | http://localhost:5010 |
 | PostgreSQL (Auth) | 5434 | - |
 | PostgreSQL (User) | 5433 | - |
 | PostgreSQL (Events) | 5435 | - |
 | PostgreSQL (Files) | 5436 | - |
+| PostgreSQL (Identity) | 5437 | - |
 | Redis | 6379 | - |
 | RabbitMQ | 5672 | - |
 | RabbitMQ UI | 15672 | http://localhost:15672 |
