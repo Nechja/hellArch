@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/nechja/hellarch/auth/internal/config"
@@ -19,6 +18,7 @@ import (
 	"github.com/nechja/hellarch/auth/internal/service"
 	"github.com/nechja/hellarch/auth/internal/store"
 	"github.com/nechja/hellarch/auth/internal/telemetry"
+	"github.com/nechja/hellarch/golibs/logging"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"google.golang.org/grpc"
@@ -33,20 +33,7 @@ func main() {
 }
 
 func run() error {
-	logLevel := slog.LevelDebug
-	switch strings.ToLower(os.Getenv("LOG_LEVEL")) {
-	case "info":
-		logLevel = slog.LevelInfo
-	case "warn", "warning":
-		logLevel = slog.LevelWarn
-	case "error":
-		logLevel = slog.LevelError
-	}
-
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: logLevel,
-	}))
-	slog.SetDefault(logger)
+	logging.Setup()
 
 	cfg, err := config.Load()
 	if err != nil {

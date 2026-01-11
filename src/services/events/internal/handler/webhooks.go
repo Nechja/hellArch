@@ -9,6 +9,14 @@ import (
 	"github.com/nechja/hellarch/services/events/internal/store"
 )
 
+type WebhookHandler struct {
+	store *store.Store
+}
+
+func NewWebhookHandler(store *store.Store) *WebhookHandler {
+	return &WebhookHandler{store: store}
+}
+
 type createWebhookRequest struct {
 	Name       string `json:"name"`
 	URL        string `json:"url"`
@@ -26,7 +34,7 @@ type updateWebhookRequest struct {
 	IsActive   *bool    `json:"is_active,omitempty"`
 }
 
-func (h *Handler) listWebhooks(w http.ResponseWriter, r *http.Request) {
+func (h *WebhookHandler) listWebhooks(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 
@@ -43,7 +51,7 @@ func (h *Handler) listWebhooks(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) createWebhook(w http.ResponseWriter, r *http.Request) {
+func (h *WebhookHandler) createWebhook(w http.ResponseWriter, r *http.Request) {
 	var req createWebhookRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid request body")
@@ -81,7 +89,7 @@ func (h *Handler) createWebhook(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, webhook)
 }
 
-func (h *Handler) getWebhook(w http.ResponseWriter, r *http.Request) {
+func (h *WebhookHandler) getWebhook(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	webhook, err := h.store.GetWebhook(r.Context(), id)
@@ -98,7 +106,7 @@ func (h *Handler) getWebhook(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, webhook)
 }
 
-func (h *Handler) updateWebhook(w http.ResponseWriter, r *http.Request) {
+func (h *WebhookHandler) updateWebhook(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	var req updateWebhookRequest
@@ -139,7 +147,7 @@ func (h *Handler) updateWebhook(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, webhook)
 }
 
-func (h *Handler) deleteWebhook(w http.ResponseWriter, r *http.Request) {
+func (h *WebhookHandler) deleteWebhook(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if err := h.store.DeleteWebhook(r.Context(), id); err != nil {
@@ -151,7 +159,7 @@ func (h *Handler) deleteWebhook(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) getWebhooksByEventType(w http.ResponseWriter, r *http.Request) {
+func (h *WebhookHandler) getWebhooksByEventType(w http.ResponseWriter, r *http.Request) {
 	eventType := r.PathValue("type")
 
 	webhooks, err := h.store.GetWebhooksForEventType(r.Context(), eventType)

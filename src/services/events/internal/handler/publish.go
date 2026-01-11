@@ -7,9 +7,18 @@ import (
 
 	cloudevents "github.com/nechja/hellarch/cloudevents"
 	"github.com/google/uuid"
+	"github.com/nechja/hellarch/golibs/rabbitmq"
 )
 
-func (h *Handler) publishEvent(w http.ResponseWriter, r *http.Request) {
+type PublishHandler struct {
+	publisher *rabbitmq.Publisher
+}
+
+func NewPublishHandler(publisher *rabbitmq.Publisher) *PublishHandler {
+	return &PublishHandler{publisher: publisher}
+}
+
+func (h *PublishHandler) publishEvent(w http.ResponseWriter, r *http.Request) {
 	var event cloudevents.CloudEvent[json.RawMessage]
 	if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid CloudEvent format")

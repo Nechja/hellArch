@@ -8,6 +8,7 @@ import (
 
 	"github.com/nechja/hellarch/auth/internal/config"
 	"github.com/nechja/hellarch/auth/internal/oauth"
+	"github.com/nechja/hellarch/golibs/httputil"
 	"github.com/nechja/hellarch/golibs/status"
 	"google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
@@ -378,20 +379,5 @@ func (h *HTTPHandler) handleMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func getClientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if idx := strings.Index(xff, ","); idx != -1 {
-			return strings.TrimSpace(xff[:idx])
-		}
-		return strings.TrimSpace(xff)
-	}
-
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return strings.TrimSpace(xri)
-	}
-
-	addr := r.RemoteAddr
-	if idx := strings.LastIndex(addr, ":"); idx != -1 {
-		return addr[:idx]
-	}
-	return addr
+	return httputil.GetClientIP(r)
 }

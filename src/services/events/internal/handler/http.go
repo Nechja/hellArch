@@ -1,71 +1,76 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
+	"github.com/nechja/hellarch/golibs/health"
+	"github.com/nechja/hellarch/golibs/httputil"
 	"github.com/nechja/hellarch/golibs/rabbitmq"
-	"github.com/nechja/hellarch/golibs/status"
 	"github.com/nechja/hellarch/services/events/internal/store"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-type Handler struct {
-	store     *store.Store
-	publisher *rabbitmq.Publisher
-	mgmt      *rabbitmq.ManagementClient
+type Handlers struct {
+	audit      *AuditHandler
+	webhook    *WebhookHandler
+	delivery   *DeliveryHandler
+	deadLetter *DeadLetterHandler
+	publish    *PublishHandler
+	worker     *WorkerHandler
 }
 
-func New(store *store.Store, publisher *rabbitmq.Publisher, mgmt *rabbitmq.ManagementClient) *Handler {
-	return &Handler{
-		store:     store,
-		publisher: publisher,
-		mgmt:      mgmt,
+func NewHandlers(
+	store *store.Store,
+	publisher *rabbitmq.Publisher,
+	mgmt *rabbitmq.ManagementClient,
+) *Handlers {
+	return &Handlers{
+		audit:      NewAuditHandler(store),
+		webhook:    NewWebhookHandler(store),
+		delivery:   NewDeliveryHandler(store),
+		deadLetter: NewDeadLetterHandler(store),
+		publish:    NewPublishHandler(publisher),
+		worker:     NewWorkerHandler(mgmt),
 	}
 }
 
-func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
+func (r *Handlers) RegisterRoutes(mux *http.ServeMux) {
 	// Audit logs
-	mux.Handle("GET /audit-logs", otelhttp.NewHandler(http.HandlerFunc(h.listAuditLogs), "list_audit_logs"))
-	mux.Handle("POST /audit-logs", otelhttp.NewHandler(http.HandlerFunc(h.createAuditLog), "create_audit_log"))
+	mux.Handle("GET /audit-logs", otelhttp.NewHandler(http.HandlerFunc(r.audit.listAuditLogs), "list_audit_logs"))
+	mux.Handle("POST /audit-logs", otelhttp.NewHandler(http.HandlerFunc(r.audit.createAuditLog), "create_audit_log"))
 
 	// Webhooks
-	mux.Handle("GET /webhooks", otelhttp.NewHandler(http.HandlerFunc(h.listWebhooks), "list_webhooks"))
-	mux.Handle("POST /webhooks", otelhttp.NewHandler(http.HandlerFunc(h.createWebhook), "create_webhook"))
-	mux.Handle("GET /webhooks/{id}", otelhttp.NewHandler(http.HandlerFunc(h.getWebhook), "get_webhook"))
-	mux.Handle("PUT /webhooks/{id}", otelhttp.NewHandler(http.HandlerFunc(h.updateWebhook), "update_webhook"))
-	mux.Handle("DELETE /webhooks/{id}", otelhttp.NewHandler(http.HandlerFunc(h.deleteWebhook), "delete_webhook"))
-	mux.Handle("GET /webhooks/by-event/{type...}", otelhttp.NewHandler(http.HandlerFunc(h.getWebhooksByEventType), "get_webhooks_by_event"))
+	mux.Handle("GET /webhooks", otelhttp.NewHandler(http.HandlerFunc(r.webhook.listWebhooks), "list_webhooks"))
+	mux.Handle("POST /webhooks", otelhttp.NewHandler(http.HandlerFunc(r.webhook.createWebhook), "create_webhook"))
+	mux.Handle("GET /webhooks/{id}", otelhttp.NewHandler(http.HandlerFunc(r.webhook.getWebhook), "get_webhook"))
+	mux.Handle("PUT /webhooks/{id}", otelhttp.NewHandler(http.HandlerFunc(r.webhook.updateWebhook), "update_webhook"))
+	mux.Handle("DELETE /webhooks/{id}", otelhttp.NewHandler(http.HandlerFunc(r.webhook.deleteWebhook), "delete_webhook"))
+	mux.Handle("GET /webhooks/by-event/{type...}", otelhttp.NewHandler(http.HandlerFunc(r.webhook.getWebhooksByEventType), "get_webhooks_by_event"))
 
 	// Webhook deliveries
-	mux.Handle("GET /webhook-deliveries", otelhttp.NewHandler(http.HandlerFunc(h.listDeliveries), "list_deliveries"))
-	mux.Handle("POST /webhook-deliveries", otelhttp.NewHandler(http.HandlerFunc(h.createDelivery), "create_delivery"))
+	mux.Handle("GET /webhook-deliveries", otelhttp.NewHandler(http.HandlerFunc(r.delivery.listDeliveries), "list_deliveries"))
+	mux.Handle("POST /webhook-deliveries", otelhttp.NewHandler(http.HandlerFunc(r.delivery.createDelivery), "create_delivery"))
 
 	// Event publishing
-	mux.Handle("POST /publish", otelhttp.NewHandler(http.HandlerFunc(h.publishEvent), "publish_event"))
+	mux.Handle("POST /publish", otelhttp.NewHandler(http.HandlerFunc(r.publish.publishEvent), "publish_event"))
 
 	// Dead letters
-	mux.Handle("GET /dead-letters", otelhttp.NewHandler(http.HandlerFunc(h.listDeadLetters), "list_dead_letters"))
-	mux.Handle("POST /dead-letters", otelhttp.NewHandler(http.HandlerFunc(h.createDeadLetter), "create_dead_letter"))
-	mux.Handle("DELETE /dead-letters/{id}", otelhttp.NewHandler(http.HandlerFunc(h.deleteDeadLetter), "delete_dead_letter"))
+	mux.Handle("GET /dead-letters", otelhttp.NewHandler(http.HandlerFunc(r.deadLetter.listDeadLetters), "list_dead_letters"))
+	mux.Handle("POST /dead-letters", otelhttp.NewHandler(http.HandlerFunc(r.deadLetter.createDeadLetter), "create_dead_letter"))
+	mux.Handle("DELETE /dead-letters/{id}", otelhttp.NewHandler(http.HandlerFunc(r.deadLetter.deleteDeadLetter), "delete_dead_letter"))
 
 	// Workers status
-	mux.Handle("GET /workers/status", otelhttp.NewHandler(http.HandlerFunc(h.workersStatus), "workers_status"))
+	mux.Handle("GET /workers/status", otelhttp.NewHandler(http.HandlerFunc(r.worker.workersStatus), "workers_status"))
 
 	// Health
-	mux.HandleFunc("GET /health", h.health)
+	health.RegisterRoutes(mux)
 }
 
-func writeJSON(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+// Convenience wrappers for httputil functions
+func writeJSON(w http.ResponseWriter, statusCode int, data any) {
+	httputil.WriteJSON(w, statusCode, data)
 }
 
-func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"error": message})
-}
-
-func (h *Handler) health(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": status.Healthy})
+func writeError(w http.ResponseWriter, statusCode int, message string) {
+	httputil.WriteError(w, statusCode, message)
 }

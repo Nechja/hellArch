@@ -6,7 +6,11 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open OpenTelemetry.Resources
 open OpenTelemetry.Trace
-open Identity.Api
+open Identity.Api.Config
+open Identity.Api.AuthHandlers
+open Identity.Api.TokenHandlers
+open Identity.Api.ResourceHandlers
+open Identity.Api.HealthHandlers
 open Identity.Infrastructure
 
 let getEnv name defaultValue =
@@ -62,7 +66,7 @@ let main args =
     let serviceName = getEnv "OTEL_SERVICE_NAME" "identity"
     let otlpEndpoint = getEnv "OTEL_EXPORTER_OTLP_ENDPOINT" ""
 
-    let config: Handlers.Config = {
+    let config: IdentityConfig = {
         ConnectionString = connectionString
         ClientBaseUrl = clientBaseUrl
         AccessTokenTtl = TimeSpan.FromHours(1.0)
@@ -100,13 +104,13 @@ let main args =
     app.UseCors() |> ignore
 
     // Routes
-    app.MapGet("/identity/authorize", Func<HttpContext, _>(Handlers.handleAuthorize config)) |> ignore
-    app.MapPost("/identity/login", Func<HttpContext, _>(Handlers.handleLogin config)) |> ignore
-    app.MapPost("/identity/register", Func<HttpContext, _>(Handlers.handleRegister config)) |> ignore
-    app.MapPost("/identity/token", Func<HttpContext, _>(Handlers.handleToken config)) |> ignore
-    app.MapPost("/identity/revoke", Func<HttpContext, _>(Handlers.handleRevoke config)) |> ignore
-    app.MapGet("/identity/userinfo", Func<HttpContext, _>(Handlers.handleUserInfo config)) |> ignore
-    app.MapGet("/identity/health", Func<HttpContext, _>(Handlers.handleHealth)) |> ignore
+    app.MapGet("/identity/authorize", Func<HttpContext, _>(handleAuthorize config)) |> ignore
+    app.MapPost("/identity/login", Func<HttpContext, _>(handleLogin config)) |> ignore
+    app.MapPost("/identity/register", Func<HttpContext, _>(handleRegister config)) |> ignore
+    app.MapPost("/identity/token", Func<HttpContext, _>(handleToken config)) |> ignore
+    app.MapPost("/identity/revoke", Func<HttpContext, _>(handleRevoke config)) |> ignore
+    app.MapGet("/identity/userinfo", Func<HttpContext, _>(handleUserInfo config)) |> ignore
+    app.MapGet("/identity/health", Func<HttpContext, _>(handleHealth)) |> ignore
 
     app.Urls.Add($"http://0.0.0.0:{httpPort}")
 

@@ -1,29 +1,29 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
-	"github.com/nechja/hellarch/golibs/rabbitmq"
-	"github.com/nechja/hellarch/golibs/status"
-	"github.com/nechja/hellarch/services/files/internal/storage"
-	"github.com/nechja/hellarch/services/files/internal/store"
+	"github.com/nechja/hellarch/golibs/health"
+	"github.com/nechja/hellarch/golibs/httputil"
+	"github.com/nechja/hellarch/services/files/internal/service"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type Handler struct {
-	store         *store.Store
-	storage       *storage.MinioStorage
-	publisher     *rabbitmq.Publisher
-	maxUploadSize int64
+	uploadService  *service.Upload
+	fileService    *service.File
+	variantService *service.Variant
 }
 
-func New(store *store.Store, storage *storage.MinioStorage, publisher *rabbitmq.Publisher, maxUploadSize int64) *Handler {
+func New(
+	uploadService *service.Upload,
+	fileService *service.File,
+	variantService *service.Variant,
+) *Handler {
 	return &Handler{
-		store:         store,
-		storage:       storage,
-		publisher:     publisher,
-		maxUploadSize: maxUploadSize,
+		uploadService:  uploadService,
+		fileService:    fileService,
+		variantService: variantService,
 	}
 }
 
@@ -48,19 +48,14 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/files/{id}/variants", otelhttp.NewHandler(http.HandlerFunc(h.createVariant), "create_variant"))
 
 	// Health
-	mux.HandleFunc("GET /health", h.health)
+	health.RegisterRoutes(mux)
 }
 
+// Convenience wrappers for httputil functions
 func writeJSON(w http.ResponseWriter, statusCode int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(data)
+	httputil.WriteJSON(w, statusCode, data)
 }
 
 func writeError(w http.ResponseWriter, statusCode int, message string) {
-	writeJSON(w, statusCode, map[string]string{"error": message})
-}
-
-func (h *Handler) health(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": status.Healthy})
+	httputil.WriteError(w, statusCode, message)
 }

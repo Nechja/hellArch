@@ -89,10 +89,178 @@ dc_resource('redis', labels=['infra'])
 dc_resource('rabbitmq', labels=['infra'])
 
 # ============================================================================
-# Services (containerized with hot reload via volume mounts)
+# Services (rebuild on change)
 # ============================================================================
 
 docker_compose('./infra/docker/docker-compose.services.yml')
+
+# Gateway (C#)
+docker_build(
+    'hellarch-gateway',
+    'src/gateway',
+    dockerfile='src/gateway/Dockerfile',
+    ignore=['**/bin', '**/obj'],
+)
+
+# Auth service (Go)
+docker_build(
+    'hellarch-auth',
+    '.',
+    dockerfile='src/services/auth/Dockerfile',
+    only=[
+        'src/services/auth/',
+        'libs/go/',
+        'libs/data_types/go/',
+        'libs/cloud_events/go/',
+    ],
+)
+
+# User service (F#)
+docker_build(
+    'hellarch-user',
+    '.',
+    dockerfile='src/services/user/Dockerfile',
+    only=[
+        'src/services/user/',
+        'libs/data_types/fsharp/',
+        'libs/fsharp/httputil/',
+        'libs/cloud_events/fsharp/',
+        'libs/protos/',
+    ],
+    ignore=['**/bin', '**/obj'],
+)
+
+# Identity service (F#)
+docker_build(
+    'hellarch-identity',
+    '.',
+    dockerfile='src/services/identity/Dockerfile',
+    only=[
+        'src/services/identity/',
+        'libs/data_types/fsharp/',
+        'libs/fsharp/httputil/',
+    ],
+    ignore=['**/bin', '**/obj'],
+)
+
+# Admin client (C# Blazor)
+docker_build(
+    'hellarch-admin',
+    '.',
+    dockerfile='src/clients/Admin/Dockerfile',
+    only=[
+        'src/clients/Admin/',
+        'libs/components/blazor/',
+        'libs/cloud_events/csharp/',
+        'libs/csharp/HellArch.Http/',
+    ],
+    ignore=['**/bin', '**/obj'],
+)
+
+# Health service (Gleam)
+docker_build(
+    'hellarch-health',
+    'src/services/health',
+    dockerfile='src/services/health/Dockerfile',
+)
+
+# Events service (Go)
+docker_build(
+    'hellarch-events',
+    '.',
+    dockerfile='src/services/events/Dockerfile',
+    only=[
+        'src/services/events/',
+        'libs/go/',
+        'libs/cloud_events/go/',
+    ],
+)
+
+# Files service (Go)
+docker_build(
+    'hellarch-files',
+    '.',
+    dockerfile='src/services/files/Dockerfile',
+    only=[
+        'src/services/files/',
+        'libs/go/',
+        'libs/cloud_events/go/',
+    ],
+)
+
+# Audit worker (Go)
+docker_build(
+    'hellarch-audit-worker',
+    '.',
+    dockerfile='src/workers/audit/Dockerfile',
+    only=[
+        'src/workers/audit/',
+        'libs/go/',
+        'libs/cloud_events/go/',
+    ],
+)
+
+# Webhooks worker (Go)
+docker_build(
+    'hellarch-webhooks-worker',
+    '.',
+    dockerfile='src/workers/webhooks/Dockerfile',
+    only=[
+        'src/workers/webhooks/',
+        'libs/go/',
+        'libs/cloud_events/go/',
+    ],
+)
+
+# Realtime worker (C#)
+docker_build(
+    'hellarch-realtime-worker',
+    '.',
+    dockerfile='src/workers/realtime/Dockerfile',
+    only=[
+        'src/workers/realtime/',
+        'libs/csharp/HellArch.RabbitMQ/',
+        'libs/cloud_events/csharp/',
+    ],
+    ignore=['**/bin', '**/obj'],
+)
+
+# Infra worker (Go)
+docker_build(
+    'hellarch-infra-worker',
+    '.',
+    dockerfile='src/workers/infra/Dockerfile',
+    only=[
+        'src/workers/infra/',
+        'libs/go/',
+        'libs/cloud_events/go/',
+    ],
+)
+
+# DLQ worker (C#)
+docker_build(
+    'hellarch-dlq-worker',
+    '.',
+    dockerfile='src/workers/dlq/Dockerfile',
+    only=[
+        'src/workers/dlq/',
+        'libs/csharp/HellArch.RabbitMQ/',
+        'libs/cloud_events/csharp/',
+    ],
+    ignore=['**/bin', '**/obj'],
+)
+
+# Images worker (Go)
+docker_build(
+    'hellarch-images-worker',
+    '.',
+    dockerfile='src/workers/images/Dockerfile',
+    only=[
+        'src/workers/images/',
+        'libs/go/',
+        'libs/cloud_events/go/',
+    ],
+)
 
 # Label service resources (DBs now run migrations on startup)
 dc_resource('gateway', labels=['services'], resource_deps=['auth-db', 'redis', 'clients'], links=['http://localhost:5000', 'http://localhost:5000/app'])
