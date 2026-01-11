@@ -34,13 +34,12 @@ graph TB
 
     subgraph Infrastructure
         REDIS[(Redis :6379)]
-        AUTHDB[(Auth DB :5434)]
-        USERDB[(User DB :5433)]
-        EVENTSDB[(Events DB :5435)]
-        FILESDB[(Files DB :5436)]
-        IDENTITYDB[(Identity DB :5437)]
+        AUTHDB[(Auth DB :5432)]
+        USERDB[(User DB :5432)]
+        EVENTSDB[(Events DB :5432)]
+        FILESDB[(Files DB :5432)]
+        IDENTITYDB[(Identity DB :5432)]
         RMQ[(RabbitMQ :5672)]
-        MINIO[(MinIO :9000)]
     end
 
     subgraph Consumers
@@ -62,7 +61,6 @@ graph TB
     POLLER -->|TCP Connect| FILESDB
     POLLER -->|TCP Connect| IDENTITYDB
     POLLER -->|TCP Connect| RMQ
-    POLLER -->|TCP Connect| MINIO
     ROUTER --> POLLER
     DASHBOARD --> ROUTER
 ```
@@ -335,7 +333,6 @@ stateDiagram-v2
 | gleam_otp | Actor model |
 | gleam_erlang | Erlang interop |
 | simplifile | File system operations |
-| filepath | File path manipulation |
 
 ## Admin Console Integration
 
@@ -362,7 +359,7 @@ FROM ghcr.io/gleam-lang/gleam:v1.14.0-erlang-alpine AS builder
 RUN gleam export erlang-shipment
 
 # Runtime
-FROM erlang:27-alpine
+FROM erlang:28-alpine
 COPY --from=builder /app/build/erlang-shipment ./
 ```
 

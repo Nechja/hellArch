@@ -168,7 +168,7 @@ The Files Service publishes these events:
 | `RABBITMQ_URL` | No | `amqp://guest:guest@localhost:5672` | RabbitMQ connection |
 | `MINIO_ENDPOINT` | No | `localhost:9000` | MinIO endpoint |
 | `MINIO_ACCESS_KEY` | No | `hellarch` | MinIO access key |
-| `MINIO_SECRET_KEY` | Yes | - | MinIO secret key |
+| `MINIO_SECRET_KEY` | No | `hellarch` | MinIO secret key |
 | `MINIO_BUCKET` | No | `hellarch-files` | Storage bucket |
 | `MINIO_USE_SSL` | No | `false` | Use HTTPS for MinIO |
 | `MAX_UPLOAD_SIZE` | No | `1073741824` | Max upload size (1GB) |
