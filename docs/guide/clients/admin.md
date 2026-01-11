@@ -39,7 +39,8 @@ graph LR
 
     subgraph Backend
         AUTH[Auth Service :5001]
-        USER[User Service :5002]
+        EVENTS[Events Service :5005]
+        HEALTH[Health Service :5004]
     end
 
     subgraph Data
@@ -50,7 +51,8 @@ graph LR
     BLAZOR --> MW
     MW --> YARP
     YARP --> AUTH
-    YARP --> USER
+    YARP --> EVENTS
+    BLAZOR --> HEALTH
     BLAZOR --> REDIS
     BLAZOR --> RMQ
 ```

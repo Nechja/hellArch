@@ -24,10 +24,13 @@ graph LR
 
 The Gateway uses YARP to route requests:
 
-| Path Pattern | Destination | Port |
-|--------------|-------------|------|
-| `/api/auth/**` | Auth Service | 5001 |
-| `/api/user/**` | User Service | 5002 |
+| Path Pattern | Destination | Port | Transform |
+|--------------|-------------|------|-----------|
+| `/api/auth/**` | Auth Service | 5001 | Strip `/api` |
+| `/api/user/**` | User Service | 5002 | Strip `/api` |
+| `/api/events/**` | Events Service | 5005 | Strip `/api/events` |
+| `/api/files/**` | Files Service | 5006 | None |
+| `/api/identity/**` | Identity Service | 5010 | Strip `/api` |
 
 ## gRPC Services
 
@@ -36,12 +39,12 @@ Defined in `/libs/protos/`:
 ### auth.proto
 ```protobuf
 service AuthService {
-  rpc GetOAuthUrl(OAuthUrlRequest) returns (OAuthUrlResponse);
-  rpc HandleOAuthCallback(OAuthCallbackRequest) returns (AuthResponse);
-  rpc RefreshToken(RefreshTokenRequest) returns (AuthResponse);
-  rpc RevokeToken(RevokeTokenRequest) returns (RevokeResponse);
+  rpc GetOAuthUrl(GetOAuthUrlRequest) returns (GetOAuthUrlResponse);
+  rpc HandleOAuthCallback(HandleOAuthCallbackRequest) returns (HandleOAuthCallbackResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse);
   rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
-  rpc GetSession(GetSessionRequest) returns (SessionResponse);
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
   rpc EndSession(EndSessionRequest) returns (EndSessionResponse);
 }
 ```
@@ -49,13 +52,14 @@ service AuthService {
 ### user.proto
 ```protobuf
 service UserService {
-  rpc GetProfile(GetProfileRequest) returns (UserProfile);
-  rpc CreateProfile(CreateProfileRequest) returns (UserProfile);
-  rpc UpdateProfile(UpdateProfileRequest) returns (UserProfile);
-  rpc GetPreferences(GetPreferencesRequest) returns (Preferences);
-  rpc UpdatePreferences(UpdatePreferencesRequest) returns (Preferences);
-  rpc LinkAccount(LinkAccountRequest) returns (LinkedAccount);
-  rpc UnlinkAccount(UnlinkAccountRequest) returns (UnlinkResponse);
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+  rpc CreateProfile(CreateProfileRequest) returns (CreateProfileResponse);
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+  rpc GetPreferences(GetPreferencesRequest) returns (GetPreferencesResponse);
+  rpc UpdatePreferences(UpdatePreferencesRequest) returns (UpdatePreferencesResponse);
+  rpc GetLinkedAccounts(GetLinkedAccountsRequest) returns (GetLinkedAccountsResponse);
+  rpc LinkAccount(LinkAccountRequest) returns (LinkAccountResponse);
+  rpc UnlinkAccount(UnlinkAccountRequest) returns (UnlinkAccountResponse);
 }
 ```
 
