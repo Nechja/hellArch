@@ -4,28 +4,31 @@ import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/string
-import health/config
+import health/checker.{type CheckerDeps}
 import health/events.{type EventPublisher}
-import health/http_client
 import health/types.{
   type AggregatedStatus, type HealthCheck, type Service, type ServiceStatus,
-  type Status, AggregatedStatus, Degraded, HealthCheck, Healthy, HttpGet,
-  ServiceStatus, TcpConnect, Unhealthy,
+  type Status, type StatusConfig, AggregatedStatus, Degraded, Healthy,
+  ServiceStatus, Unhealthy,
 }
 import logging
+
+// ============================================================================
+// Public Types
+// ============================================================================
 
 pub opaque type Poller {
   Poller(subject: Subject(Message))
 }
 
-/// Dependencies that can be injected for testing
+/// Dependencies for the poller (injectable for testing)
 pub type PollerDeps {
   PollerDeps(
     load_services: fn() -> List(Service),
     create_publisher: fn() -> EventPublisher,
-    http_get: fn(String, Int) -> http_client.HttpResult,
-    tcp_check: fn(String, Int, Int) -> Bool,
+    checker: CheckerDeps,
+    status_config: StatusConfig,
+    poll_interval_ms: Int,
   )
 }
 
@@ -35,6 +38,10 @@ pub type Message {
   GetServiceStatus(name: String, reply_with: Subject(Option(ServiceStatus)))
   Shutdown
 }
+
+// ============================================================================
+// Internal State
+// ============================================================================
 
 type State {
   State(
@@ -46,23 +53,11 @@ type State {
   )
 }
 
-const check_timeout_ms = 5000
+// ============================================================================
+// Public API
+// ============================================================================
 
-/// Create default production dependencies
-pub fn default_deps() -> PollerDeps {
-  PollerDeps(
-    load_services: fn() {
-      // Import here to avoid circular dependency issues
-      // In production this calls registry.services()
-      panic as "Must provide load_services dependency"
-    },
-    create_publisher: events.new,
-    http_get: http_client.get,
-    tcp_check: http_client.check_tcp_port,
-  )
-}
-
-/// Start poller with explicit dependencies (for testing)
+/// Start poller with explicit dependencies
 pub fn start_with_deps(deps: PollerDeps) -> Result(Poller, Nil) {
   let parent_subject: Subject(Subject(Message)) = process.new_subject()
 
@@ -97,6 +92,44 @@ pub fn start_with_deps(deps: PollerDeps) -> Result(Poller, Nil) {
   Ok(Poller(message_subject))
 }
 
+pub fn get_status(poller: Poller) -> Result(AggregatedStatus, Nil) {
+  let Poller(subject) = poller
+  let reply_subject = process.new_subject()
+  process.send(subject, GetStatus(reply_subject))
+
+  case process.receive(from: reply_subject, within: 5000) {
+    Ok(result) -> Ok(result)
+    Error(_) -> {
+      logging.log(
+        logging.Error,
+        "get_status timed out waiting for poller response",
+      )
+      Error(Nil)
+    }
+  }
+}
+
+pub fn get_service_status(poller: Poller, name: String) -> Option(ServiceStatus) {
+  let Poller(subject) = poller
+  let reply_subject = process.new_subject()
+  process.send(subject, GetServiceStatus(name, reply_subject))
+
+  case process.receive(from: reply_subject, within: 5000) {
+    Ok(result) -> result
+    Error(_) -> {
+      logging.log(
+        logging.Error,
+        "get_service_status timed out waiting for poller response",
+      )
+      None
+    }
+  }
+}
+
+// ============================================================================
+// Actor Loop
+// ============================================================================
+
 fn run_loop(self: Subject(Message), state: State) -> Nil {
   let selector =
     process.new_selector()
@@ -105,16 +138,9 @@ fn run_loop(self: Subject(Message), state: State) -> Nil {
   case process.selector_receive(from: selector, within: 60_000) {
     Ok(Poll) -> {
       let #(new_statuses, new_unhealthy_since) =
-        poll_all_services_with_events(
-          state.services,
-          state.statuses,
-          state.unhealthy_since,
-          state.publisher,
-          state.deps,
-        )
+        poll_all_services(state)
 
-      let poll_interval = config.get_poll_interval()
-      process.send_after(self, poll_interval, Poll)
+      process.send_after(self, state.deps.poll_interval_ms, Poll)
 
       run_loop(
         self,
@@ -127,7 +153,7 @@ fn run_loop(self: Subject(Message), state: State) -> Nil {
     }
 
     Ok(GetStatus(reply_with)) -> {
-      let status = aggregate_status(state.statuses)
+      let status = build_aggregated_status(state.statuses)
       process.send(reply_with, status)
       run_loop(self, state)
     }
@@ -149,78 +175,65 @@ fn run_loop(self: Subject(Message), state: State) -> Nil {
   }
 }
 
-fn poll_all_services_with_events(
-  services: List(Service),
-  current_statuses: Dict(String, ServiceStatus),
-  unhealthy_since: Dict(String, birl.Time),
-  publisher: EventPublisher,
-  deps: PollerDeps,
+// ============================================================================
+// Polling Logic
+// ============================================================================
+
+fn poll_all_services(
+  state: State,
 ) -> #(Dict(String, ServiceStatus), Dict(String, birl.Time)) {
-  list.fold(services, #(current_statuses, unhealthy_since), fn(acc, service) {
-    let #(statuses, unhealthy_times) = acc
-    let check = check_service(service, deps)
-    let history = get_history(statuses, service.name)
-    let new_history = [check, ..history] |> list.take(config.history_depth)
-    let new_status = calculate_status(new_history)
-
-    let previous_status = case dict.get(statuses, service.name) {
-      Ok(prev) -> Some(prev.status)
-      Error(_) -> None
-    }
-
-    let new_unhealthy_times = case previous_status, new_status {
-      Some(Healthy), Unhealthy | Some(Degraded), Unhealthy | None, Unhealthy -> {
-        logging.log(
-          logging.Warning,
-          "Service became unhealthy: " <> service.name,
-        )
-        let _ =
-          events.publish_service_unhealthy(
-            publisher,
-            service.name,
-            "unhealthy",
-            count_consecutive_failures(new_history),
-            check.error,
-          )
-        dict.insert(unhealthy_times, service.name, birl.now())
-      }
-
-      Some(Unhealthy), Healthy -> {
-        logging.log(logging.Info, "Service recovered: " <> service.name)
-        let downtime = case dict.get(unhealthy_times, service.name) {
-          Ok(since) -> {
-            let now_unix = birl.to_unix(birl.now())
-            let since_unix = birl.to_unix(since)
-            now_unix - since_unix
-          }
-          Error(_) -> 0
-        }
-        let _ =
-          events.publish_service_recovered(publisher, service.name, downtime)
-        dict.delete(unhealthy_times, service.name)
-      }
-
-      _, _ -> unhealthy_times
-    }
-
-    let service_status =
-      ServiceStatus(
-        name: service.name,
-        status: new_status,
-        latency_ms: check.latency_ms,
-        last_check: check.checked_at,
-        error: check.error,
-        history: new_history,
-      )
-
-    #(dict.insert(statuses, service.name, service_status), new_unhealthy_times)
-  })
+  list.fold(
+    state.services,
+    #(state.statuses, state.unhealthy_since),
+    fn(acc, service) {
+      let #(statuses, unhealthy_times) = acc
+      poll_single_service(service, statuses, unhealthy_times, state)
+    },
+  )
 }
 
-fn count_consecutive_failures(history: List(HealthCheck)) -> Int {
-  history
-  |> list.take_while(fn(check) { check.status == Unhealthy })
-  |> list.length
+fn poll_single_service(
+  service: Service,
+  statuses: Dict(String, ServiceStatus),
+  unhealthy_times: Dict(String, birl.Time),
+  state: State,
+) -> #(Dict(String, ServiceStatus), Dict(String, birl.Time)) {
+  // Check the service
+  let check = checker.check(service, state.deps.checker)
+
+  // Update history
+  let history = get_history(statuses, service.name)
+  let new_history =
+    [check, ..history] |> list.take(state.deps.status_config.history_depth)
+
+  // Calculate new status
+  let new_status = types.calculate_status(new_history, state.deps.status_config)
+
+  // Handle status transitions
+  let previous_status = get_previous_status(statuses, service.name)
+  let new_unhealthy_times =
+    handle_status_transition(
+      service.name,
+      previous_status,
+      new_status,
+      new_history,
+      check,
+      unhealthy_times,
+      state.publisher,
+    )
+
+  // Build service status
+  let service_status =
+    ServiceStatus(
+      name: service.name,
+      status: new_status,
+      latency_ms: check.latency_ms,
+      last_check: check.checked_at,
+      error: check.error,
+      history: new_history,
+    )
+
+  #(dict.insert(statuses, service.name, service_status), new_unhealthy_times)
 }
 
 fn get_history(
@@ -233,119 +246,83 @@ fn get_history(
   }
 }
 
-fn check_service(service: Service, deps: PollerDeps) -> HealthCheck {
-  let start = birl.monotonic_now()
+fn get_previous_status(
+  statuses: Dict(String, ServiceStatus),
+  name: String,
+) -> Option(Status) {
+  case dict.get(statuses, name) {
+    Ok(prev) -> Some(prev.status)
+    Error(_) -> None
+  }
+}
 
-  let result = case service.check_type {
-    HttpGet(path) -> {
-      let url = service.url <> path
-      case deps.http_get(url, check_timeout_ms) {
-        http_client.HttpOk(status, _) if status >= 200 && status < 300 ->
-          Ok(Nil)
-        http_client.HttpOk(status, _) ->
-          Error("HTTP " <> int.to_string(status))
-        http_client.HttpError(reason) -> Error(reason)
-      }
+// ============================================================================
+// Status Transition Events
+// ============================================================================
+
+fn handle_status_transition(
+  service_name: String,
+  previous: Option(Status),
+  current: Status,
+  history: List(HealthCheck),
+  check: HealthCheck,
+  unhealthy_times: Dict(String, birl.Time),
+  publisher: EventPublisher,
+) -> Dict(String, birl.Time) {
+  case previous, current {
+    // Became unhealthy
+    Some(Healthy), Unhealthy
+    | Some(Degraded), Unhealthy
+    | None, Unhealthy
+    -> {
+      logging.log(logging.Warning, "Service became unhealthy: " <> service_name)
+      let _ =
+        events.publish_service_unhealthy(
+          publisher,
+          service_name,
+          "unhealthy",
+          types.count_consecutive_failures(history),
+          check.error,
+        )
+      dict.insert(unhealthy_times, service_name, birl.now())
     }
-    TcpConnect -> {
-      let #(host, port) = parse_host_port(service.url)
-      case deps.tcp_check(host, port, check_timeout_ms) {
-        True -> Ok(Nil)
-        False -> Error("Connection refused")
-      }
+
+    // Recovered
+    Some(Unhealthy), Healthy -> {
+      logging.log(logging.Info, "Service recovered: " <> service_name)
+      let downtime = calculate_downtime(unhealthy_times, service_name)
+      let _ =
+        events.publish_service_recovered(publisher, service_name, downtime)
+      dict.delete(unhealthy_times, service_name)
     }
-  }
 
-  let end = birl.monotonic_now()
-  let latency_ms = { end - start } / 1_000_000
-
-  case result {
-    Ok(_) ->
-      HealthCheck(
-        status: Healthy,
-        latency_ms: latency_ms,
-        checked_at: birl.now(),
-        error: option.None,
-      )
-    Error(reason) ->
-      HealthCheck(
-        status: Unhealthy,
-        latency_ms: latency_ms,
-        checked_at: birl.now(),
-        error: option.Some(reason),
-      )
+    // No transition of interest
+    _, _ -> unhealthy_times
   }
 }
 
-fn parse_host_port(url: String) -> #(String, Int) {
-  case string.split(url, ":") {
-    [host, port_str] ->
-      case int.parse(port_str) {
-        Ok(port) -> #(host, port)
-        Error(_) -> #(url, 80)
-      }
-    _ -> #(url, 80)
+fn calculate_downtime(
+  unhealthy_times: Dict(String, birl.Time),
+  service_name: String,
+) -> Int {
+  case dict.get(unhealthy_times, service_name) {
+    Ok(since) -> {
+      let now_unix = birl.to_unix(birl.now())
+      let since_unix = birl.to_unix(since)
+      now_unix - since_unix
+    }
+    Error(_) -> 0
   }
 }
 
-fn calculate_status(history: List(HealthCheck)) -> Status {
-  let recent_failures =
-    history
-    |> list.take(config.unhealthy_failure_threshold)
-    |> list.filter(fn(check) { check.status == Unhealthy })
-    |> list.length
+// ============================================================================
+// Aggregation
+// ============================================================================
 
-  let has_slow_response =
-    list.any(history, fn(check) {
-      check.latency_ms > config.degraded_latency_threshold_ms
-    })
-
-  case recent_failures, has_slow_response {
-    n, _ if n >= config.unhealthy_failure_threshold -> Unhealthy
-    n, _ if n > 0 -> Degraded
-    _, True -> Degraded
-    _, _ -> Healthy
-  }
-}
-
-fn aggregate_status(statuses: Dict(String, ServiceStatus)) -> AggregatedStatus {
+fn build_aggregated_status(
+  statuses: Dict(String, ServiceStatus),
+) -> AggregatedStatus {
   let services = dict.values(statuses)
-
-  let overall =
-    list.fold(services, Healthy, fn(acc, svc) {
-      types.combine_status(acc, svc.status)
-    })
-
+  let overall = types.aggregate_services(services)
   AggregatedStatus(overall: overall, checked_at: birl.now(), services: services)
-}
-
-pub fn get_status(poller: Poller) -> Result(AggregatedStatus, Nil) {
-  let Poller(subject) = poller
-  let reply_subject = process.new_subject()
-  process.send(subject, GetStatus(reply_subject))
-
-  case process.receive(from: reply_subject, within: 5000) {
-    Ok(result) -> Ok(result)
-    Error(_) -> {
-      logging.log(logging.Error, "get_status timed out waiting for poller response")
-      Error(Nil)
-    }
-  }
-}
-
-pub fn get_service_status(poller: Poller, name: String) -> Option(ServiceStatus) {
-  let Poller(subject) = poller
-  let reply_subject = process.new_subject()
-  process.send(subject, GetServiceStatus(name, reply_subject))
-
-  case process.receive(from: reply_subject, within: 5000) {
-    Ok(result) -> result
-    Error(_) -> {
-      logging.log(
-        logging.Error,
-        "get_service_status timed out waiting for poller response",
-      )
-      None
-    }
-  }
 }

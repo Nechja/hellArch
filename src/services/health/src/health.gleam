@@ -2,12 +2,13 @@ import envoy
 import gleam/erlang/process
 import gleam/int
 import gleam/result
+import health/checker
 import health/config
 import health/events
-import health/http_client
 import health/poller
 import health/registry
 import health/router
+import health/types
 import logging
 import mist
 
@@ -24,8 +25,9 @@ pub fn main() {
     poller.PollerDeps(
       load_services: registry.services,
       create_publisher: events.new,
-      http_get: http_client.get,
-      tcp_check: http_client.check_tcp_port,
+      checker: checker.default_deps(),
+      status_config: types.default_status_config(),
+      poll_interval_ms: config.get_poll_interval(),
     )
 
   // Start the poller with dependencies
