@@ -24,6 +24,9 @@ graph LR
     subgraph Services
         AUTH[Auth :5001]
         USER[User :5002]
+        EVENTS[Events :5005]
+        FILES[Files :5006]
+        IDENTITY[Identity :5010]
     end
 
     AUTH_T --> HTTP
@@ -239,6 +242,9 @@ def base_urls() -> dict[str, str]:
         "auth": os.getenv("AUTH_URL", "http://localhost:5001"),
         "user": os.getenv("USER_URL", "http://localhost:5002"),
         "admin": os.getenv("ADMIN_URL", "http://localhost:5003"),
+        "events": os.getenv("EVENTS_URL", "http://localhost:5005"),
+        "files": os.getenv("FILES_URL", "http://localhost:5006"),
+        "identity": os.getenv("IDENTITY_URL", "http://localhost:5010"),
     }
 ```
 
@@ -686,10 +692,13 @@ sequenceDiagram
 | `AUTH_URL` | `http://localhost:5001` | Auth service URL |
 | `USER_URL` | `http://localhost:5002` | User service URL |
 | `ADMIN_URL` | `http://localhost:5003` | Admin console URL |
-| `AUTH_DATABASE_URL` | `postgres://...localhost:5444/auth_db` | Auth DB connection |
-| `USER_DATABASE_URL` | `postgres://...localhost:5443/user_db` | User DB connection |
-| `REDIS_URL` | `redis://localhost:6389/0` | Redis connection |
-| `RABBITMQ_URL` | `amqp://hellarch:hellarch@localhost:5682/` | RabbitMQ connection |
+| `EVENTS_URL` | `http://localhost:5005` | Events service URL |
+| `FILES_URL` | `http://localhost:5006` | Files service URL |
+| `IDENTITY_URL` | `http://localhost:5010` | Identity service URL |
+| `AUTH_DATABASE_URL` | `postgres://...localhost:5434/auth_db` | Auth DB connection |
+| `USER_DATABASE_URL` | `postgres://...localhost:5433/user_db` | User DB connection |
+| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection |
+| `RABBITMQ_URL` | `amqp://hellarch:hellarch@localhost:5672/` | RabbitMQ connection |
 
 ## Database Cleanup
 

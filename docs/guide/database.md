@@ -71,6 +71,31 @@ public sealed class UserDbContext(DbContextOptions<UserDbContext> options)
 | `user_profiles` | `id` (uuid) | `auth_user_id` (unique) |
 | `user_preferences` | `id` (uuid) | `user_profile_id` (FK) |
 
+## Other Databases
+
+### Events Database
+
+Managed by Go service migrations. Stores:
+- `audit_logs` - Event history
+- `webhooks` - Registered webhook endpoints
+- `webhook_deliveries` - Delivery attempts
+- `dead_letters` - Failed events
+
+### Files Database
+
+Managed by Go service migrations. Stores:
+- `stored_files` - File metadata (filename, mime_type, size, object_key)
+- `file_variants` - Generated variants (thumbnails, etc.)
+
+### Identity Database
+
+Managed by F# service with Npgsql.FSharp. Stores:
+- `identity_users` - Users with email/password auth
+- `oauth_clients` - OAuth 2.0 client configurations
+- `authorization_codes` - PKCE authorization codes
+- `access_tokens` - Issued access tokens (SHA-256 hashed)
+- `refresh_tokens` - Refresh tokens with family tracking
+
 ## Migration Runner
 
 Standalone .NET console app that runs migrations on container startup.
@@ -216,9 +241,15 @@ infra/dbs/
 ├── auth-db/
 │   ├── Dockerfile
 │   └── entrypoint.sh
-└── user-db/
-    ├── Dockerfile
-    └── entrypoint.sh
+├── user-db/
+│   ├── Dockerfile
+│   └── entrypoint.sh
+├── events-db/
+│   └── Dockerfile
+├── files-db/
+│   └── Dockerfile
+└── identity-db/
+    └── Dockerfile
 ```
 
 ## Conventions
