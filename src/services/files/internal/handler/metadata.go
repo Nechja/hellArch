@@ -34,15 +34,15 @@ func (h *Handler) listFiles(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 
+	if limit <= 0 {
+		limit = 50
+	}
+
 	filesList, err := h.fileService.List(ctx, ownerID, limit, offset)
 	if err != nil {
 		slog.Error("failed to list files", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to list files")
 		return
-	}
-
-	if limit <= 0 {
-		limit = 50
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -58,7 +58,7 @@ func (h *Handler) deleteFile(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.fileService.Delete(ctx, fileID); err != nil {
 		slog.Error("failed to delete file", "error", err)
-		writeError(w, http.StatusNotFound, "file not found")
+		writeError(w, http.StatusInternalServerError, "failed to delete file")
 		return
 	}
 
@@ -107,7 +107,7 @@ func (h *Handler) createVariant(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Error("failed to create variant", "error", err)
-		writeError(w, http.StatusNotFound, "file not found")
+		writeError(w, http.StatusInternalServerError, "failed to create variant")
 		return
 	}
 

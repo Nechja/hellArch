@@ -75,9 +75,9 @@ func main() {
 	}
 
 	// Setup HTTP server
-	router := handler.NewRouter(st, publisher, mgmt)
+	handlers := handler.NewHandlers(st, publisher, mgmt)
 	mux := http.NewServeMux()
-	router.RegisterRoutes(mux)
+	handlers.RegisterRoutes(mux)
 
 	server := &http.Server{
 		Addr:    cfg.HTTPAddress,

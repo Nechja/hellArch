@@ -104,7 +104,7 @@ func (d *Dispatcher) Deliver(ctx context.Context, req DeliveryRequest) error {
 }
 
 func (d *Dispatcher) recordDelivery(ctx context.Context, req DeliveryRequest, statusCode int, responseBody string, success bool) error {
-	_ = d.recorder.Record(ctx, RecordParams{
+	if err := d.recorder.Record(ctx, RecordParams{
 		WebhookID:    req.Webhook.ID,
 		EventID:      req.EventID,
 		EventType:    req.EventType,
@@ -113,7 +113,9 @@ func (d *Dispatcher) recordDelivery(ctx context.Context, req DeliveryRequest, st
 		ResponseBody: responseBody,
 		Success:      success,
 		Attempt:      req.Attempt,
-	})
+	}); err != nil {
+		slog.Error("failed to record delivery", "error", err, "webhook_id", req.Webhook.ID, "event_id", req.EventID)
+	}
 
 	if !success {
 		return fmt.Errorf("delivery failed with status %d", statusCode)

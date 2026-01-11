@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -81,7 +80,7 @@ func (h *Handler) presignUpload(w http.ResponseWriter, r *http.Request) {
 	result, err := h.uploadService.Presign(ctx, req.Filename, req.OwnerID, req.Size)
 	if err != nil {
 		slog.Error("failed to generate presigned URL", "error", err)
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to generate upload URL: %v", err))
+		writeError(w, http.StatusInternalServerError, "failed to generate upload URL")
 		return
 	}
 
@@ -117,7 +116,7 @@ func (h *Handler) confirmUpload(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Error("failed to confirm upload", "error", err)
-		writeError(w, http.StatusNotFound, "file not found in storage")
+		writeError(w, http.StatusInternalServerError, "failed to confirm upload")
 		return
 	}
 

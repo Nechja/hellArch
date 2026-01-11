@@ -10,7 +10,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-type Router struct {
+type Handlers struct {
 	audit      *AuditHandler
 	webhook    *WebhookHandler
 	delivery   *DeliveryHandler
@@ -19,12 +19,12 @@ type Router struct {
 	worker     *WorkerHandler
 }
 
-func NewRouter(
+func NewHandlers(
 	store *store.Store,
 	publisher *rabbitmq.Publisher,
 	mgmt *rabbitmq.ManagementClient,
-) *Router {
-	return &Router{
+) *Handlers {
+	return &Handlers{
 		audit:      NewAuditHandler(store),
 		webhook:    NewWebhookHandler(store),
 		delivery:   NewDeliveryHandler(store),
@@ -34,7 +34,7 @@ func NewRouter(
 	}
 }
 
-func (r *Router) RegisterRoutes(mux *http.ServeMux) {
+func (r *Handlers) RegisterRoutes(mux *http.ServeMux) {
 	// Audit logs
 	mux.Handle("GET /audit-logs", otelhttp.NewHandler(http.HandlerFunc(r.audit.listAuditLogs), "list_audit_logs"))
 	mux.Handle("POST /audit-logs", otelhttp.NewHandler(http.HandlerFunc(r.audit.createAuditLog), "create_audit_log"))
