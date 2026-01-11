@@ -45,7 +45,7 @@ The `hellarch` provider uses the [Identity Service](/guide/services/identity) as
 
 ## Linked Accounts
 
-Users can link multiple OAuth providers to a single account. This allows signing in with any linked provider.
+Users can link multiple OAuth providers to a single account. Linking happens automatically when a user starts an OAuth flow while already authenticated.
 
 ```mermaid
 sequenceDiagram
@@ -55,45 +55,33 @@ sequenceDiagram
     participant Provider as OAuth Provider
 
     User->>App: Click "Link {provider}"
-    App->>Auth: GET /oauth/{provider}/link
-    Auth->>Auth: Verify existing session
+    App->>Auth: GET /auth/{provider}/login
+    Auth->>Auth: Detect existing session
     Auth-->>User: Redirect to provider
 
     User->>Provider: Authorize
     Provider-->>Auth: Callback with code
-    Auth->>Auth: Link account to user
+    Auth->>Auth: Link account to existing user
     Auth-->>User: Redirect to settings
 ```
 
 **Linking flow:**
-1. User must be authenticated (valid session)
-2. GET `/oauth/{provider}/link` initiates linking
-3. After OAuth callback, account is linked to current user
+1. User must be authenticated (valid session cookie)
+2. Starting OAuth flow (`/auth/{provider}/login`) detects the session
+3. After callback, account is linked to current user instead of creating new session
 4. User can now sign in with any linked provider
 
-**Get linked accounts:**
+**Get current user and linked providers:**
 ```http
-GET /linked-accounts
+GET /auth/me
 Cookie: hellarch_session=xxx
 ```
 
 **Response:**
 ```json
 {
-  "accounts": [
-    {
-      "provider": "discord",
-      "provider_user_id": "123456789",
-      "email": "user@example.com",
-      "linked_at": "2024-01-15T10:30:00Z"
-    },
-    {
-      "provider": "github",
-      "provider_user_id": "987654321",
-      "email": "user@example.com",
-      "linked_at": "2024-01-16T14:20:00Z"
-    }
-  ]
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
+  "linked_providers": ["discord", "github"]
 }
 ```
 
@@ -101,31 +89,36 @@ Cookie: hellarch_session=xxx
 
 ### HTTP (Port 5001)
 
+::: tip Gateway Routing
+Clients access these endpoints via the Gateway at `/api/auth/...`. The Gateway strips the `/api` prefix before forwarding.
+:::
+
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/oauth/{provider}` | Start OAuth flow |
-| GET | `/oauth/{provider}/callback` | OAuth callback |
-| GET | `/oauth/{provider}/link` | Link additional OAuth account |
-| GET | `/linked-accounts` | Get user's linked accounts |
-| POST | `/refresh` | Refresh tokens |
-| POST | `/logout` | End session |
-| GET | `/health` | Health check |
+| GET | `/auth/{provider}/login` | Start OAuth flow |
+| GET | `/auth/{provider}/callback` | OAuth callback |
+| POST | `/auth/refresh` | Refresh tokens |
+| POST | `/auth/validate` | Validate session or JWT |
+| GET | `/auth/me` | Get current user + linked providers |
+| GET | `/auth/providers` | List configured OAuth providers |
+| GET/POST | `/auth/logout` | End session |
+| GET | `/auth/health` | Health check |
 
 ### Admin API (Internal)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/admin/users` | List users (paginated) |
-| GET | `/admin/users/{id}` | Get user with linked accounts |
-| GET | `/admin/users/{id}/sessions` | Get user's sessions |
-| DELETE | `/admin/sessions/{id}` | Revoke a session |
-| GET | `/admin/stats` | Get system statistics |
-| GET | `/admin/users/{id}/permissions` | Get user permissions |
-| PUT | `/admin/users/{id}/permissions` | Set all permissions |
-| POST | `/admin/users/{id}/permissions/grant` | Grant permission |
-| POST | `/admin/users/{id}/permissions/revoke` | Revoke permission |
-| POST | `/admin/users/{id}/activate` | Activate user |
-| POST | `/admin/users/{id}/deactivate` | Deactivate user + invalidate sessions |
+| GET | `/auth/admin/users` | List users (paginated) |
+| GET | `/auth/admin/users/{id}` | Get user with linked accounts |
+| GET | `/auth/admin/users/{id}/sessions` | Get user's sessions |
+| DELETE | `/auth/admin/sessions/{id}` | Revoke a session |
+| GET | `/auth/admin/stats` | Get system statistics |
+| GET | `/auth/admin/users/{id}/permissions` | Get user permissions |
+| PUT | `/auth/admin/users/{id}/permissions` | Set all permissions |
+| POST | `/auth/admin/users/{id}/permissions/grant` | Grant permission |
+| POST | `/auth/admin/users/{id}/permissions/revoke` | Revoke permission |
+| POST | `/auth/admin/users/{id}/activate` | Activate user |
+| POST | `/auth/admin/users/{id}/deactivate` | Deactivate user + invalidate sessions |
 
 See [Permissions Guide](/guide/permissions) for details.
 
@@ -196,7 +189,10 @@ src/services/auth/
 │   ├── handler/         # HTTP + gRPC handlers
 │   ├── jwt/             # Token generation/validation
 │   ├── oauth/           # Provider implementations
-│   └── store/           # PostgreSQL + Redis access
+│   ├── proto/           # gRPC generated code
+│   ├── service/         # Business logic (user, session, permission)
+│   ├── store/           # PostgreSQL + Redis access
+│   └── telemetry/       # OpenTelemetry setup
 └── go.mod
 ```
 

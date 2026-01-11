@@ -50,6 +50,10 @@ graph TB
 
 ## API Endpoints
 
+::: tip Direct Routing
+Unlike other services, the Files service receives requests with the full `/api/files/` prefix. The Gateway forwards requests without path transformation.
+:::
+
 ### Upload
 
 | Method | Path | Description |
@@ -183,6 +187,10 @@ src/services/files/
 │   │   ├── upload.go            # Upload handlers
 │   │   ├── download.go          # Download handlers
 │   │   └── metadata.go          # Metadata handlers
+│   ├── service/
+│   │   ├── file.go              # File business logic
+│   │   ├── upload.go            # Upload business logic
+│   │   └── variant.go           # Variant business logic
 │   ├── storage/
 │   │   └── minio.go             # MinIO client
 │   └── store/

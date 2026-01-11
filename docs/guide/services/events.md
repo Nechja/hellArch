@@ -53,50 +53,54 @@ graph TB
 
 ## API Endpoints
 
+::: tip Gateway Routing
+Clients access these endpoints via the Gateway at `/api/events/...`. The Gateway strips the `/api/events` prefix before forwarding.
+:::
+
 ### Audit Logs
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/audit-logs` | List audit logs (paginated) |
-| POST | `/api/audit-logs` | Create audit log entry |
+| GET | `/audit-logs` | List audit logs (paginated) |
+| POST | `/audit-logs` | Create audit log entry |
 
 ### Webhooks
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/webhooks` | List webhooks (paginated) |
-| POST | `/api/webhooks` | Create webhook |
-| GET | `/api/webhooks/{id}` | Get webhook by ID |
-| PUT | `/api/webhooks/{id}` | Update webhook |
-| DELETE | `/api/webhooks/{id}` | Delete webhook |
-| GET | `/api/webhooks/by-event/{type}` | Get webhooks for event type |
+| GET | `/webhooks` | List webhooks (paginated) |
+| POST | `/webhooks` | Create webhook |
+| GET | `/webhooks/{id}` | Get webhook by ID |
+| PUT | `/webhooks/{id}` | Update webhook |
+| DELETE | `/webhooks/{id}` | Delete webhook |
+| GET | `/webhooks/by-event/{type}` | Get webhooks for event type |
 
 ### Webhook Deliveries
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/webhook-deliveries` | List deliveries (paginated, filterable) |
-| POST | `/api/webhook-deliveries` | Record delivery attempt |
+| GET | `/webhook-deliveries` | List deliveries (paginated, filterable) |
+| POST | `/webhook-deliveries` | Record delivery attempt |
 
-### Events
+### Event Publishing
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/events/publish` | Publish event to RabbitMQ |
+| POST | `/publish` | Publish event to RabbitMQ |
 
 ### Dead Letters
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/dead-letters` | List dead letter events |
-| POST | `/api/dead-letters` | Record dead letter |
-| DELETE | `/api/dead-letters/{id}` | Delete dead letter |
+| GET | `/dead-letters` | List dead letter events |
+| POST | `/dead-letters` | Record dead letter |
+| DELETE | `/dead-letters/{id}` | Delete dead letter |
 
 ### Workers
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/workers/status` | Get worker queue status |
+| GET | `/workers/status` | Get worker queue status |
 
 ### Health
 
