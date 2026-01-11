@@ -8,6 +8,7 @@ HellArch is a polyglot microservices system for authentication and user manageme
 graph TB
     subgraph Clients
         ADMIN[Admin Console<br/>:5003]
+        IDENTITY_UI[Identity Client<br/>Vue SPA]
     end
 
     subgraph Gateway["Gateway :5000"]
@@ -19,29 +20,50 @@ graph TB
         AUTH[Auth Service<br/>Go :5001/:50051]
         USER[User Service<br/>F# :5002]
         HEALTH[Health Service<br/>Gleam :5004]
+        EVENTS[Events Service<br/>Go :5005]
+        FILES[Files Service<br/>Go :5006]
+        IDENTITY[Identity Service<br/>F# :5010]
     end
 
     subgraph Infrastructure
         PG_AUTH[(PostgreSQL<br/>Auth DB :5434)]
         PG_USER[(PostgreSQL<br/>User DB :5433)]
+        PG_EVENTS[(PostgreSQL<br/>Events DB)]
+        PG_FILES[(PostgreSQL<br/>Files DB)]
+        PG_IDENTITY[(PostgreSQL<br/>Identity DB :5437)]
         REDIS[(Redis :6379)]
         RABBIT[(RabbitMQ :5672)]
+        MINIO[(MinIO)]
     end
 
     ADMIN --> YARP
     ADMIN --> REDIS
+    IDENTITY_UI --> YARP
     YARP --> MW
     MW -->|/api/auth/*| AUTH
     MW -->|/api/user/*| USER
+    MW -->|/api/events/*| EVENTS
+    MW -->|/api/files/*| FILES
+    MW -->|/api/identity/*| IDENTITY
 
     AUTH --> PG_AUTH
     AUTH --> REDIS
+    AUTH --> IDENTITY
     USER --> PG_USER
+    EVENTS --> PG_EVENTS
+    FILES --> PG_FILES
+    FILES --> MINIO
+    IDENTITY --> PG_IDENTITY
     AUTH -.->|gRPC| USER
     AUTH -->|CloudEvents| RABBIT
+    EVENTS -->|CloudEvents| RABBIT
+    FILES -->|CloudEvents| RABBIT
     RABBIT --> USER
     HEALTH -->|HTTP| AUTH
     HEALTH -->|HTTP| USER
+    HEALTH -->|HTTP| EVENTS
+    HEALTH -->|HTTP| FILES
+    HEALTH -->|HTTP| IDENTITY
     HEALTH -->|TCP| REDIS
     ADMIN --> HEALTH
 ```
@@ -53,8 +75,11 @@ graph TB
 | Gateway | C# | 5000 | Request routing, cookie-to-JWT transform |
 | Auth | Go | 5001 (HTTP), 50051 (gRPC) | OAuth flows, JWT tokens, sessions |
 | User | F# | 5002 | Profiles, preferences, linked accounts |
-| Health | Gleam | 5004 | Aggregates health status from all services |
 | Admin Console | C# Blazor | 5003 | User management, Redis browser, health dashboard |
+| Health | Gleam | 5004 | Aggregates health status from all services |
+| Events | Go | 5005 | Audit logs, webhooks, dead letters, worker monitoring |
+| Files | Go | 5006 | File storage with MinIO, variants |
+| Identity | F# | 5010 | OAuth 2.0 authorization server, user registration |
 
 ## Technology Stack
 

@@ -20,6 +20,7 @@ graph LR
     subgraph Services
         AUTH[Auth]
         USER[User]
+        EVENTS[Events]
         FILES[Files]
     end
 
@@ -53,6 +54,7 @@ graph LR
 
     AUTH -->|publish| EX
     USER -->|publish| EX
+    EVENTS -->|publish| EX
     FILES -->|publish| EX
     EX -->|hellarch.#| AQ
     EX -->|hellarch.#| WQ
@@ -138,12 +140,17 @@ Workers share the `events_db` PostgreSQL database:
 
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `RABBITMQ_URL` | Yes | - | RabbitMQ connection string |
-| `DATABASE_URL` | Audit/Webhooks | - | PostgreSQL connection string |
-| `JWT_SECRET` | Realtime | - | JWT signing key |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | `localhost:4318` | OpenTelemetry collector |
+All workers share common environment variables. See [Configuration Reference](/guide/configuration) for details.
+
+**Common to all workers:**
+- `RABBITMQ_URL` - RabbitMQ connection
+- `OTEL_EXPORTER_OTLP_ENDPOINT` - OpenTelemetry collector
+
+**Database workers (Audit, Webhooks):**
+- `DATABASE_URL` - PostgreSQL connection (events_db)
+
+**Realtime worker:**
+- `JWT_SECRET` - JWT signing key for WebSocket auth
 
 ## Running Locally
 

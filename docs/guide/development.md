@@ -89,6 +89,9 @@ graph TB
 Key variables:
 - `AUTH_DATABASE_URL` - Auth PostgreSQL (port 5434)
 - `USER_DATABASE_URL` - User PostgreSQL (port 5433)
+- `DATABASE_URL` - Events PostgreSQL (port 5435)
+- `FILES_DATABASE_URL` - Files PostgreSQL (port 5436)
+- `IDENTITY_DATABASE_URL` - Identity PostgreSQL (port 5437)
 - `REDIS_URL` - Redis connection
 - `JWT_PRIVATE_KEY_PATH` / `JWT_PUBLIC_KEY_PATH` - RSA keys
 
@@ -111,59 +114,80 @@ graph TB
         GATEWAY[Gateway :5000]
         AUTH[Auth Service :5001]
         USER[User Service :5002]
+        EVENTS[Events Service :5005]
+        FILES[Files Service :5006]
+        IDENTITY[Identity Service :5010]
     end
 
     subgraph Infrastructure
         PG_AUTH[(PostgreSQL :5434)]
         PG_USER[(PostgreSQL :5433)]
+        PG_EVENTS[(PostgreSQL :5435)]
+        PG_FILES[(PostgreSQL :5436)]
+        PG_IDENTITY[(PostgreSQL :5437)]
         REDIS[(Redis :6379)]
         RABBIT[(RabbitMQ :5672)]
+        MINIO[(MinIO :9000)]
     end
 
     INFRA --> PG_AUTH
     INFRA --> PG_USER
+    INFRA --> PG_EVENTS
+    INFRA --> PG_FILES
+    INFRA --> PG_IDENTITY
     INFRA --> REDIS
     INFRA --> RABBIT
+    INFRA --> MINIO
 
     GATEWAY --> AUTH
     GATEWAY --> USER
+    GATEWAY --> EVENTS
+    GATEWAY --> FILES
+    GATEWAY --> IDENTITY
     AUTH --> PG_AUTH
     AUTH --> REDIS
+    AUTH --> IDENTITY
     USER --> PG_USER
+    EVENTS --> PG_EVENTS
+    EVENTS --> RABBIT
+    FILES --> PG_FILES
+    FILES --> MINIO
+    FILES --> RABBIT
+    IDENTITY --> PG_IDENTITY
 ```
 
-### Service Ports
+### Quick Links
 
-| Service | Port | URL |
-|---------|------|-----|
-| Tilt UI | 10350 | http://localhost:10350 |
-| Gateway | 5000 | http://localhost:5000 |
-| Auth | 5001 | http://localhost:5001 |
-| Auth gRPC | 50051 | - |
-| User | 5002 | http://localhost:5002 |
-| Admin Console | 5003 | http://localhost:5003 |
-| Health | 5004 | http://localhost:5004 |
-| Events | 5005 | http://localhost:5005 |
-| Files | 5006 | http://localhost:5006 |
-| PostgreSQL (Auth) | 5434 | - |
-| PostgreSQL (User) | 5433 | - |
-| PostgreSQL (Events) | 5435 | - |
-| PostgreSQL (Files) | 5436 | - |
-| Redis | 6379 | - |
-| RabbitMQ | 5672 | - |
-| RabbitMQ UI | 15672 | http://localhost:15672 |
-| MinIO | 9000 | http://localhost:9000 |
-| MinIO Console | 9001 | http://localhost:9001 |
-| Jaeger | 16686 | http://localhost:16686 |
+| Service | URL |
+|---------|-----|
+| Tilt UI | http://localhost:10350 |
+| Gateway | http://localhost:5000 |
+| Admin Console | http://localhost:5003 |
+| RabbitMQ UI | http://localhost:15672 |
+| MinIO Console | http://localhost:9001 |
+| Jaeger | http://localhost:16686 |
 
-## Live Reload
+See [Service Ports](/guide/#ports) for complete port reference and [Configuration](/guide/configuration) for environment variables.
 
-Tilt watches for file changes and rebuilds automatically:
+## Image Rebuilds
 
-- **Go** - Rebuilds auth service
-- **Gleam** - Rebuilds health service
-- **.NET** - Rebuilds gateway and user service
-- **Proto** - Regenerates gRPC code
+Tilt watches for file changes and rebuilds container images automatically:
+
+```mermaid
+flowchart LR
+    CODE[Source Code] -->|change detected| TILT[Tilt]
+    TILT -->|docker_build| IMAGE[Container Image]
+    IMAGE -->|restart| SERVICE[Running Service]
+```
+
+| Language | Services |
+|----------|----------|
+| Go | Auth, Events, Files, Workers |
+| F# | Identity, User |
+| C# | Gateway, Admin |
+| Gleam | Health |
+
+Tilt uses `docker_build` for all services - no volume mounts or hot reload. This ensures the development environment matches production.
 
 ## Stopping
 

@@ -48,44 +48,20 @@ graph TB
     EX --> IMAGES
 ```
 
-## API Endpoints
+## API Reference
 
-### Upload
+See [Files API](/api/files) for complete endpoint documentation.
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/files/upload` | Direct file upload |
-| POST | `/api/files/presign/upload` | Get presigned upload URL |
-| POST | `/api/files/{id}/confirm` | Confirm presigned upload |
+::: tip Direct Routing
+Unlike other services, the Files service receives requests with the full `/api/files/` prefix. The Gateway forwards requests without path transformation.
+:::
 
-### Download
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/files/{id}` | Download file |
-| GET | `/api/files/{id}/presign` | Get presigned download URL |
-
-### Metadata
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/files/{id}/meta` | Get file metadata |
-| GET | `/api/files` | List files (paginated) |
-| DELETE | `/api/files/{id}` | Delete file |
-
-### Variants
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/files/{id}/variants` | List file variants |
-| GET | `/api/files/{id}/variants/{type}` | Download variant |
-| POST | `/api/files/{id}/variants` | Create variant record |
-
-### Health
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check |
+**Key endpoints:**
+- `POST /api/files/upload` - Direct file upload
+- `POST /api/files/presign/upload` - Get presigned upload URL
+- `GET /api/files/{id}` - Download file
+- `GET /api/files/{id}/meta` - Get file metadata
+- `GET /api/files/{id}/variants` - List/download variants
 
 ## How It Works
 
@@ -116,36 +92,9 @@ sequenceDiagram
 
 ## Database Schema
 
-### stored_files
+See [Files Database](/guide/database#files-database) for full schema.
 
-```sql
-CREATE TABLE stored_files (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    owner_id UUID NOT NULL,
-    filename TEXT NOT NULL,
-    mime_type TEXT NOT NULL,
-    size_bytes BIGINT NOT NULL,
-    object_key TEXT NOT NULL UNIQUE,
-    status TEXT NOT NULL DEFAULT 'pending',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-```
-
-### file_variants
-
-```sql
-CREATE TABLE file_variants (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    file_id UUID NOT NULL REFERENCES stored_files(id) ON DELETE CASCADE,
-    variant_type TEXT NOT NULL,
-    object_key TEXT NOT NULL,
-    mime_type TEXT NOT NULL,
-    size_bytes BIGINT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE(file_id, variant_type)
-);
-```
+**Tables:** `stored_files`, `file_variants`
 
 ## CloudEvents
 
@@ -164,7 +113,7 @@ The Files Service publishes these events:
 | `RABBITMQ_URL` | No | `amqp://guest:guest@localhost:5672` | RabbitMQ connection |
 | `MINIO_ENDPOINT` | No | `localhost:9000` | MinIO endpoint |
 | `MINIO_ACCESS_KEY` | No | `hellarch` | MinIO access key |
-| `MINIO_SECRET_KEY` | Yes | - | MinIO secret key |
+| `MINIO_SECRET_KEY` | No | `hellarch` | MinIO secret key |
 | `MINIO_BUCKET` | No | `hellarch-files` | Storage bucket |
 | `MINIO_USE_SSL` | No | `false` | Use HTTPS for MinIO |
 | `MAX_UPLOAD_SIZE` | No | `1073741824` | Max upload size (1GB) |
@@ -183,6 +132,10 @@ src/services/files/
 │   │   ├── upload.go            # Upload handlers
 │   │   ├── download.go          # Download handlers
 │   │   └── metadata.go          # Metadata handlers
+│   ├── service/
+│   │   ├── file.go              # File business logic
+│   │   ├── upload.go            # Upload business logic
+│   │   └── variant.go           # Variant business logic
 │   ├── storage/
 │   │   └── minio.go             # MinIO client
 │   └── store/

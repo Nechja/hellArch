@@ -8,17 +8,30 @@ Each service owns its database - no shared databases. Migrations baked into DB c
 graph TB
     subgraph Auth Database Container
         AUTH_PG[(PostgreSQL :5434)]
-        AUTH_MIG[migrate auth]
     end
 
     subgraph User Database Container
         USER_PG[(PostgreSQL :5433)]
-        USER_MIG[migrate user]
+    end
+
+    subgraph Events Database Container
+        EVENTS_PG[(PostgreSQL :5435)]
+    end
+
+    subgraph Files Database Container
+        FILES_PG[(PostgreSQL :5436)]
+    end
+
+    subgraph Identity Database Container
+        IDENTITY_PG[(PostgreSQL :5437)]
     end
 
     subgraph Services
         AUTH[Auth Service]
         USER[User Service]
+        EVENTS[Events Service]
+        FILES[Files Service]
+        IDENTITY[Identity Service]
     end
 
     subgraph Caching
@@ -29,12 +42,20 @@ graph TB
         RABBIT[(RabbitMQ :5672)]
     end
 
-    AUTH_MIG -->|on startup| AUTH_PG
-    USER_MIG -->|on startup| USER_PG
+    subgraph Object Storage
+        MINIO[(MinIO)]
+    end
+
     AUTH --> AUTH_PG
     AUTH --> REDIS
     AUTH --> RABBIT
     USER --> USER_PG
+    EVENTS --> EVENTS_PG
+    EVENTS --> RABBIT
+    FILES --> FILES_PG
+    FILES --> MINIO
+    FILES --> RABBIT
+    IDENTITY --> IDENTITY_PG
     RABBIT --> USER
 ```
 
@@ -51,6 +72,35 @@ Stores user data:
 - Profiles (id, email, display_name, avatar_url)
 - Preferences (theme, locale, notifications)
 - Linked accounts (provider, provider_user_id)
+
+## Events Database
+
+Stores event and webhook data:
+- Audit logs (event tracking)
+- Webhooks (configuration)
+- Webhook deliveries (attempt history)
+- Dead letters (failed events)
+
+## Files Database
+
+Stores file metadata:
+- Stored files (filename, mime_type, size, object_key)
+- File variants (thumbnails, processed versions)
+
+## Identity Database
+
+Stores OAuth 2.0 authorization server data:
+- Identity users (email, username, password_hash)
+- OAuth clients (client_id, secret_hash, redirect_uris)
+- Authorization codes (PKCE support)
+- Access tokens (SHA-256 hashed)
+- Refresh tokens (family tracking, rotation)
+
+## MinIO Object Storage
+
+Stores actual file content:
+- Original uploads in `hellarch-files` bucket
+- Generated variants (thumbnails, etc.)
 
 ## Redis Usage
 
@@ -69,9 +119,4 @@ graph LR
 
 ## Connection Strings
 
-From `.envrc`:
-```bash
-AUTH_DATABASE_URL="postgres://hellarch:hellarch@localhost:5434/auth_db"
-USER_DATABASE_URL="postgres://hellarch:hellarch@localhost:5433/user_db"
-REDIS_URL="redis://localhost:6379"
-```
+See [Configuration Reference](/guide/configuration#database-connection-strings) for connection string details.

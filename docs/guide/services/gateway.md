@@ -17,17 +17,31 @@ graph LR
 
     GW --> AUTH[Auth :5001]
     GW --> USER[User :5002]
+    GW --> EVENTS[Events :5005]
+    GW --> FILES[Files :5006]
+    GW --> IDENTITY[Identity :5010]
 ```
 
 ## Responsibilities
 
-1. **Request Routing** - Routes `/api/auth/*` and `/api/user/*` to respective services
+1. **Request Routing** - Routes API requests to respective services
 2. **Cookie-to-JWT Transform** - Extracts JWT from cookies, adds to request headers
 3. **CORS Handling** - Manages cross-origin requests
+4. **Static File Serving** - Serves Vue SPA clients (Admin, Identity)
 
 ## Route Configuration
 
-From `appsettings.json`:
+Routes are configured in `appsettings.json`. Each route has optional path transforms.
+
+| Route | Path | Destination | Transform |
+|-------|------|-------------|-----------|
+| auth-route | `/api/auth/**` | Auth :5001 | Strip `/api` |
+| user-route | `/api/user/**` | User :5002 | Strip `/api` |
+| events-route | `/api/events/**` | Events :5005 | Strip `/api/events` |
+| files-route | `/api/files/**` | Files :5006 | None |
+| identity-api-route | `/api/identity/**` | Identity :5010 | Strip `/api` |
+
+Example configuration:
 
 ```json
 {
@@ -35,23 +49,13 @@ From `appsettings.json`:
     "Routes": {
       "auth-route": {
         "ClusterId": "auth-cluster",
-        "Match": { "Path": "/api/auth/{**catch-all}" }
+        "Match": { "Path": "/api/auth/{**catch-all}" },
+        "Transforms": [{ "PathRemovePrefix": "/api" }]
       },
-      "user-route": {
-        "ClusterId": "user-cluster",
-        "Match": { "Path": "/api/user/{**catch-all}" }
-      }
-    },
-    "Clusters": {
-      "auth-cluster": {
-        "Destinations": {
-          "auth": { "Address": "http://localhost:5001" }
-        }
-      },
-      "user-cluster": {
-        "Destinations": {
-          "user": { "Address": "http://localhost:5002" }
-        }
+      "events-route": {
+        "ClusterId": "events-cluster",
+        "Match": { "Path": "/api/events/{**catch-all}" },
+        "Transforms": [{ "PathRemovePrefix": "/api/events" }]
       }
     }
   }

@@ -28,6 +28,8 @@ graph TB
         USER[User :5002]
         ADMIN[Admin :5003]
         EVENTS[Events :5005]
+        FILES[Files :5006]
+        IDENTITY[Identity :5010]
     end
 
     subgraph Infrastructure
@@ -35,6 +37,8 @@ graph TB
         AUTHDB[(Auth DB :5432)]
         USERDB[(User DB :5432)]
         EVENTSDB[(Events DB :5432)]
+        FILESDB[(Files DB :5432)]
+        IDENTITYDB[(Identity DB :5432)]
         RMQ[(RabbitMQ :5672)]
     end
 
@@ -48,10 +52,14 @@ graph TB
     POLLER -->|HTTP GET| USER
     POLLER -->|HTTP GET| ADMIN
     POLLER -->|HTTP GET| EVENTS
+    POLLER -->|HTTP GET| FILES
+    POLLER -->|HTTP GET| IDENTITY
     POLLER -->|TCP Connect| REDIS
     POLLER -->|TCP Connect| AUTHDB
     POLLER -->|TCP Connect| USERDB
     POLLER -->|TCP Connect| EVENTSDB
+    POLLER -->|TCP Connect| FILESDB
+    POLLER -->|TCP Connect| IDENTITYDB
     POLLER -->|TCP Connect| RMQ
     ROUTER --> POLLER
     DASHBOARD --> ROUTER
@@ -111,10 +119,14 @@ flowchart TD
 | user | HTTP GET | `/user/health` | Yes |
 | admin | HTTP GET | `/health` | No |
 | events | HTTP GET | `/health` | Yes |
+| files | HTTP GET | `/health` | Yes |
+| identity | HTTP GET | `/identity/health` | No |
 | redis | TCP Connect | `:6379` | Yes |
 | auth-db | TCP Connect | `:5432` | Yes |
 | user-db | TCP Connect | `:5432` | Yes |
 | events-db | TCP Connect | `:5432` | Yes |
+| files-db | TCP Connect | `:5432` | Yes |
+| identity-db | TCP Connect | `:5432` | No |
 | rabbitmq | TCP Connect | `:5672` | Yes |
 
 ## API Endpoints
@@ -203,6 +215,14 @@ Returns detailed status for a single service with history.
 }
 ```
 
+### Worker Status
+
+```http
+GET /workers
+```
+
+Proxies to the Events service `/workers/status` endpoint to get RabbitMQ worker queue status.
+
 ## Configuration
 
 | Constant | Default | Description |
@@ -220,23 +240,62 @@ Returns detailed status for a single service with history.
 |----------|---------|-------------|
 | `PORT` | `5004` | HTTP listen port |
 | `POLL_INTERVAL_MS` | `10000` | Poll interval in milliseconds |
+| `HEALTH_CONFIG_PATH` | `/app/config/health-services.json` | Path to service configuration JSON |
+
+## Service Configuration
+
+Services are configured via a JSON file at `HEALTH_CONFIG_PATH`. The file is mounted into the container from `infra/config/health-services.json`.
+
+**Example configuration:**
+
+```json
+{
+  "services": [
+    {
+      "name": "gateway",
+      "url": "http://gateway:5000",
+      "checkType": "http",
+      "healthPath": "/health",
+      "critical": true
+    },
+    {
+      "name": "redis",
+      "url": "redis:6379",
+      "checkType": "tcp",
+      "critical": true
+    }
+  ]
+}
+```
+
+**Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Service identifier |
+| `url` | string | Service URL (host:port for TCP) |
+| `checkType` | `"http"` \| `"tcp"` | Health check method |
+| `healthPath` | string | HTTP endpoint path (HTTP only) |
+| `critical` | boolean | Affects overall status calculation |
 
 ## Code Structure
 
 ```
 src/services/health/
-├── gleam.toml           # Dependencies (mist, gleam_json, birl)
+├── gleam.toml           # Dependencies
 ├── manifest.toml        # Lock file
 ├── Dockerfile           # Multi-stage build
 └── src/
     ├── health.gleam     # Entry point
     └── health/
+        ├── checker.gleam     # Health check execution
         ├── config.gleam      # Configuration constants
-        ├── types.gleam       # Type definitions
-        ├── registry.gleam    # Service registry
+        ├── events.gleam      # SSE event streaming
+        ├── http_client.gleam # HTTP/TCP client
         ├── poller.gleam      # OTP actor for polling
+        ├── registry.gleam    # Service registry (loads JSON config)
         ├── router.gleam      # HTTP request handler
-        └── http_client.gleam # HTTP/TCP client
+        └── types.gleam       # Type definitions
 ```
 
 ## OTP Actor Model
@@ -268,11 +327,12 @@ stateDiagram-v2
 |---------|---------|
 | mist | HTTP server |
 | gleam_http | HTTP types |
-| gleam_json | JSON encoding |
+| gleam_json | JSON encoding/decoding |
 | birl | Time/date handling |
 | envoy | Environment variables |
 | gleam_otp | Actor model |
 | gleam_erlang | Erlang interop |
+| simplifile | File system operations |
 
 ## Admin Console Integration
 
@@ -299,21 +359,22 @@ FROM ghcr.io/gleam-lang/gleam:v1.14.0-erlang-alpine AS builder
 RUN gleam export erlang-shipment
 
 # Runtime
-FROM erlang:27-alpine
+FROM erlang:28-alpine
 COPY --from=builder /app/build/erlang-shipment ./
 ```
 
 ## Adding a New Service
 
-1. Add to `registry.gleam`:
+1. Edit `infra/config/health-services.json`:
 
-```gleam
-Service(
-  name: "my-service",
-  url: "http://my-service:8080",
-  check_type: HttpGet("/health"),
-  critical: True,
-)
+```json
+{
+  "name": "my-service",
+  "url": "http://my-service:8080",
+  "checkType": "http",
+  "healthPath": "/health",
+  "critical": true
+}
 ```
 
-2. Rebuild and deploy - the poller will automatically start monitoring it.
+2. Restart the health service - it will load the updated configuration on startup.

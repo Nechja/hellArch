@@ -167,15 +167,9 @@ ClockSkew = 1 minute
 
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `RABBITMQ_URL` | Yes | - | RabbitMQ connection string |
-| `JWT_SECRET` | Yes | - | JWT signing key |
-| `JWT_ISSUER` | No | `hellarch` | Expected JWT issuer |
-| `JWT_AUDIENCE` | No | `hellarch` | Expected JWT audience |
-| `CORS_ORIGINS` | No | `localhost:5000,5010` | Allowed CORS origins (comma-separated) |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | `localhost:4318` | OTLP endpoint |
-| `LOG_LEVEL` | No | `debug` | Logging level |
+See [Workers Configuration](/guide/configuration#workers).
+
+**Required:** `RABBITMQ_URL`, `JWT_SECRET`
 
 ## Docker
 

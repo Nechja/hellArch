@@ -95,17 +95,9 @@ sequenceDiagram
 
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `RABBITMQ_URL` | Yes | - | RabbitMQ connection |
-| `MINIO_ENDPOINT` | Yes | - | MinIO endpoint |
-| `MINIO_ACCESS_KEY` | Yes | - | MinIO access key |
-| `MINIO_SECRET_KEY` | Yes | - | MinIO secret key |
-| `MINIO_BUCKET` | No | `hellarch-files` | Storage bucket |
-| `MINIO_USE_SSL` | No | `false` | Use HTTPS for MinIO |
-| `FILES_API_URL` | No | `http://files:5006` | Files Service URL |
-| `THUMBNAIL_SIZE` | No | `256` | Thumbnail size (px) |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | - | OTLP endpoint |
+See [Workers Configuration](/guide/configuration#workers).
+
+**Required:** `RABBITMQ_URL`, `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`
 
 ## CloudEvents
 

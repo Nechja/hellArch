@@ -35,36 +35,72 @@ Supported providers configured via environment:
 | Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
 | GitHub | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` |
 | Microsoft | `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` |
+| Apple | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY_PATH` |
+| Twitch | `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` |
+| HellArch | `HELLARCH_CLIENT_ID`, `HELLARCH_CLIENT_SECRET`, `HELLARCH_IDENTITY_URL` |
 
-## Endpoints
+::: tip HellArch Provider
+The `hellarch` provider uses the [Identity Service](/guide/services/identity) as an OAuth provider, enabling local username/password authentication.
+:::
 
-### HTTP (Port 5001)
+## Linked Accounts
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/oauth/{provider}` | Start OAuth flow |
-| GET | `/oauth/{provider}/callback` | OAuth callback |
-| POST | `/refresh` | Refresh tokens |
-| POST | `/logout` | End session |
-| GET | `/health` | Health check |
+Users can link multiple OAuth providers to a single account. Linking happens automatically when a user starts an OAuth flow while already authenticated.
 
-### Admin API (Internal)
+```mermaid
+sequenceDiagram
+    participant User
+    participant App
+    participant Auth as Auth Service
+    participant Provider as OAuth Provider
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/admin/users` | List users (paginated) |
-| GET | `/admin/users/{id}` | Get user with linked accounts |
-| GET | `/admin/users/{id}/sessions` | Get user's sessions |
-| DELETE | `/admin/sessions/{id}` | Revoke a session |
-| GET | `/admin/stats` | Get system statistics |
-| GET | `/admin/users/{id}/permissions` | Get user permissions |
-| PUT | `/admin/users/{id}/permissions` | Set all permissions |
-| POST | `/admin/users/{id}/permissions/grant` | Grant permission |
-| POST | `/admin/users/{id}/permissions/revoke` | Revoke permission |
-| POST | `/admin/users/{id}/activate` | Activate user |
-| POST | `/admin/users/{id}/deactivate` | Deactivate user + invalidate sessions |
+    User->>App: Click "Link {provider}"
+    App->>Auth: GET /auth/{provider}/login
+    Auth->>Auth: Detect existing session
+    Auth-->>User: Redirect to provider
 
-See [Permissions Guide](/guide/permissions) for details.
+    User->>Provider: Authorize
+    Provider-->>Auth: Callback with code
+    Auth->>Auth: Link account to existing user
+    Auth-->>User: Redirect to settings
+```
+
+**Linking flow:**
+1. User must be authenticated (valid session cookie)
+2. Starting OAuth flow (`/auth/{provider}/login`) detects the session
+3. After callback, account is linked to current user instead of creating new session
+4. User can now sign in with any linked provider
+
+**Get current user and linked providers:**
+```http
+GET /auth/me
+Cookie: hellarch_session=xxx
+```
+
+**Response:**
+```json
+{
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
+  "linked_providers": ["discord", "github"]
+}
+```
+
+## API Reference
+
+See [Auth API](/api/auth) for complete endpoint documentation.
+
+::: tip Gateway Routing
+Clients access these endpoints via the Gateway at `/api/auth/...`. The Gateway strips the `/api` prefix before forwarding.
+:::
+
+**Key endpoints:**
+- `GET /api/auth/{provider}/login` - Start OAuth flow
+- `GET /api/auth/{provider}/callback` - OAuth callback
+- `POST /api/auth/refresh` - Refresh tokens
+- `POST /api/auth/validate` - Validate session/JWT
+- `GET /api/auth/me` - Get current user + linked providers
+
+**Admin endpoints:** See [Auth API - Admin](/api/auth#admin-endpoints-internal) and [Permissions Guide](/guide/permissions).
 
 ### gRPC (Port 50051)
 
@@ -133,15 +169,28 @@ src/services/auth/
 │   ├── handler/         # HTTP + gRPC handlers
 │   ├── jwt/             # Token generation/validation
 │   ├── oauth/           # Provider implementations
-│   └── store/           # PostgreSQL + Redis access
+│   ├── proto/           # gRPC generated code
+│   ├── service/         # Business logic (user, session, permission)
+│   ├── store/           # PostgreSQL + Redis access
+│   └── telemetry/       # OpenTelemetry setup
 └── go.mod
 ```
 
-## Environment
+## Environment Variables
 
-```bash
-RABBITMQ_URL="amqp://guest:guest@localhost:5672/"
-```
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HTTP_ADDRESS` | `:5001` | HTTP listen address |
+| `GRPC_ADDRESS` | `:50051` | gRPC listen address |
+| `AUTH_DATABASE_URL` | `postgres://...localhost:5432/auth_db` | PostgreSQL connection |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection |
+| `RABBITMQ_URL` | `amqp://hellarch:hellarch@localhost:5672` | RabbitMQ connection |
+| `JWT_PRIVATE_KEY_PATH` | `./infra/keys/dev-private.pem` | RSA private key |
+| `JWT_PUBLIC_KEY_PATH` | `./infra/keys/dev-public.pem` | RSA public key |
+| `ALLOWED_REDIRECT_URIS` | `http://localhost:5000,http://localhost:5003` | Valid OAuth redirect URIs |
+| `SECURE_COOKIES` | `false` | Use secure cookies (HTTPS) |
+| `MAX_SESSIONS_PER_USER` | `5` | Maximum concurrent sessions |
+| `SESSION_DURATION_HOURS` | `24` | Session lifetime in hours |
 
 ## Location
 

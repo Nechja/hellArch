@@ -1,8 +1,17 @@
 # User Service
 
-**F# / .NET 10**
+**F# (.NET 10)**
 
 Manages user profiles and preferences using functional patterns.
+
+## Overview
+
+| Property | Value |
+|----------|-------|
+| **Port** | 5002 |
+| **Tech** | F# / ASP.NET Core 10 |
+| **Database** | `user_db` (port 5433) |
+| **Location** | `src/services/user/` |
 
 ## Architecture
 
@@ -48,6 +57,10 @@ type LinkedAccount = {
 
 ## Endpoints
 
+::: tip Gateway Routing
+Clients access these endpoints via the Gateway at `/api/user/...`. The Gateway strips the `/api` prefix before forwarding.
+:::
+
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/user/health` | Health check (includes DB status) |
@@ -67,7 +80,7 @@ Consumes CloudEvents from RabbitMQ to react to auth state changes.
 graph LR
     subgraph RabbitMQ
         EX[hellarch.events]
-        Q[user.events]
+        Q[user-service]
     end
 
     subgraph User Service
@@ -140,30 +153,35 @@ activity.SetTag("messaging.cloudevents.type", eventType)
 
 ```
 src/services/user/
+├── Dockerfile
 └── User/
-    ├── Program.fs           # Entry point
+    ├── Program.fs               # Entry point
+    ├── User.fsproj
     ├── Domain/
-    │   └── Types.fs         # Domain types
+    │   ├── Types.fs             # Domain types
+    │   └── Mapping.fs           # DTO to domain mapping
     ├── Infrastructure/
-    │   ├── Database.fs      # Npgsql.FSharp access
-    │   └── Events.fs        # RabbitMQ consumer
+    │   ├── Database.fs          # Npgsql.FSharp access
+    │   └── Events.fs            # RabbitMQ consumer
     └── Api/
-        └── Handlers.fs      # HTTP handlers
+        ├── HealthHandlers.fs    # Health check handler
+        ├── HttpUtils.fs         # HTTP utilities
+        ├── ProfileHandlers.fs   # User profile handlers
+        └── PreferencesHandlers.fs # User preferences handlers
 ```
 
 ## Database
 
 Uses dedicated PostgreSQL instance on port 5433.
 
-## Environment
+## Environment Variables
 
-```bash
-USER_DATABASE_URL="postgres://hellarch:hellarch@localhost:5433/user_db"
-RABBITMQ_URL="amqp://guest:guest@localhost:5672/"
-USER_EVENTS_QUEUE="user.events"
-OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
-```
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `USER_DATABASE_URL` | Yes | - | PostgreSQL connection string |
+| `RABBITMQ_URL` | Yes | - | RabbitMQ AMQP URL |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | `http://localhost:4318` | OpenTelemetry endpoint |
+| `OTEL_SERVICE_NAME` | No | `user` | Service name for tracing |
+| `LOG_LEVEL` | No | `debug` | Logging level (debug, info, warn, error) |
 
-## Location
-
-`src/services/user/`
+The RabbitMQ queue name is hardcoded as `user-service`.
