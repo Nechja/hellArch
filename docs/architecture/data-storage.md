@@ -15,11 +15,11 @@ graph TB
     end
 
     subgraph Events Database Container
-        EVENTS_PG[(PostgreSQL)]
+        EVENTS_PG[(PostgreSQL :5435)]
     end
 
     subgraph Files Database Container
-        FILES_PG[(PostgreSQL)]
+        FILES_PG[(PostgreSQL :5436)]
     end
 
     subgraph Identity Database Container
@@ -123,8 +123,8 @@ From `.envrc`:
 ```bash
 AUTH_DATABASE_URL="postgres://hellarch:hellarch@localhost:5434/auth_db"
 USER_DATABASE_URL="postgres://hellarch:hellarch@localhost:5433/user_db"
-DATABASE_URL="postgres://hellarch:hellarch@localhost:5432/events_db"  # Events
-FILES_DATABASE_URL="postgres://hellarch:hellarch@localhost:5432/files_db"
+DATABASE_URL="postgres://hellarch:hellarch@localhost:5435/events_db"  # Events
+FILES_DATABASE_URL="postgres://hellarch:hellarch@localhost:5436/files_db"
 IDENTITY_DATABASE_URL="postgres://hellarch:hellarch@localhost:5437/identity_db"
 REDIS_URL="redis://localhost:6379"
 MINIO_ENDPOINT="localhost:9000"

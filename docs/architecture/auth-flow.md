@@ -10,7 +10,7 @@ sequenceDiagram
     participant Provider as OAuth Provider
     participant Redis
 
-    User->>Gateway: GET /api/auth/oauth/{provider}
+    User->>Gateway: GET /api/auth/{provider}/login
     Gateway->>Auth: Forward request
     Auth->>Redis: Store state token
     Auth-->>User: Redirect to provider
@@ -18,7 +18,7 @@ sequenceDiagram
     User->>Provider: Authenticate
     Provider-->>User: Redirect with code
 
-    User->>Gateway: GET /api/auth/oauth/{provider}/callback?code=xxx
+    User->>Gateway: GET /api/auth/{provider}/callback?code=xxx
     Gateway->>Auth: Forward callback
     Auth->>Redis: Validate state
     Auth->>Provider: Exchange code for token
@@ -74,7 +74,7 @@ sequenceDiagram
     participant Auth as Auth Service
     participant Provider as OAuth Provider
 
-    User->>Gateway: GET /api/auth/oauth/{provider}/link
+    User->>Gateway: GET /api/auth/{provider}/login?link=true
     Gateway->>Auth: Forward (with session cookie)
     Auth->>Auth: Validate existing session
     Auth->>Redis: Store link state
@@ -83,7 +83,7 @@ sequenceDiagram
     User->>Provider: Authorize
     Provider-->>User: Redirect with code
 
-    User->>Gateway: GET /api/auth/oauth/{provider}/callback
+    User->>Gateway: GET /api/auth/{provider}/callback
     Gateway->>Auth: Forward callback
     Auth->>Auth: Detect link flow from state
     Auth->>Provider: Exchange code for token
