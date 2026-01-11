@@ -23,8 +23,8 @@ services:
 
   auth:
     build:
-      context: ../../src/services/auth
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/services/auth/Dockerfile
       target: dev
     container_name: hellarch-auth
     user: "${UID:-1000}:${GID:-1000}"
@@ -48,18 +48,18 @@ services:
       - OTEL_SERVICE_NAME=auth
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
-      - ../../src/services/auth:/app
-      - ../../libs:/libs
+      - ../..:/repo
       - ../../infra/keys:/keys:ro
       - auth-go-cache:/go/pkg/mod
+    working_dir: /repo/src/services/auth
     networks:
       - hellarch
     restart: unless-stopped
 
   user:
     build:
-      context: ../../src/services/user
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/services/user/Dockerfile
       target: dev
     container_name: hellarch-user
     user: "${UID:-1000}:${GID:-1000}"
@@ -74,17 +74,17 @@ services:
       - OTEL_SERVICE_NAME=user
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
-      - ../../src/services/user:/app
-      - ../../libs:/libs
+      - ../..:/repo
       - user-nuget:/root/.nuget
+    working_dir: /repo/src/services/user/User
     networks:
       - hellarch
     restart: unless-stopped
 
   identity:
     build:
-      context: ../../src/services/identity
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/services/identity/Dockerfile
       target: dev
     container_name: hellarch-identity
     user: "${UID:-1000}:${GID:-1000}"
@@ -105,9 +105,9 @@ services:
       - OTEL_SERVICE_NAME=identity
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
-      - ../../src/services/identity:/app
-      - ../../libs:/libs
+      - ../..:/repo
       - identity-nuget:/root/.nuget
+    working_dir: /repo/src/services/identity/Identity
     networks:
       - hellarch
     restart: unless-stopped
@@ -165,8 +165,8 @@ services:
 
   events:
     build:
-      context: ../../src/services/events
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/services/events/Dockerfile
       target: dev
     container_name: hellarch-events
     user: "${UID:-1000}:${GID:-1000}"
@@ -181,17 +181,17 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
     volumes:
-      - ../../src/services/events:/app
-      - ../../libs:/libs
+      - ../..:/repo
       - events-go-cache:/go/pkg/mod
+    working_dir: /repo/src/services/events
     networks:
       - hellarch
     restart: unless-stopped
 
   audit-worker:
     build:
-      context: ../../src/workers/audit
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/workers/audit/Dockerfile
       target: dev
     container_name: hellarch-audit-worker
     user: "${UID:-1000}:${GID:-1000}"
@@ -201,17 +201,17 @@ services:
       - OTEL_SERVICE_NAME=audit-worker
       - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4318
     volumes:
-      - ../../src/workers/audit:/app
-      - ../../libs:/libs
+      - ../..:/repo
       - audit-go-cache:/go/pkg/mod
+    working_dir: /repo/src/workers/audit
     networks:
       - hellarch
     restart: unless-stopped
 
   webhooks-worker:
     build:
-      context: ../../src/workers/webhooks
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/workers/webhooks/Dockerfile
       target: dev
     container_name: hellarch-webhooks-worker
     user: "${UID:-1000}:${GID:-1000}"
@@ -221,9 +221,9 @@ services:
       - OTEL_SERVICE_NAME=webhooks-worker
       - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4318
     volumes:
-      - ../../src/workers/webhooks:/app
-      - ../../libs:/libs
+      - ../..:/repo
       - webhooks-go-cache:/go/pkg/mod
+    working_dir: /repo/src/workers/webhooks
     networks:
       - hellarch
     restart: unless-stopped
@@ -261,8 +261,8 @@ services:
 
   infra-worker:
     build:
-      context: ../../src/workers/infra
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/workers/infra/Dockerfile
       target: dev
     container_name: hellarch-infra-worker
     # No user: directive - needs root for Docker socket access
@@ -276,10 +276,10 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
     volumes:
-      - ../../src/workers/infra:/app
-      - ../../libs:/libs
+      - ../..:/repo
       - infra-go-cache:/go/pkg/mod
       - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /repo/src/workers/infra
     networks:
       - hellarch
     restart: unless-stopped
@@ -310,38 +310,38 @@ services:
 
   files:
     build:
-      context: ../../src/services/files
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/services/files/Dockerfile
       target: dev
     container_name: hellarch-files
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "5006:5006"
     environment:
-      - FILES_HTTP_ADDRESS=:5006
-      - FILES_DATABASE_URL=postgres://hellarch:hellarch@files-db:5432/files_db
-      - FILES_RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
-      - FILES_MINIO_ENDPOINT=minio:9000
-      - FILES_MINIO_ACCESS_KEY=hellarch
-      - FILES_MINIO_SECRET_KEY=${MINIO_PASSWORD:-hellarch}
-      - FILES_MINIO_BUCKET=hellarch-files
-      - FILES_MINIO_USE_SSL=false
-      - FILES_MAX_UPLOAD_SIZE=1073741824
+      - HTTP_ADDRESS=:5006
+      - DATABASE_URL=postgres://hellarch:hellarch@files-db:5432/files_db
+      - RABBITMQ_URL=amqp://hellarch:hellarch@rabbitmq:5672
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=hellarch
+      - MINIO_SECRET_KEY=${MINIO_PASSWORD:-hellarch}
+      - MINIO_BUCKET=hellarch-files
+      - MINIO_USE_SSL=false
+      - MAX_UPLOAD_SIZE=1073741824
       - OTEL_SERVICE_NAME=files
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
     volumes:
-      - ../../src/services/files:/app
-      - ../../libs:/libs
+      - ../..:/repo
       - files-go-cache:/go/pkg/mod
+    working_dir: /repo/src/services/files
     networks:
       - hellarch
     restart: unless-stopped
 
   images-worker:
     build:
-      context: ../../src/workers/images
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: src/workers/images/Dockerfile
       target: dev
     container_name: hellarch-images-worker
     user: "${UID:-1000}:${GID:-1000}"
@@ -359,9 +359,9 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
     volumes:
-      - ../../src/workers/images:/app
-      - ../../libs:/libs
+      - ../..:/repo
       - images-go-cache:/go/pkg/mod
+    working_dir: /repo/src/workers/images
     networks:
       - hellarch
     restart: unless-stopped

@@ -107,6 +107,7 @@ module AuthHandlers =
                 do! writeJson ctx 400 {| error = "invalid_session" |}
             | Some session ->
                 if DateTime.UtcNow - session.CreatedAt > TimeSpan.FromMinutes(10.0) then
+                    SessionStore.tryRemove body.Session
                     do! writeJson ctx 400 {| error = "session_expired" |}
                 else
                     let regRequest: RegistrationRequest = { Email = body.Email; Username = body.Username; Password = body.Password }
