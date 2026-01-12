@@ -1,0 +1,75 @@
+@using Admin.Services
+
+<MudCard Elevation="1" Class="h-100">
+    <MudCardContent Class="pa-3">
+        <div class="d-flex justify-space-between align-center mb-2">
+            <MudText Typo="Typo.subtitle2" Class="font-weight-medium">@TestName</MudText>
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Color="@GetResultColor()"
+                     Variant="Variant.Filled">
+                @Result
+            </MudChip>
+        </div>
+
+        <div class="d-flex gap-3 mb-2">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Class="mr-1" />
+                @Category
+            </MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" Class="mr-1" />
+                @DurationMs ms
+            </MudText>
+            @if (Critical)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Outlined">
+                    Critical
+                </MudChip>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(Error))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">
+                <MudText Typo="Typo.caption">@Error</MudText>
+            </MudAlert>
+        }
+
+        <MudText Typo="Typo.caption" Color="Color.Tertiary" Class="mt-2">
+            @Timestamp.ToString("g")
+        </MudText>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public string TestName { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public string Category { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public string Result { get; set; } = "";
+
+    [Parameter]
+    public int DurationMs { get; set; }
+
+    [Parameter]
+    public bool Critical { get; set; }
+
+    [Parameter]
+    public string? Error { get; set; }
+
+    [Parameter]
+    public DateTime Timestamp { get; set; }
+
+    private Color GetResultColor() => Result.ToLowerInvariant() switch
+    {
+        "passed" => Color.Success,
+        "failed" => Color.Error,
+        "error" => Color.Error,
+        "skipped" => Color.Warning,
+        _ => Color.Default
+    };
+}

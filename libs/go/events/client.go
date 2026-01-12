@@ -74,11 +74,11 @@ type CreateDeliveryRequest struct {
 }
 
 func (c *Client) CreateAuditLog(ctx context.Context, req CreateAuditLogRequest) error {
-	return c.postJSON(ctx, "/api/audit-logs", req, http.StatusCreated)
+	return c.postJSON(ctx, "/audit-logs", req, http.StatusCreated)
 }
 
 func (c *Client) GetWebhooksForEventType(ctx context.Context, eventType string) ([]*Webhook, error) {
-	reqURL := c.baseURL + "/api/webhooks/by-event/" + url.PathEscape(eventType)
+	reqURL := c.baseURL + "/webhooks/by-event/" + url.PathEscape(eventType)
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -103,7 +103,7 @@ func (c *Client) GetWebhooksForEventType(ctx context.Context, eventType string) 
 }
 
 func (c *Client) CreateDelivery(ctx context.Context, req CreateDeliveryRequest) error {
-	return c.postJSON(ctx, "/api/webhook-deliveries", req, http.StatusCreated)
+	return c.postJSON(ctx, "/webhook-deliveries", req, http.StatusCreated)
 }
 
 func (c *Client) postJSON(ctx context.Context, path string, body any, expectedStatus int) error {

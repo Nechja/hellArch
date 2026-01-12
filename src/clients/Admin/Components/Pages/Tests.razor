@@ -1,0 +1,331 @@
+@page "/tests"
+@implements IDisposable
+@inject ITestsAdminFacade TestsAdmin
+@inject Admin.Services.LiveUpdateService LiveUpdate
+@inject ILogger<Tests> Logger
+
+<PageTitle>Tests - HellArch Admin</PageTitle>
+
+<PageHeader Title="Integration Tests" />
+
+@* Test Controls *@
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Run Tests</MudText>
+            <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary">
+                <MudButton OnClick="@(() => TriggerTests("smoke"))" Disabled="@_triggering" StartIcon="@Icons.Material.Filled.Speed">
+                    Smoke
+                </MudButton>
+                <MudButton OnClick="@(() => TriggerTests("golden"))" Disabled="@_triggering" StartIcon="@Icons.Material.Filled.Star">
+                    Golden
+                </MudButton>
+                <MudButton OnClick="@(() => TriggerTests("all"))" Disabled="@_triggering" StartIcon="@Icons.Material.Filled.PlayArrow">
+                    All Tests
+                </MudButton>
+            </MudButtonGroup>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Service Status</MudText>
+            @if (_serviceStatus.Status == "ready")
+            {
+                <MudChip T="string" Color="Color.Success" Size="Size.Small">Ready</MudChip>
+                <MudText Typo="Typo.body2" Class="d-inline ml-2">
+                    @_serviceStatus.SmokeTests smoke / @_serviceStatus.GoldenTests golden tests configured
+                </MudText>
+            }
+            else if (_serviceStatus.Status == "unavailable")
+            {
+                <MudChip T="string" Color="Color.Error" Size="Size.Small">Unavailable</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Color="Color.Warning" Size="Size.Small">@_serviceStatus.Status</MudChip>
+            }
+            @if (_serviceStatus.RunningTests.Count > 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Warning" Class="mt-2">
+                    Running: @string.Join(", ", _serviceStatus.RunningTests.Keys)
+                </MudText>
+            }
+        </MudItem>
+    </MudGrid>
+    @if (!string.IsNullOrEmpty(_triggerMessage))
+    {
+        <MudAlert Severity="@_triggerSeverity" Class="mt-3" CloseIcon="@Icons.Material.Filled.Close" CloseIconClicked="@(() => _triggerMessage = null)">
+            @_triggerMessage
+        </MudAlert>
+    }
+</MudPaper>
+
+@* Stats Cards *@
+<MudGrid Class="mb-6">
+    <MudItem xs="6" md="3">
+        <MetricCard Value="@_stats.TotalRuns.ToString()" Label="Total Runs" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MetricCard Value="@_stats.RecentPassed.ToString()" Label="Recent Passed" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MetricCard Value="@_stats.RecentFailed.ToString()" Label="Recent Failed" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MetricCard Value="@PassRate" Label="Pass Rate" />
+    </MudItem>
+</MudGrid>
+
+@* Golden Path Failures Alert *@
+@if (_goldenFailures.Data.Count > 0)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" Icon="@Icons.Material.Filled.Error">
+        <MudText Typo="Typo.subtitle2">@_goldenFailures.Data.Count Golden Path Failure(s)</MudText>
+        @foreach (var failure in _goldenFailures.Data.Take(3))
+        {
+            <MudText Typo="Typo.body2">
+                <strong>@failure.TestName</strong> failed at step <code>@failure.FailedStep</code>
+            </MudText>
+        }
+    </MudAlert>
+}
+
+@* Filters *@
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudSelect T="string" Label="Category" Value="@_selectedCategory" ValueChanged="OnCategoryChanged" Clearable="true">
+                <MudSelectItem Value="@("smoke")">Smoke</MudSelectItem>
+                <MudSelectItem Value="@("integration")">Integration</MudSelectItem>
+                <MudSelectItem Value="@("golden")">Golden Path</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudSelect T="string" Label="Result" Value="@_selectedResult" ValueChanged="OnResultChanged" Clearable="true">
+                <MudSelectItem Value="@("passed")">Passed</MudSelectItem>
+                <MudSelectItem Value="@("failed")">Failed</MudSelectItem>
+                <MudSelectItem Value="@("error")">Error</MudSelectItem>
+                <MudSelectItem Value="@("skipped")">Skipped</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="4" Class="d-flex align-end">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadData" StartIcon="@Icons.Material.Filled.Refresh">
+                Refresh
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@* Test Results *@
+<SectionHeader Title="Recent Test Results" />
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_results.Data.Count == 0)
+{
+    <EmptyState Message="No test results found" Icon="@Icons.Material.Filled.Science" />
+}
+else
+{
+    <MudGrid Class="mb-4">
+        @foreach (var result in _results.Data)
+        {
+            <MudItem xs="12" md="6" lg="4">
+                <TestResultCard
+                    TestName="@result.TestName"
+                    Category="@result.Category"
+                    Result="@result.Result"
+                    DurationMs="@result.DurationMs"
+                    Critical="@result.Critical"
+                    Error="@result.Error"
+                    Timestamp="@result.Timestamp" />
+            </MudItem>
+        }
+    </MudGrid>
+
+    <Pagination
+        CurrentPage="@_page"
+        PageSize="@_pageSize"
+        TotalCount="@_results.TotalCount"
+        OnPageChanged="OnPageChanged" />
+}
+
+@* Test Run Summaries *@
+<div class="mt-6">
+    <SectionHeader Title="Test Run History" />
+</div>
+
+@if (_summaries.Data.Count > 0)
+{
+    <MudTable Items="@_summaries.Data" Hover="true" Elevation="1">
+        <HeaderContent>
+            <MudTh>Category</MudTh>
+            <MudTh>Total</MudTh>
+            <MudTh>Passed</MudTh>
+            <MudTh>Failed</MudTh>
+            <MudTh>Duration</MudTh>
+            <MudTh>Timestamp</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="@GetCategoryColor(context.Category)">
+                    @context.Category
+                </MudChip>
+            </MudTd>
+            <MudTd>@context.Total</MudTd>
+            <MudTd>
+                <MudText Color="Color.Success">@context.Passed</MudText>
+            </MudTd>
+            <MudTd>
+                <MudText Color="@(context.Failed > 0 ? Color.Error : Color.Default)">@context.Failed</MudText>
+            </MudTd>
+            <MudTd>@context.DurationMs ms</MudTd>
+            <MudTd>@context.Timestamp.ToString("g")</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+else
+{
+    <MudText Typo="Typo.body2" Color="Color.Secondary">No test runs recorded yet</MudText>
+}
+
+@code {
+    private TestResultsResponse _results = new([], 0, 1, 20);
+    private TestRunSummariesResponse _summaries = new([], 0, 1, 10);
+    private GoldenPathFailuresResponse _goldenFailures = new([], 0, 1, 10);
+    private TestStats _stats = new(0, 0, 0, 0, null, null);
+    private TestingServiceStatus _serviceStatus = new("testing", "unknown", new Dictionary<string, string>(), false, 0, 0, 0);
+
+    private bool _loading = true;
+    private bool _triggering;
+    private string? _triggerMessage;
+    private Severity _triggerSeverity = Severity.Info;
+    private int _page = 1;
+    private int _pageSize = 12;
+    private string? _selectedCategory;
+    private string? _selectedResult;
+
+    private string PassRate => _stats.RecentTotal > 0
+        ? $"{(_stats.RecentPassed * 100 / _stats.RecentTotal)}%"
+        : "N/A";
+
+    protected override async Task OnInitializedAsync()
+    {
+        LiveUpdate.OnHealthUpdate += HandleUpdate;
+        await LoadData();
+    }
+
+    private void HandleUpdate(object? sender, EventArgs e)
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadData();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var resultsTask = TestsAdmin.GetTestResults(_page, _pageSize, _selectedCategory, _selectedResult);
+            var summariesTask = TestsAdmin.GetTestRunSummaries(1, 10, _selectedCategory);
+            var goldenTask = TestsAdmin.GetGoldenPathFailures(1, 5);
+            var statsTask = TestsAdmin.GetTestStats();
+            var statusTask = TestsAdmin.GetTestingServiceStatus();
+
+            await Task.WhenAll(resultsTask, summariesTask, goldenTask, statsTask, statusTask);
+
+            _results = await resultsTask;
+            _summaries = await summariesTask;
+            _goldenFailures = await goldenTask;
+            _stats = await statsTask;
+            _serviceStatus = await statusTask;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load test data");
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task TriggerTests(string category)
+    {
+        _triggering = true;
+        _triggerMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var response = category switch
+            {
+                "smoke" => await TestsAdmin.TriggerSmokeTests(),
+                "golden" => await TestsAdmin.TriggerGoldenTests(),
+                "all" => await TestsAdmin.TriggerAllTests(),
+                _ => new TriggerResponse("error", category, "Unknown category")
+            };
+
+            _triggerMessage = response.Message;
+            _triggerSeverity = response.Status switch
+            {
+                "started" => Severity.Success,
+                "already_running" => Severity.Warning,
+                _ => Severity.Error
+            };
+
+            // Refresh service status after triggering
+            _serviceStatus = await TestsAdmin.GetTestingServiceStatus();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to trigger {Category} tests", category);
+            _triggerMessage = $"Failed to trigger {category} tests";
+            _triggerSeverity = Severity.Error;
+        }
+        finally
+        {
+            _triggering = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnCategoryChanged(string? category)
+    {
+        _selectedCategory = category;
+        _page = 1;
+        await LoadData();
+    }
+
+    private async Task OnResultChanged(string? result)
+    {
+        _selectedResult = result;
+        _page = 1;
+        await LoadData();
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _page = page;
+        await LoadData();
+    }
+
+    private static Color GetCategoryColor(string category) => category.ToLowerInvariant() switch
+    {
+        "smoke" => Color.Info,
+        "integration" => Color.Secondary,
+        "golden" => Color.Warning,
+        _ => Color.Default
+    };
+
+    public void Dispose()
+    {
+        LiveUpdate.OnHealthUpdate -= HandleUpdate;
+    }
+}
