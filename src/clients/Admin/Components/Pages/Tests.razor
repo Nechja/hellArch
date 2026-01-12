@@ -144,10 +144,12 @@ else
     </MudGrid>
 
     <Pagination
-        CurrentPage="@_page"
+        Page="@_page"
         PageSize="@_pageSize"
         TotalCount="@_results.TotalCount"
-        OnPageChanged="OnPageChanged" />
+        DisplayedCount="@_results.Data.Count"
+        OnPrevious="@OnPreviousPage"
+        OnNext="@OnNextPage" />
 }
 
 @* Test Run Summaries *@
@@ -310,9 +312,15 @@ else
         await LoadData();
     }
 
-    private async Task OnPageChanged(int page)
+    private async Task OnPreviousPage()
     {
-        _page = page;
+        _page--;
+        await LoadData();
+    }
+
+    private async Task OnNextPage()
+    {
+        _page++;
         await LoadData();
     }
 
