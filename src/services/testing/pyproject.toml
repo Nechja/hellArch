@@ -29,6 +29,8 @@ markers = [
     "smoke: quick sanity checks",
     "integration: service-to-service tests",
     "golden: critical path tests",
+    "contract: API schema validation tests",
+    "errors: error path and edge case tests",
 ]
 
 [tool.ruff]

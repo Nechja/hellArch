@@ -29,12 +29,13 @@ hellarch-types = { path = "../libs/data_types/python" }
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-testpaths = ["api", "integration", "e2e"]
+testpaths = ["api", "integration", "e2e", "contract"]
 markers = [
     "smoke: Quick sanity checks that should always pass",
     "slow: Tests that take longer to run",
     "integration: Tests requiring external services",
     "e2e: End-to-end tests covering full user flows",
+    "contract: API contract and schema validation tests",
     "auth: Authentication related tests",
     "user: User service tests",
     "admin: Admin functionality tests",
@@ -45,7 +46,7 @@ filterwarnings = [
 timeout = 30
 
 [tool.coverage.run]
-source = ["api", "integration", "e2e"]
+source = ["api", "integration", "e2e", "contract"]
 branch = true
 parallel = true
 omit = ["*/__pycache__/*", "*/fixtures/*", "conftest.py"]
