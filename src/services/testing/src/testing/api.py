@@ -1,18 +1,14 @@
 """HTTP API for triggering and monitoring test runs."""
 
-import asyncio
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any
 
 import structlog
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from pydantic import BaseModel
 
 from testing.config import Settings, TestConfig, load_config
-from testing.events import TestEventPublisher
-from testing.models import TestCategory, TestRunSummary
 from testing.runner import TestRunner
 
 logger = structlog.get_logger()
@@ -48,6 +44,8 @@ class StatusResponse(BaseModel):
     running_tests: dict[str, str]
     config_loaded: bool
     smoke_tests: int
+    contract_tests: int
+    error_tests: int
     integration_tests: int
     golden_tests: int
 
@@ -73,6 +71,9 @@ async def lifespan(app: FastAPI):
         logger.info(
             "Testing service started",
             smoke_tests=len(_config.tests.smoke),
+            contract_tests=len(_config.tests.contract),
+            error_tests=len(_config.tests.errors),
+            integration_tests=len(_config.tests.integration),
             golden_tests=len(_config.tests.golden),
         )
     except Exception as e:
@@ -108,6 +109,8 @@ async def get_status() -> StatusResponse:
         running_tests={k: v.isoformat() for k, v in _running_tests.items()},
         config_loaded=_config is not None,
         smoke_tests=len(_config.tests.smoke) if _config else 0,
+        contract_tests=len(_config.tests.contract) if _config else 0,
+        error_tests=len(_config.tests.errors) if _config else 0,
         integration_tests=len(_config.tests.integration) if _config else 0,
         golden_tests=len(_config.tests.golden) if _config else 0,
     )
@@ -125,11 +128,16 @@ async def _run_tests_background(category: str) -> None:
     try:
         if category == "smoke":
             await _runner.run_smoke_tests()
+        elif category == "contract":
+            await _runner.run_contract_tests()
+        elif category == "errors":
+            await _runner.run_error_tests()
+        elif category == "integration":
+            await _runner.run_integration_tests()
         elif category == "golden":
             await _runner.run_golden_tests()
         elif category == "all":
-            await _runner.run_smoke_tests()
-            await _runner.run_golden_tests()
+            await _runner.run_all_tests()
     except Exception as e:
         logger.error("Test run failed", category=category, error=str(e))
     finally:
@@ -155,6 +163,72 @@ async def trigger_smoke_tests(background_tasks: BackgroundTasks) -> TriggerRespo
         status="started",
         category="smoke",
         message="Smoke tests started",
+    )
+
+
+@app.post("/run/contract", response_model=TriggerResponse)
+async def trigger_contract_tests(background_tasks: BackgroundTasks) -> TriggerResponse:
+    """Trigger contract tests."""
+    if not _runner:
+        raise HTTPException(status_code=503, detail="Testing service not configured")
+
+    if "contract" in _running_tests:
+        return TriggerResponse(
+            status="already_running",
+            category="contract",
+            message="Contract tests are already running",
+        )
+
+    background_tasks.add_task(_run_tests_background, "contract")
+
+    return TriggerResponse(
+        status="started",
+        category="contract",
+        message="Contract tests started",
+    )
+
+
+@app.post("/run/errors", response_model=TriggerResponse)
+async def trigger_error_tests(background_tasks: BackgroundTasks) -> TriggerResponse:
+    """Trigger error path tests."""
+    if not _runner:
+        raise HTTPException(status_code=503, detail="Testing service not configured")
+
+    if "errors" in _running_tests:
+        return TriggerResponse(
+            status="already_running",
+            category="errors",
+            message="Error tests are already running",
+        )
+
+    background_tasks.add_task(_run_tests_background, "errors")
+
+    return TriggerResponse(
+        status="started",
+        category="errors",
+        message="Error tests started",
+    )
+
+
+@app.post("/run/integration", response_model=TriggerResponse)
+async def trigger_integration_tests(background_tasks: BackgroundTasks) -> TriggerResponse:
+    """Trigger integration tests."""
+    if not _runner:
+        raise HTTPException(status_code=503, detail="Testing service not configured")
+
+    if "integration" in _running_tests:
+        return TriggerResponse(
+            status="already_running",
+            category="integration",
+            message="Integration tests are already running",
+        )
+
+    background_tasks.add_task(_run_tests_background, "integration")
+
+    return TriggerResponse(
+        status="started",
+        category="integration",
+        message="Integration tests started",
     )
 
 

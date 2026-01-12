@@ -125,13 +125,31 @@ public sealed class TestsAdminFacade(
     public async Task<TestingServiceStatus> GetTestingServiceStatus(CancellationToken ct = default)
     {
         var response = await _testingClient.GetJsonSafe<TestingServiceStatus>("status", logger, ct);
-        return response ?? new TestingServiceStatus("testing", "unavailable", new Dictionary<string, string>(), false, 0, 0, 0);
+        return response ?? new TestingServiceStatus("testing", "unavailable", new Dictionary<string, string>(), false, 0, 0, 0, 0, 0);
     }
 
     public async Task<TriggerResponse> TriggerSmokeTests(CancellationToken ct = default)
     {
         var response = await _testingClient.PostJsonSafe<TriggerResponse>("run/smoke", logger, ct);
         return response ?? new TriggerResponse("error", "smoke", "Failed to trigger smoke tests");
+    }
+
+    public async Task<TriggerResponse> TriggerContractTests(CancellationToken ct = default)
+    {
+        var response = await _testingClient.PostJsonSafe<TriggerResponse>("run/contract", logger, ct);
+        return response ?? new TriggerResponse("error", "contract", "Failed to trigger contract tests");
+    }
+
+    public async Task<TriggerResponse> TriggerErrorTests(CancellationToken ct = default)
+    {
+        var response = await _testingClient.PostJsonSafe<TriggerResponse>("run/errors", logger, ct);
+        return response ?? new TriggerResponse("error", "errors", "Failed to trigger error tests");
+    }
+
+    public async Task<TriggerResponse> TriggerIntegrationTests(CancellationToken ct = default)
+    {
+        var response = await _testingClient.PostJsonSafe<TriggerResponse>("run/integration", logger, ct);
+        return response ?? new TriggerResponse("error", "integration", "Failed to trigger integration tests");
     }
 
     public async Task<TriggerResponse> TriggerGoldenTests(CancellationToken ct = default)
@@ -274,6 +292,8 @@ public sealed record TestingServiceStatus(
     [property: JsonPropertyName("running_tests")] Dictionary<string, string> RunningTests,
     [property: JsonPropertyName("config_loaded")] bool ConfigLoaded,
     [property: JsonPropertyName("smoke_tests")] int SmokeTests,
+    [property: JsonPropertyName("contract_tests")] int ContractTests,
+    [property: JsonPropertyName("error_tests")] int ErrorTests,
     [property: JsonPropertyName("integration_tests")] int IntegrationTests,
     [property: JsonPropertyName("golden_tests")] int GoldenTests);
 

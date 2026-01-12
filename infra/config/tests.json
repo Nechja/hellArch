@@ -9,25 +9,138 @@
   },
   "schedules": {
     "smoke": "30s",
+    "contract": "5m",
+    "errors": "5m",
     "integration": "2m",
     "golden": "5m"
   },
   "tests": {
     "smoke": [
       {
-        "name": "auth_token_issue",
-        "description": "Auth service can issue a token",
+        "name": "auth_health",
+        "description": "Auth service health check",
         "target": "auth"
       },
       {
-        "name": "events_publish",
-        "description": "Events service accepts publish requests",
+        "name": "events_health",
+        "description": "Events service health check",
         "target": "events"
       },
       {
-        "name": "files_list",
-        "description": "Files service can list files",
+        "name": "files_health",
+        "description": "Files service health check",
         "target": "files"
+      },
+      {
+        "name": "gateway_health",
+        "description": "Gateway health check",
+        "target": "gateway"
+      }
+    ],
+    "contract": [
+      {
+        "name": "auth_health_schema",
+        "description": "Auth health response matches schema",
+        "endpoint": "/api/auth/health",
+        "method": "GET",
+        "expected_status": [200],
+        "schema_name": "health"
+      },
+      {
+        "name": "auth_validate_invalid_schema",
+        "description": "Auth validate invalid token response matches schema",
+        "endpoint": "/api/auth/validate",
+        "method": "POST",
+        "headers": {"Authorization": "Bearer invalid_token"},
+        "expected_status": [401],
+        "schema_name": "auth_validate"
+      },
+      {
+        "name": "events_audit_logs_schema",
+        "description": "Audit logs response matches schema",
+        "endpoint": "/api/events/audit-logs",
+        "method": "GET",
+        "expected_status": [200, 401],
+        "schema_name": "audit_logs"
+      },
+      {
+        "name": "files_list_schema",
+        "description": "Files list response matches schema",
+        "endpoint": "/api/files",
+        "method": "GET",
+        "expected_status": [200, 401],
+        "schema_name": "paginated"
+      }
+    ],
+    "errors": [
+      {
+        "name": "auth_malformed_bearer",
+        "description": "Malformed bearer token returns 401",
+        "endpoint": "/api/auth/validate",
+        "method": "POST",
+        "headers": {"Authorization": "Bearer not.a.valid.jwt"},
+        "expected_status": [401]
+      },
+      {
+        "name": "auth_empty_bearer",
+        "description": "Empty bearer token returns 401",
+        "endpoint": "/api/auth/validate",
+        "method": "POST",
+        "headers": {"Authorization": "Bearer "},
+        "expected_status": [401]
+      },
+      {
+        "name": "auth_wrong_algorithm",
+        "description": "HS256 token instead of RS256 returns 401",
+        "endpoint": "/api/auth/validate",
+        "method": "POST",
+        "headers": {"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"},
+        "expected_status": [401]
+      },
+      {
+        "name": "auth_basic_instead_of_bearer",
+        "description": "Basic auth instead of Bearer returns 401",
+        "endpoint": "/api/auth/validate",
+        "method": "POST",
+        "headers": {"Authorization": "Basic dXNlcjpwYXNz"},
+        "expected_status": [401]
+      },
+      {
+        "name": "auth_me_no_session",
+        "description": "Request without session returns 401",
+        "endpoint": "/api/auth/me",
+        "method": "GET",
+        "expected_status": [401]
+      },
+      {
+        "name": "events_publish_missing_type",
+        "description": "CloudEvent missing type returns 400/422",
+        "endpoint": "/api/events/publish",
+        "method": "POST",
+        "body": {"specversion": "1.0", "source": "error-test", "id": "test-id"},
+        "expected_status": [400, 401, 422]
+      },
+      {
+        "name": "events_publish_missing_source",
+        "description": "CloudEvent missing source returns 400/422",
+        "endpoint": "/api/events/publish",
+        "method": "POST",
+        "body": {"specversion": "1.0", "type": "test.event.v1", "id": "test-id"},
+        "expected_status": [400, 401, 422]
+      },
+      {
+        "name": "files_download_not_found",
+        "description": "Non-existent file returns 404",
+        "endpoint": "/api/files/00000000-0000-0000-0000-000000000000",
+        "method": "GET",
+        "expected_status": [401, 404]
+      },
+      {
+        "name": "files_delete_not_found",
+        "description": "Deleting non-existent file returns 404",
+        "endpoint": "/api/files/00000000-0000-0000-0000-000000000000",
+        "method": "DELETE",
+        "expected_status": [401, 404]
       }
     ],
     "integration": [

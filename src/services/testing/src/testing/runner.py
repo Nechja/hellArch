@@ -2,12 +2,14 @@
 
 import asyncio
 import time
-from datetime import UTC, datetime
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 import structlog
 
 from testing.config import Settings, TestConfig, load_config
 from testing.events import TestEventPublisher
+from testing.executor import TestExecutor
 from testing.models import (
     GoldenPathFailure,
     TestCategory,
@@ -26,6 +28,7 @@ class TestRunner:
         self.settings = settings
         self.config = config
         self.publisher = TestEventPublisher(settings.events_url)
+        self.executor = TestExecutor(config)
         self._running = False
 
     async def run_smoke_tests(self) -> TestRunSummary:
@@ -38,10 +41,10 @@ class TestRunner:
         for test in self.config.tests.smoke:
             test_start = time.monotonic()
             try:
-                result = await self._run_smoke_test(test.name, test.target)
+                success, error = await self.executor.run_smoke_test(test)
                 duration_ms = int((time.monotonic() - test_start) * 1000)
 
-                if result:
+                if success:
                     passed += 1
                     outcome = TestOutcome(
                         test_name=test.name,
@@ -56,6 +59,7 @@ class TestRunner:
                         category=TestCategory.SMOKE,
                         result=TestResult.FAILED,
                         duration_ms=duration_ms,
+                        error=error,
                     )
 
                 await self.publisher.publish_test_result(outcome)
@@ -84,6 +88,177 @@ class TestRunner:
         await self.publisher.publish_test_run_summary(summary)
         return summary
 
+    async def run_contract_tests(self) -> TestRunSummary:
+        """Run all contract tests."""
+        start = time.monotonic()
+        passed = 0
+        failed = 0
+        total = len(self.config.tests.contract)
+
+        for test in self.config.tests.contract:
+            test_start = time.monotonic()
+            try:
+                success, error = await self.executor.run_contract_test(test)
+                duration_ms = int((time.monotonic() - test_start) * 1000)
+
+                if success:
+                    passed += 1
+                    outcome = TestOutcome(
+                        test_name=test.name,
+                        category=TestCategory.CONTRACT,
+                        result=TestResult.PASSED,
+                        duration_ms=duration_ms,
+                    )
+                else:
+                    failed += 1
+                    outcome = TestOutcome(
+                        test_name=test.name,
+                        category=TestCategory.CONTRACT,
+                        result=TestResult.FAILED,
+                        duration_ms=duration_ms,
+                        error=error,
+                    )
+
+                await self.publisher.publish_test_result(outcome)
+
+            except Exception as e:
+                failed += 1
+                duration_ms = int((time.monotonic() - test_start) * 1000)
+                outcome = TestOutcome(
+                    test_name=test.name,
+                    category=TestCategory.CONTRACT,
+                    result=TestResult.ERROR,
+                    duration_ms=duration_ms,
+                    error=str(e),
+                )
+                await self.publisher.publish_test_result(outcome)
+                logger.error("Contract test error", test=test.name, error=str(e))
+
+        total_duration = int((time.monotonic() - start) * 1000)
+        summary = TestRunSummary(
+            category=TestCategory.CONTRACT,
+            total=total,
+            passed=passed,
+            failed=failed,
+            duration_ms=total_duration,
+        )
+        await self.publisher.publish_test_run_summary(summary)
+        return summary
+
+    async def run_error_tests(self) -> TestRunSummary:
+        """Run all error path tests."""
+        start = time.monotonic()
+        passed = 0
+        failed = 0
+        total = len(self.config.tests.errors)
+
+        for test in self.config.tests.errors:
+            test_start = time.monotonic()
+            try:
+                success, error = await self.executor.run_error_test(test)
+                duration_ms = int((time.monotonic() - test_start) * 1000)
+
+                if success:
+                    passed += 1
+                    outcome = TestOutcome(
+                        test_name=test.name,
+                        category=TestCategory.ERRORS,
+                        result=TestResult.PASSED,
+                        duration_ms=duration_ms,
+                    )
+                else:
+                    failed += 1
+                    outcome = TestOutcome(
+                        test_name=test.name,
+                        category=TestCategory.ERRORS,
+                        result=TestResult.FAILED,
+                        duration_ms=duration_ms,
+                        error=error,
+                    )
+
+                await self.publisher.publish_test_result(outcome)
+
+            except Exception as e:
+                failed += 1
+                duration_ms = int((time.monotonic() - test_start) * 1000)
+                outcome = TestOutcome(
+                    test_name=test.name,
+                    category=TestCategory.ERRORS,
+                    result=TestResult.ERROR,
+                    duration_ms=duration_ms,
+                    error=str(e),
+                )
+                await self.publisher.publish_test_result(outcome)
+                logger.error("Error test error", test=test.name, error=str(e))
+
+        total_duration = int((time.monotonic() - start) * 1000)
+        summary = TestRunSummary(
+            category=TestCategory.ERRORS,
+            total=total,
+            passed=passed,
+            failed=failed,
+            duration_ms=total_duration,
+        )
+        await self.publisher.publish_test_run_summary(summary)
+        return summary
+
+    async def run_integration_tests(self) -> TestRunSummary:
+        """Run all integration tests."""
+        start = time.monotonic()
+        passed = 0
+        failed = 0
+        total = len(self.config.tests.integration)
+
+        for test in self.config.tests.integration:
+            test_start = time.monotonic()
+            try:
+                success, error = await self.executor.run_integration_test(test)
+                duration_ms = int((time.monotonic() - test_start) * 1000)
+
+                if success:
+                    passed += 1
+                    outcome = TestOutcome(
+                        test_name=test.name,
+                        category=TestCategory.INTEGRATION,
+                        result=TestResult.PASSED,
+                        duration_ms=duration_ms,
+                    )
+                else:
+                    failed += 1
+                    outcome = TestOutcome(
+                        test_name=test.name,
+                        category=TestCategory.INTEGRATION,
+                        result=TestResult.FAILED,
+                        duration_ms=duration_ms,
+                        error=error,
+                    )
+
+                await self.publisher.publish_test_result(outcome)
+
+            except Exception as e:
+                failed += 1
+                duration_ms = int((time.monotonic() - test_start) * 1000)
+                outcome = TestOutcome(
+                    test_name=test.name,
+                    category=TestCategory.INTEGRATION,
+                    result=TestResult.ERROR,
+                    duration_ms=duration_ms,
+                    error=str(e),
+                )
+                await self.publisher.publish_test_result(outcome)
+                logger.error("Integration test error", test=test.name, error=str(e))
+
+        total_duration = int((time.monotonic() - start) * 1000)
+        summary = TestRunSummary(
+            category=TestCategory.INTEGRATION,
+            total=total,
+            passed=passed,
+            failed=failed,
+            duration_ms=total_duration,
+        )
+        await self.publisher.publish_test_run_summary(summary)
+        return summary
+
     async def run_golden_tests(self) -> TestRunSummary:
         """Run all golden path tests."""
         start = time.monotonic()
@@ -94,12 +269,10 @@ class TestRunner:
         for test in self.config.tests.golden:
             test_start = time.monotonic()
             try:
-                result, failed_step, error = await self._run_golden_test(
-                    test.name, test.steps
-                )
+                success, failed_step, error = await self.executor.run_golden_test(test)
                 duration_ms = int((time.monotonic() - test_start) * 1000)
 
-                if result:
+                if success:
                     passed += 1
                     outcome = TestOutcome(
                         test_name=test.name,
@@ -155,56 +328,80 @@ class TestRunner:
         await self.publisher.publish_test_run_summary(summary)
         return summary
 
-    async def _run_smoke_test(self, name: str, target: str) -> bool:
-        """Run a single smoke test. Override in subclass with actual implementations."""
-        logger.info("Running smoke test", name=name, target=target)
-        # This will be implemented by importing actual test functions
-        # For now, return True as placeholder
-        return True
-
-    async def _run_golden_test(
-        self, name: str, steps: list[str]
-    ) -> tuple[bool, str | None, str | None]:
-        """Run a golden path test. Returns (success, failed_step, error)."""
-        logger.info("Running golden test", name=name, steps=steps)
-        # This will be implemented by importing actual test functions
-        # For now, return success as placeholder
-        return True, None, None
+    async def run_all_tests(self) -> list[TestRunSummary]:
+        """Run all test categories."""
+        summaries = []
+        summaries.append(await self.run_smoke_tests())
+        summaries.append(await self.run_contract_tests())
+        summaries.append(await self.run_error_tests())
+        summaries.append(await self.run_integration_tests())
+        summaries.append(await self.run_golden_tests())
+        return summaries
 
     async def start(self) -> None:
         """Start the test runner with scheduled execution."""
         self._running = True
         logger.info("Starting test runner")
 
-        smoke_interval = self.config.schedules.smoke_seconds()
-        golden_interval = self.config.schedules.golden_seconds()
-
         # Run initial tests
-        await self.run_smoke_tests()
-        await self.run_golden_tests()
+        await self.run_all_tests()
 
         # Schedule recurring runs
-        smoke_task = asyncio.create_task(self._schedule_smoke(smoke_interval))
-        golden_task = asyncio.create_task(self._schedule_golden(golden_interval))
+        tasks = [
+            asyncio.create_task(
+                self._schedule_tests(
+                    "smoke",
+                    self.config.schedules.smoke_seconds(),
+                    self.run_smoke_tests,
+                )
+            ),
+            asyncio.create_task(
+                self._schedule_tests(
+                    "contract",
+                    self.config.schedules.contract_seconds(),
+                    self.run_contract_tests,
+                )
+            ),
+            asyncio.create_task(
+                self._schedule_tests(
+                    "errors",
+                    self.config.schedules.errors_seconds(),
+                    self.run_error_tests,
+                )
+            ),
+            asyncio.create_task(
+                self._schedule_tests(
+                    "integration",
+                    self.config.schedules.integration_seconds(),
+                    self.run_integration_tests,
+                )
+            ),
+            asyncio.create_task(
+                self._schedule_tests(
+                    "golden",
+                    self.config.schedules.golden_seconds(),
+                    self.run_golden_tests,
+                )
+            ),
+        ]
 
         try:
-            await asyncio.gather(smoke_task, golden_task)
+            await asyncio.gather(*tasks)
         except asyncio.CancelledError:
             logger.info("Test runner stopped")
 
-    async def _schedule_smoke(self, interval: int) -> None:
-        """Schedule smoke tests at interval."""
+    async def _schedule_tests(
+        self,
+        name: str,
+        interval: int,
+        run_func: Callable[[], Coroutine[Any, Any, TestRunSummary]],
+    ) -> None:
+        """Schedule tests at interval."""
         while self._running:
             await asyncio.sleep(interval)
             if self._running:
-                await self.run_smoke_tests()
-
-    async def _schedule_golden(self, interval: int) -> None:
-        """Schedule golden tests at interval."""
-        while self._running:
-            await asyncio.sleep(interval)
-            if self._running:
-                await self.run_golden_tests()
+                logger.info("Running scheduled tests", category=name)
+                await run_func()
 
     def stop(self) -> None:
         """Stop the test runner."""
@@ -227,6 +424,9 @@ async def main() -> None:
         "Config loaded",
         services=len(config.services),
         smoke_tests=len(config.tests.smoke),
+        contract_tests=len(config.tests.contract),
+        error_tests=len(config.tests.errors),
+        integration_tests=len(config.tests.integration),
         golden_tests=len(config.tests.golden),
     )
 

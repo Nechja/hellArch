@@ -13,6 +13,8 @@ class TestCategory(str, Enum):
     SMOKE = "smoke"
     INTEGRATION = "integration"
     GOLDEN = "golden"
+    CONTRACT = "contract"
+    ERRORS = "errors"
 
 
 class TestResult(str, Enum):

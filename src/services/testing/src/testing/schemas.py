@@ -279,3 +279,22 @@ PAGINATED_RESPONSE = Schema(
         SchemaField("page_size", FieldType.INT, required=False),
     ],
 )
+
+# =============================================================================
+# Schema Registry - maps schema names to schema objects
+# =============================================================================
+
+SCHEMAS: dict[str, Schema] = {
+    "health": HEALTH_SCHEMA,
+    "auth_health": AUTH_HEALTH_SCHEMA,
+    "auth_validate": AUTH_VALIDATE_RESPONSE,
+    "auth_refresh": AUTH_REFRESH_RESPONSE,
+    "auth_me": AUTH_ME_RESPONSE,
+    "audit_log": AUDIT_LOG_SCHEMA,
+    "audit_logs": AUDIT_LOGS_RESPONSE,
+    "webhook": WEBHOOK_SCHEMA,
+    "file_metadata": FILE_METADATA_SCHEMA,
+    "file_upload": FILE_UPLOAD_RESPONSE,
+    "cloud_event": CLOUD_EVENT_SCHEMA,
+    "paginated": PAGINATED_RESPONSE,
+}

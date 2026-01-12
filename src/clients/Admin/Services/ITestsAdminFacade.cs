@@ -29,6 +29,12 @@ public interface ITestsAdminFacade
 
     Task<TriggerResponse> TriggerSmokeTests(CancellationToken ct = default);
 
+    Task<TriggerResponse> TriggerContractTests(CancellationToken ct = default);
+
+    Task<TriggerResponse> TriggerErrorTests(CancellationToken ct = default);
+
+    Task<TriggerResponse> TriggerIntegrationTests(CancellationToken ct = default);
+
     Task<TriggerResponse> TriggerGoldenTests(CancellationToken ct = default);
 
     Task<TriggerResponse> TriggerAllTests(CancellationToken ct = default);

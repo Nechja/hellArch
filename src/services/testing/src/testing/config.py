@@ -44,12 +44,39 @@ class GoldenTestConfig(BaseModel):
     steps: list[str]
 
 
+class ContractTestConfig(BaseModel):
+    """Contract/schema validation test configuration."""
+
+    name: str
+    description: str
+    endpoint: str
+    method: str = "GET"
+    headers: dict[str, str] = Field(default_factory=dict)
+    body: dict | None = None
+    expected_status: list[int] = Field(default_factory=lambda: [200])
+    schema_name: str
+
+
+class ErrorTestConfig(BaseModel):
+    """Error path test configuration."""
+
+    name: str
+    description: str
+    endpoint: str
+    method: str = "GET"
+    headers: dict[str, str] = Field(default_factory=dict)
+    body: dict | None = None
+    expected_status: list[int]
+
+
 class ScheduleConfig(BaseModel):
     """Test schedule intervals."""
 
     smoke: str = "30s"
     integration: str = "2m"
     golden: str = "5m"
+    contract: str = "10m"
+    errors: str = "10m"
 
     def smoke_seconds(self) -> int:
         return parse_interval(self.smoke)
@@ -60,6 +87,12 @@ class ScheduleConfig(BaseModel):
     def golden_seconds(self) -> int:
         return parse_interval(self.golden)
 
+    def contract_seconds(self) -> int:
+        return parse_interval(self.contract)
+
+    def errors_seconds(self) -> int:
+        return parse_interval(self.errors)
+
 
 class TestsConfig(BaseModel):
     """Tests section of configuration."""
@@ -67,6 +100,8 @@ class TestsConfig(BaseModel):
     smoke: list[SmokeTestConfig] = Field(default_factory=list)
     integration: list[IntegrationTestConfig] = Field(default_factory=list)
     golden: list[GoldenTestConfig] = Field(default_factory=list)
+    contract: list[ContractTestConfig] = Field(default_factory=list)
+    errors: list[ErrorTestConfig] = Field(default_factory=list)
 
 
 class TestConfig(BaseModel):
@@ -93,6 +128,8 @@ def load_config(path: Path) -> TestConfig:
             smoke=[SmokeTestConfig(**t) for t in tests_data.get("smoke", [])],
             integration=[IntegrationTestConfig(**t) for t in tests_data.get("integration", [])],
             golden=[GoldenTestConfig(**t) for t in tests_data.get("golden", [])],
+            contract=[ContractTestConfig(**t) for t in tests_data.get("contract", [])],
+            errors=[ErrorTestConfig(**t) for t in tests_data.get("errors", [])],
         )
 
     return TestConfig.model_validate(data)
