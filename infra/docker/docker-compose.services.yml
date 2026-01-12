@@ -323,6 +323,8 @@ services:
       - PORT=5007
       - TESTING_CONFIG_PATH=/config/tests.json
       - TESTING_EVENTS_URL=http://events:5005
+      - TESTING_CLIENT_ID=testing-service
+      - TESTING_CLIENT_SECRET=testing-secret
       - TESTING_LOG_LEVEL=INFO
       - OTEL_SERVICE_NAME=testing
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318

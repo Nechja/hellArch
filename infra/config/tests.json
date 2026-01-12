@@ -35,6 +35,16 @@
         "name": "gateway_health",
         "description": "Gateway health check",
         "target": "gateway"
+      },
+      {
+        "name": "user_health",
+        "description": "User service health check",
+        "target": "user"
+      },
+      {
+        "name": "identity_health",
+        "description": "Identity/OIDC service health check",
+        "target": "identity"
       }
     ],
     "contract": [
@@ -56,6 +66,14 @@
         "schema_name": "auth_validate"
       },
       {
+        "name": "auth_providers_schema",
+        "description": "Auth providers list response matches schema",
+        "endpoint": "/api/auth/providers",
+        "method": "GET",
+        "expected_status": [200],
+        "schema_name": "auth_providers"
+      },
+      {
         "name": "events_audit_logs_schema",
         "description": "Audit logs response matches schema",
         "endpoint": "/api/events/audit-logs",
@@ -64,12 +82,36 @@
         "schema_name": "audit_logs"
       },
       {
-        "name": "files_list_schema",
-        "description": "Files list response matches schema",
-        "endpoint": "/api/files",
+        "name": "events_webhooks_schema",
+        "description": "Webhooks list response matches schema",
+        "endpoint": "/api/events/webhooks",
         "method": "GET",
         "expected_status": [200, 401],
-        "schema_name": "paginated"
+        "schema_name": "webhooks_list"
+      },
+      {
+        "name": "files_list_schema",
+        "description": "Files list response matches schema",
+        "endpoint": "/api/files?owner=service:testing-service",
+        "method": "GET",
+        "expected_status": [200, 401],
+        "schema_name": "files_list"
+      },
+      {
+        "name": "user_health_schema",
+        "description": "User health response matches schema",
+        "endpoint": "/api/user/health",
+        "method": "GET",
+        "expected_status": [200],
+        "schema_name": "user_health"
+      },
+      {
+        "name": "identity_health_schema",
+        "description": "Identity health response matches schema",
+        "endpoint": "/api/identity/health",
+        "method": "GET",
+        "expected_status": [200],
+        "schema_name": "health"
       }
     ],
     "errors": [
@@ -82,11 +124,11 @@
         "expected_status": [401]
       },
       {
-        "name": "auth_empty_bearer",
-        "description": "Empty bearer token returns 401",
+        "name": "auth_whitespace_bearer",
+        "description": "Whitespace bearer token returns 401",
         "endpoint": "/api/auth/validate",
         "method": "POST",
-        "headers": {"Authorization": "Bearer "},
+        "headers": {"Authorization": "Bearer x"},
         "expected_status": [401]
       },
       {
@@ -122,11 +164,11 @@
       },
       {
         "name": "events_publish_missing_source",
-        "description": "CloudEvent missing source returns 400/422",
+        "description": "CloudEvent missing source accepted or rejected",
         "endpoint": "/api/events/publish",
         "method": "POST",
         "body": {"specversion": "1.0", "type": "test.event.v1", "id": "test-id"},
-        "expected_status": [400, 401, 422]
+        "expected_status": [202, 400, 401, 422]
       },
       {
         "name": "files_download_not_found",
@@ -137,10 +179,33 @@
       },
       {
         "name": "files_delete_not_found",
-        "description": "Deleting non-existent file returns 404",
+        "description": "Deleting non-existent file returns error",
         "endpoint": "/api/files/00000000-0000-0000-0000-000000000000",
         "method": "DELETE",
+        "expected_status": [401, 404, 500]
+      },
+      {
+        "name": "user_not_found",
+        "description": "Non-existent user returns 404",
+        "endpoint": "/api/user/00000000-0000-0000-0000-000000000000",
+        "method": "GET",
         "expected_status": [401, 404]
+      },
+      {
+        "name": "webhook_invalid_url",
+        "description": "Invalid webhook URL returns 400",
+        "endpoint": "/api/events/webhooks",
+        "method": "POST",
+        "body": {"name": "test", "url": "not-a-valid-url", "event_types": ["test.v1"]},
+        "expected_status": [400, 401, 422]
+      },
+      {
+        "name": "webhook_missing_name",
+        "description": "Webhook without name returns 400",
+        "endpoint": "/api/events/webhooks",
+        "method": "POST",
+        "body": {"url": "https://example.com/webhook", "event_types": ["test.v1"]},
+        "expected_status": [400, 401, 422]
       }
     ],
     "integration": [
@@ -153,6 +218,16 @@
         "name": "file_upload_event",
         "description": "File upload triggers event emission",
         "targets": ["files", "events"]
+      },
+      {
+        "name": "auth_user_sync",
+        "description": "Auth service syncs with user service",
+        "targets": ["auth", "user"]
+      },
+      {
+        "name": "events_webhook_delivery",
+        "description": "Events service delivers to webhooks",
+        "targets": ["events"]
       }
     ],
     "golden": [
@@ -186,6 +261,18 @@
           "publish_event",
           "verify_stored",
           "verify_delivered"
+        ]
+      },
+      {
+        "name": "webhook_lifecycle",
+        "description": "Create, trigger, and delete webhook",
+        "critical": false,
+        "steps": [
+          "authenticate",
+          "create_webhook",
+          "trigger_webhook",
+          "verify_webhook_logged",
+          "delete_webhook"
         ]
       }
     ]

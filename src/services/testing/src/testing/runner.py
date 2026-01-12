@@ -28,7 +28,7 @@ class TestRunner:
         self.settings = settings
         self.config = config
         self.publisher = TestEventPublisher(settings.events_url)
-        self.executor = TestExecutor(config)
+        self.executor = TestExecutor(config, settings)
         self._running = False
 
     async def run_smoke_tests(self) -> TestRunSummary:

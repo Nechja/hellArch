@@ -183,6 +183,13 @@ AUTH_ME_RESPONSE = Schema(
     ],
 )
 
+AUTH_PROVIDERS_RESPONSE = Schema(
+    name="AuthProvidersResponse",
+    fields=[
+        SchemaField("providers", FieldType.LIST, items_type=FieldType.STRING),
+    ],
+)
+
 # =============================================================================
 # Events Service Schemas
 # =============================================================================
@@ -222,6 +229,14 @@ WEBHOOK_SCHEMA = Schema(
     ],
 )
 
+WEBHOOKS_LIST_RESPONSE = Schema(
+    name="WebhooksListResponse",
+    fields=[
+        SchemaField("data", FieldType.LIST),
+        SchemaField("total", FieldType.INT, required=False),
+    ],
+)
+
 # =============================================================================
 # Files Service Schemas
 # =============================================================================
@@ -242,6 +257,15 @@ FILE_UPLOAD_RESPONSE = Schema(
     fields=[
         SchemaField("id", FieldType.UUID),
         SchemaField("filename", FieldType.STRING, required=False),
+    ],
+)
+
+FILES_LIST_RESPONSE = Schema(
+    name="FilesListResponse",
+    fields=[
+        SchemaField("files", FieldType.LIST),
+        SchemaField("limit", FieldType.INT, required=False),
+        SchemaField("offset", FieldType.INT, required=False),
     ],
 )
 
@@ -270,6 +294,14 @@ HEALTH_SCHEMA = Schema(
     fields=[SchemaField("status", FieldType.STRING)],
 )
 
+USER_HEALTH_SCHEMA = Schema(
+    name="UserHealth",
+    fields=[
+        SchemaField("status", FieldType.STRING),
+        SchemaField("database", FieldType.BOOL, required=False),
+    ],
+)
+
 PAGINATED_RESPONSE = Schema(
     name="PaginatedResponse",
     fields=[
@@ -290,11 +322,15 @@ SCHEMAS: dict[str, Schema] = {
     "auth_validate": AUTH_VALIDATE_RESPONSE,
     "auth_refresh": AUTH_REFRESH_RESPONSE,
     "auth_me": AUTH_ME_RESPONSE,
+    "auth_providers": AUTH_PROVIDERS_RESPONSE,
     "audit_log": AUDIT_LOG_SCHEMA,
     "audit_logs": AUDIT_LOGS_RESPONSE,
     "webhook": WEBHOOK_SCHEMA,
+    "webhooks_list": WEBHOOKS_LIST_RESPONSE,
     "file_metadata": FILE_METADATA_SCHEMA,
     "file_upload": FILE_UPLOAD_RESPONSE,
+    "files_list": FILES_LIST_RESPONSE,
+    "user_health": USER_HEALTH_SCHEMA,
     "cloud_event": CLOUD_EVENT_SCHEMA,
     "paginated": PAGINATED_RESPONSE,
 }

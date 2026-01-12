@@ -14,7 +14,6 @@ FROM base AS build
 # Copy project files
 COPY pyproject.toml ./
 COPY src ./src
-COPY tests ./tests
 
 # Install dependencies
 RUN uv pip install --system -e .
@@ -24,7 +23,6 @@ FROM base AS prod
 # Copy installed packages and source
 COPY --from=build /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=build /app/src ./src
-COPY --from=build /app/tests ./tests
 COPY pyproject.toml ./
 
 # Set Python path

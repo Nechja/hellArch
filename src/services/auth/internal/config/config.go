@@ -18,6 +18,7 @@ type Config struct {
 	JWTPrivateKeyPath   string
 	JWTPublicKeyPath    string
 	OAuth               OAuthConfig
+	ServiceAccounts     map[string]string // service_id -> secret for internal auth
 	AllowedRedirectURIs []string
 	SecureCookies       bool
 	MaxSessionsPerUser  int
@@ -66,6 +67,7 @@ func Load() (*Config, error) {
 		RabbitMQURL:         sharedconfig.GetEnv("RABBITMQ_URL", "amqp://hellarch:hellarch@localhost:5672"),
 		JWTPrivateKeyPath:   sharedconfig.GetEnv("JWT_PRIVATE_KEY_PATH", "./infra/keys/dev-private.pem"),
 		JWTPublicKeyPath:    sharedconfig.GetEnv("JWT_PUBLIC_KEY_PATH", "./infra/keys/dev-public.pem"),
+		ServiceAccounts:     loadServiceAccounts(),
 		AllowedRedirectURIs: sharedconfig.GetEnvList("ALLOWED_REDIRECT_URIS", "http://localhost:5000,http://localhost:5003"),
 		SecureCookies:       sharedconfig.GetEnvBool("SECURE_COOKIES", false),
 		MaxSessionsPerUser:  sharedconfig.GetEnvInt("MAX_SESSIONS_PER_USER", 5),
@@ -133,4 +135,68 @@ func (c *Config) validate() error {
 		return fmt.Errorf("at least one OAuth provider must be configured")
 	}
 	return nil
+}
+
+func loadServiceAccounts() map[string]string {
+	accounts := make(map[string]string)
+
+	// Load from SERVICE_ACCOUNTS env var (format: "service1:secret1,service2:secret2")
+	raw := os.Getenv("SERVICE_ACCOUNTS")
+	if raw != "" {
+		for _, pair := range splitAndTrim(raw, ",") {
+			parts := splitAndTrim(pair, ":")
+			if len(parts) == 2 {
+				accounts[parts[0]] = parts[1]
+			}
+		}
+	}
+
+	// Default dev service accounts
+	if len(accounts) == 0 {
+		accounts["testing-service"] = "testing-secret"
+		accounts["health-service"] = "health-secret"
+	}
+
+	return accounts
+}
+
+func splitAndTrim(s, sep string) []string {
+	var result []string
+	for _, part := range sharedconfig.GetEnvList(s, "") {
+		result = append(result, part)
+	}
+	if len(result) == 0 && s != "" {
+		// Manual split for raw string
+		for _, p := range split(s, sep) {
+			if trimmed := trim(p); trimmed != "" {
+				result = append(result, trimmed)
+			}
+		}
+	}
+	return result
+}
+
+func split(s, sep string) []string {
+	var result []string
+	start := 0
+	for i := 0; i <= len(s)-len(sep); i++ {
+		if s[i:i+len(sep)] == sep {
+			result = append(result, s[start:i])
+			start = i + len(sep)
+		}
+	}
+	result = append(result, s[start:])
+	return result
+}
+
+func trim(s string) string {
+	start := 0
+	end := len(s)
+	for start < end && (s[start] == ' ' || s[start] == '\t') {
+		start++
+	}
+	for end > start && (s[end-1] == ' ' || s[end-1] == '\t') {
+		end--
+	}
+	return s[start:end]
 }
