@@ -48,7 +48,7 @@ public sealed class TestsAdminFacade(
         }
 
         var response = await _eventsClient.GetJsonSafe<AuditLogsResponse>(url, logger, ct);
-        if (response == null)
+        if (response?.Data == null)
         {
             return new TestResultsResponse([], 0, page, pageSize);
         }
@@ -71,7 +71,7 @@ public sealed class TestsAdminFacade(
         var url = $"audit-logs?page={page}&page_size={pageSize}&event_type={Uri.EscapeDataString("hellarch.test.run_completed.v1")}";
 
         var response = await _eventsClient.GetJsonSafe<AuditLogsResponse>(url, logger, ct);
-        if (response == null)
+        if (response?.Data == null)
         {
             return new TestRunSummariesResponse([], 0, page, pageSize);
         }
@@ -92,7 +92,7 @@ public sealed class TestsAdminFacade(
         var url = $"audit-logs?page={page}&page_size={pageSize}&event_type={Uri.EscapeDataString("hellarch.test.golden_path_failed.v1")}";
 
         var response = await _eventsClient.GetJsonSafe<AuditLogsResponse>(url, logger, ct);
-        if (response == null)
+        if (response?.Data == null)
         {
             return new GoldenPathFailuresResponse([], 0, page, pageSize);
         }
