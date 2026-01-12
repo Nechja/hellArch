@@ -27,6 +27,8 @@ def base_urls() -> dict[str, str]:
         "user": os.getenv("USER_URL", "http://localhost:5002"),
         "admin": os.getenv("ADMIN_URL", "http://localhost:5003"),
         "events": os.getenv("EVENTS_URL", "http://localhost:5005"),
+        "files": os.getenv("FILES_URL", "http://localhost:5006"),
+        "dlq_worker": os.getenv("DLQ_WORKER_URL", "http://localhost:5025"),
     }
 
 
