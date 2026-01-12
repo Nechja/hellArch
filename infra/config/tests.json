@@ -1,0 +1,80 @@
+{
+  "services": {
+    "gateway": "http://gateway:5000",
+    "auth": "http://auth:5001",
+    "user": "http://user:5002",
+    "events": "http://events:5005",
+    "files": "http://files:5006",
+    "identity": "http://identity:5010"
+  },
+  "schedules": {
+    "smoke": "30s",
+    "integration": "2m",
+    "golden": "5m"
+  },
+  "tests": {
+    "smoke": [
+      {
+        "name": "auth_token_issue",
+        "description": "Auth service can issue a token",
+        "target": "auth"
+      },
+      {
+        "name": "events_publish",
+        "description": "Events service accepts publish requests",
+        "target": "events"
+      },
+      {
+        "name": "files_list",
+        "description": "Files service can list files",
+        "target": "files"
+      }
+    ],
+    "integration": [
+      {
+        "name": "gateway_auth_validation",
+        "description": "Gateway validates tokens with auth service",
+        "targets": ["gateway", "auth"]
+      },
+      {
+        "name": "file_upload_event",
+        "description": "File upload triggers event emission",
+        "targets": ["files", "events"]
+      }
+    ],
+    "golden": [
+      {
+        "name": "auth_flow",
+        "description": "Complete authentication flow through gateway",
+        "critical": true,
+        "steps": [
+          "obtain_token",
+          "validate_at_gateway",
+          "access_protected_resource"
+        ]
+      },
+      {
+        "name": "file_lifecycle",
+        "description": "Complete file upload/download cycle",
+        "critical": true,
+        "steps": [
+          "authenticate",
+          "upload_file",
+          "verify_exists",
+          "download_file",
+          "delete_file"
+        ]
+      },
+      {
+        "name": "event_flow",
+        "description": "Event publish and delivery verification",
+        "critical": true,
+        "steps": [
+          "publish_event",
+          "verify_stored",
+          "verify_delivered"
+        ]
+      }
+    ]
+  }
+}
