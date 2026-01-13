@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     config_path: Path = Field(default=Path("/config/tests.json"))
     events_url: str = Field(default="http://events:5005")
+    files_url: str = Field(default="http://files:5006")
     log_level: str = Field(default="INFO")
     client_id: str = Field(default="")
     client_secret: str = Field(default="")
@@ -69,6 +70,26 @@ class ErrorTestConfig(BaseModel):
     expected_status: list[int]
 
 
+class E2eStepConfig(BaseModel):
+    """Single E2E test step configuration."""
+
+    action: str  # navigate, click, fill, wait, assert_visible, assert_text, screenshot
+    selector: str | None = None
+    value: str | None = None
+    screenshot_name: str | None = None
+
+
+class E2eTestConfig(BaseModel):
+    """E2E browser test configuration."""
+
+    name: str
+    description: str
+    base_url: str
+    steps: list[E2eStepConfig]
+    screenshot_on_failure: bool = True
+    critical: bool = False
+
+
 class ScheduleConfig(BaseModel):
     """Test schedule intervals."""
 
@@ -77,6 +98,7 @@ class ScheduleConfig(BaseModel):
     golden: str = "5m"
     contract: str = "10m"
     errors: str = "10m"
+    e2e: str = "15m"
 
     def smoke_seconds(self) -> int:
         return parse_interval(self.smoke)
@@ -93,6 +115,9 @@ class ScheduleConfig(BaseModel):
     def errors_seconds(self) -> int:
         return parse_interval(self.errors)
 
+    def e2e_seconds(self) -> int:
+        return parse_interval(self.e2e)
+
 
 class TestsConfig(BaseModel):
     """Tests section of configuration."""
@@ -102,6 +127,7 @@ class TestsConfig(BaseModel):
     golden: list[GoldenTestConfig] = Field(default_factory=list)
     contract: list[ContractTestConfig] = Field(default_factory=list)
     errors: list[ErrorTestConfig] = Field(default_factory=list)
+    e2e: list[E2eTestConfig] = Field(default_factory=list)
 
 
 class TestConfig(BaseModel):
@@ -130,6 +156,7 @@ def load_config(path: Path) -> TestConfig:
             golden=[GoldenTestConfig(**t) for t in tests_data.get("golden", [])],
             contract=[ContractTestConfig(**t) for t in tests_data.get("contract", [])],
             errors=[ErrorTestConfig(**t) for t in tests_data.get("errors", [])],
+            e2e=[E2eTestConfig(**t) for t in tests_data.get("e2e", [])],
         )
 
     return TestConfig.model_validate(data)

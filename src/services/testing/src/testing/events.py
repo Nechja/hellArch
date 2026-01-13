@@ -5,6 +5,7 @@ import structlog
 
 from testing.models import (
     CloudEvent,
+    E2eTestOutcome,
     GoldenPathFailure,
     TestCategory,
     TestOutcome,
@@ -65,6 +66,20 @@ class TestEventPublisher:
         event = self._create_event(
             "hellarch.test.run_completed.v1",
             summary.model_dump(mode="json"),
+        )
+        return await self._publish(event)
+
+    async def publish_e2e_result(self, outcome: E2eTestOutcome) -> bool:
+        """Publish an E2E test result event with screenshots."""
+        event_type = f"hellarch.test.e2e.{outcome.result.value}.v1"
+        event = self._create_event(event_type, outcome.model_dump(mode="json"))
+        return await self._publish(event)
+
+    async def publish_e2e_failure(self, outcome: E2eTestOutcome) -> bool:
+        """Publish critical E2E failure event."""
+        event = self._create_event(
+            "hellarch.test.e2e.critical_failed.v1",
+            outcome.model_dump(mode="json"),
         )
         return await self._publish(event)
 

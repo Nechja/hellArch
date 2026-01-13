@@ -8,9 +8,11 @@ from typing import Any
 import structlog
 
 from testing.config import Settings, TestConfig, load_config
+from testing.e2e_executor import E2eExecutor
 from testing.events import TestEventPublisher
 from testing.executor import TestExecutor
 from testing.models import (
+    E2eTestOutcome,
     GoldenPathFailure,
     TestCategory,
     TestOutcome,
@@ -29,6 +31,7 @@ class TestRunner:
         self.config = config
         self.publisher = TestEventPublisher(settings.events_url)
         self.executor = TestExecutor(config, settings)
+        self.e2e_executor = E2eExecutor(settings)
         self._running = False
 
     async def run_smoke_tests(self) -> TestRunSummary:
@@ -328,6 +331,38 @@ class TestRunner:
         await self.publisher.publish_test_run_summary(summary)
         return summary
 
+    async def run_e2e_tests(self) -> TestRunSummary:
+        """Run all E2E browser tests."""
+        start = time.monotonic()
+        passed = 0
+        failed = 0
+        total = len(self.config.tests.e2e)
+
+        for test in self.config.tests.e2e:
+            outcome = await self.e2e_executor.run_e2e_test(test)
+
+            if outcome.result == TestResult.PASSED:
+                passed += 1
+            else:
+                failed += 1
+
+            # Publish E2E result with screenshots
+            await self.publisher.publish_e2e_result(outcome)
+
+            if outcome.critical and outcome.result != TestResult.PASSED:
+                await self.publisher.publish_e2e_failure(outcome)
+
+        total_duration = int((time.monotonic() - start) * 1000)
+        summary = TestRunSummary(
+            category=TestCategory.E2E,
+            total=total,
+            passed=passed,
+            failed=failed,
+            duration_ms=total_duration,
+        )
+        await self.publisher.publish_test_run_summary(summary)
+        return summary
+
     async def run_all_tests(self) -> list[TestRunSummary]:
         """Run all test categories."""
         summaries = []
@@ -336,6 +371,7 @@ class TestRunner:
         summaries.append(await self.run_error_tests())
         summaries.append(await self.run_integration_tests())
         summaries.append(await self.run_golden_tests())
+        summaries.append(await self.run_e2e_tests())
         return summaries
 
     async def start(self) -> None:
@@ -383,6 +419,13 @@ class TestRunner:
                     self.run_golden_tests,
                 )
             ),
+            asyncio.create_task(
+                self._schedule_tests(
+                    "e2e",
+                    self.config.schedules.e2e_seconds(),
+                    self.run_e2e_tests,
+                )
+            ),
         ]
 
         try:
@@ -428,6 +471,7 @@ async def main() -> None:
         error_tests=len(config.tests.errors),
         integration_tests=len(config.tests.integration),
         golden_tests=len(config.tests.golden),
+        e2e_tests=len(config.tests.e2e),
     )
 
     runner = TestRunner(settings, config)

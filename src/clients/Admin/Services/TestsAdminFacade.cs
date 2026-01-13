@@ -19,6 +19,13 @@ public sealed class TestsAdminFacade(
         "hellarch.test.skipped.v1"
     ];
 
+    private static readonly string[] E2eEventTypes =
+    [
+        "hellarch.test.e2e.passed.v1",
+        "hellarch.test.e2e.failed.v1",
+        "hellarch.test.e2e.error.v1"
+    ];
+
     public async Task<TestResultsResponse> GetTestResults(
         int page = 1,
         int pageSize = 20,
@@ -125,7 +132,7 @@ public sealed class TestsAdminFacade(
     public async Task<TestingServiceStatus> GetTestingServiceStatus(CancellationToken ct = default)
     {
         var response = await _testingClient.GetJsonSafe<TestingServiceStatus>("status", logger, ct);
-        return response ?? new TestingServiceStatus("testing", "unavailable", new Dictionary<string, string>(), false, 0, 0, 0, 0, 0);
+        return response ?? new TestingServiceStatus("testing", "unavailable", new Dictionary<string, string>(), false, 0, 0, 0, 0, 0, 0);
     }
 
     public async Task<TriggerResponse> TriggerSmokeTests(CancellationToken ct = default)
@@ -158,10 +165,37 @@ public sealed class TestsAdminFacade(
         return response ?? new TriggerResponse("error", "golden", "Failed to trigger golden tests");
     }
 
+    public async Task<TriggerResponse> TriggerE2eTests(CancellationToken ct = default)
+    {
+        var response = await _testingClient.PostJsonSafe<TriggerResponse>("run/e2e", logger, ct);
+        return response ?? new TriggerResponse("error", "e2e", "Failed to trigger E2E tests");
+    }
+
     public async Task<TriggerResponse> TriggerAllTests(CancellationToken ct = default)
     {
         var response = await _testingClient.PostJsonSafe<TriggerResponse>("run/all", logger, ct);
         return response ?? new TriggerResponse("error", "all", "Failed to trigger all tests");
+    }
+
+    public async Task<E2eTestResultsResponse> GetE2eTestResults(
+        int page = 1,
+        int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var url = $"audit-logs?page={page}&page_size={pageSize}&event_type_prefix={Uri.EscapeDataString("hellarch.test.e2e.")}";
+
+        var response = await _eventsClient.GetJsonSafe<AuditLogsResponse>(url, logger, ct);
+        if (response?.Data == null)
+        {
+            return new E2eTestResultsResponse([], 0, page, pageSize);
+        }
+
+        var results = response.Data
+            .Where(log => E2eEventTypes.Contains(log.EventType))
+            .Select(MapToE2eTestResult)
+            .ToList();
+
+        return new E2eTestResultsResponse(results, response.TotalCount, page, pageSize);
     }
 
     private static TestResult MapToTestResult(AuditLog log)
@@ -202,6 +236,47 @@ public sealed class TestsAdminFacade(
             Error: GetStringProperty(data, "error") ?? "unknown",
             DurationMs: GetIntProperty(data, "duration_ms"),
             Timestamp: log.CreatedAt);
+    }
+
+    private static E2eTestResult MapToE2eTestResult(AuditLog log)
+    {
+        var data = log.Metadata;
+        var screenshots = GetScreenshots(data);
+        var result = log.EventType.Replace("hellarch.test.e2e.", "").Replace(".v1", "");
+
+        return new E2eTestResult(
+            Id: log.Id,
+            TestName: GetStringProperty(data, "test_name") ?? "unknown",
+            Result: result,
+            DurationMs: GetIntProperty(data, "duration_ms"),
+            FailedStep: GetStringProperty(data, "failed_step"),
+            Error: GetStringProperty(data, "error"),
+            Screenshots: screenshots,
+            Critical: GetBoolProperty(data, "critical"),
+            Timestamp: log.CreatedAt);
+    }
+
+    private static IReadOnlyList<E2eScreenshot> GetScreenshots(JsonElement? element)
+    {
+        if (element?.TryGetProperty("screenshots", out var prop) != true)
+        {
+            return [];
+        }
+
+        var screenshots = new List<E2eScreenshot>();
+        foreach (var item in prop.EnumerateArray())
+        {
+            var stepName = item.TryGetProperty("step_name", out var sn) ? sn.GetString() : null;
+            var fileId = item.TryGetProperty("file_id", out var fi) ? fi.GetString() : null;
+            var fileUrl = item.TryGetProperty("file_url", out var fu) ? fu.GetString() : null;
+            var capturedAt = item.TryGetProperty("captured_at", out var ca) ? ca.GetDateTime() : DateTime.UtcNow;
+
+            if (!string.IsNullOrEmpty(stepName) && !string.IsNullOrEmpty(fileId) && !string.IsNullOrEmpty(fileUrl))
+            {
+                screenshots.Add(new E2eScreenshot(stepName, fileId, fileUrl, capturedAt));
+            }
+        }
+        return screenshots;
     }
 
     private static string? GetStringProperty(JsonElement? element, string name)
@@ -295,9 +370,33 @@ public sealed record TestingServiceStatus(
     [property: JsonPropertyName("contract_tests")] int ContractTests,
     [property: JsonPropertyName("error_tests")] int ErrorTests,
     [property: JsonPropertyName("integration_tests")] int IntegrationTests,
-    [property: JsonPropertyName("golden_tests")] int GoldenTests);
+    [property: JsonPropertyName("golden_tests")] int GoldenTests,
+    [property: JsonPropertyName("e2e_tests")] int E2eTests);
 
 public sealed record TriggerResponse(
     string Status,
     string Category,
     string Message);
+
+public sealed record E2eTestResultsResponse(
+    IReadOnlyList<E2eTestResult> Data,
+    [property: JsonPropertyName("total_count")] int TotalCount,
+    int Page,
+    [property: JsonPropertyName("page_size")] int PageSize);
+
+public sealed record E2eTestResult(
+    string Id,
+    [property: JsonPropertyName("test_name")] string TestName,
+    string Result,
+    [property: JsonPropertyName("duration_ms")] int DurationMs,
+    [property: JsonPropertyName("failed_step")] string? FailedStep,
+    string? Error,
+    IReadOnlyList<E2eScreenshot> Screenshots,
+    bool Critical,
+    DateTime Timestamp);
+
+public sealed record E2eScreenshot(
+    [property: JsonPropertyName("step_name")] string StepName,
+    [property: JsonPropertyName("file_id")] string FileId,
+    [property: JsonPropertyName("file_url")] string FileUrl,
+    [property: JsonPropertyName("captured_at")] DateTime CapturedAt);

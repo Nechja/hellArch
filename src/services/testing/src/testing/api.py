@@ -48,6 +48,7 @@ class StatusResponse(BaseModel):
     error_tests: int
     integration_tests: int
     golden_tests: int
+    e2e_tests: int
 
 
 class HealthResponse(BaseModel):
@@ -75,6 +76,7 @@ async def lifespan(app: FastAPI):
             error_tests=len(_config.tests.errors),
             integration_tests=len(_config.tests.integration),
             golden_tests=len(_config.tests.golden),
+            e2e_tests=len(_config.tests.e2e),
         )
     except Exception as e:
         logger.error("Failed to load config", error=str(e))
@@ -113,6 +115,7 @@ async def get_status() -> StatusResponse:
         error_tests=len(_config.tests.errors) if _config else 0,
         integration_tests=len(_config.tests.integration) if _config else 0,
         golden_tests=len(_config.tests.golden) if _config else 0,
+        e2e_tests=len(_config.tests.e2e) if _config else 0,
     )
 
 
@@ -136,6 +139,8 @@ async def _run_tests_background(category: str) -> None:
             await _runner.run_integration_tests()
         elif category == "golden":
             await _runner.run_golden_tests()
+        elif category == "e2e":
+            await _runner.run_e2e_tests()
         elif category == "all":
             await _runner.run_all_tests()
     except Exception as e:
@@ -251,6 +256,28 @@ async def trigger_golden_tests(background_tasks: BackgroundTasks) -> TriggerResp
         status="started",
         category="golden",
         message="Golden path tests started",
+    )
+
+
+@app.post("/run/e2e", response_model=TriggerResponse)
+async def trigger_e2e_tests(background_tasks: BackgroundTasks) -> TriggerResponse:
+    """Trigger E2E browser tests."""
+    if not _runner:
+        raise HTTPException(status_code=503, detail="Testing service not configured")
+
+    if "e2e" in _running_tests:
+        return TriggerResponse(
+            status="already_running",
+            category="e2e",
+            message="E2E tests are already running",
+        )
+
+    background_tasks.add_task(_run_tests_background, "e2e")
+
+    return TriggerResponse(
+        status="started",
+        category="e2e",
+        message="E2E tests started",
     )
 
 

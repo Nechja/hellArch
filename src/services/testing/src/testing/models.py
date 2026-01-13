@@ -15,6 +15,7 @@ class TestCategory(str, Enum):
     GOLDEN = "golden"
     CONTRACT = "contract"
     ERRORS = "errors"
+    E2E = "e2e"
 
 
 class TestResult(str, Enum):
@@ -107,3 +108,26 @@ class ServiceHealth(BaseModel):
     healthy: bool
     latency_ms: int | None = None
     error: str | None = None
+
+
+class E2eScreenshot(BaseModel):
+    """Screenshot captured during E2E test."""
+
+    step_name: str
+    file_id: str
+    file_url: str
+    captured_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class E2eTestOutcome(BaseModel):
+    """Result of an E2E test execution with screenshots."""
+
+    test_name: str
+    category: TestCategory = TestCategory.E2E
+    result: TestResult
+    duration_ms: int
+    failed_step: str | None = None
+    error: str | None = None
+    screenshots: list[E2eScreenshot] = Field(default_factory=list)
+    critical: bool = False
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))

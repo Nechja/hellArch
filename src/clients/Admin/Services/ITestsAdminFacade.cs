@@ -37,5 +37,12 @@ public interface ITestsAdminFacade
 
     Task<TriggerResponse> TriggerGoldenTests(CancellationToken ct = default);
 
+    Task<TriggerResponse> TriggerE2eTests(CancellationToken ct = default);
+
     Task<TriggerResponse> TriggerAllTests(CancellationToken ct = default);
+
+    Task<E2eTestResultsResponse> GetE2eTestResults(
+        int page = 1,
+        int pageSize = 20,
+        CancellationToken ct = default);
 }

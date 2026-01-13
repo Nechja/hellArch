@@ -29,6 +29,9 @@
                 <MudButton OnClick="@(() => TriggerTests("golden"))" Disabled="@_triggering" StartIcon="@Icons.Material.Filled.Star">
                     Golden
                 </MudButton>
+                <MudButton OnClick="@(() => TriggerTests("e2e"))" Disabled="@_triggering" StartIcon="@Icons.Material.Filled.DesktopWindows">
+                    E2E
+                </MudButton>
                 <MudButton OnClick="@(() => TriggerTests("all"))" Disabled="@_triggering" StartIcon="@Icons.Material.Filled.PlayArrow" Color="Color.Secondary">
                     All
                 </MudButton>
@@ -40,7 +43,7 @@
             {
                 <MudChip T="string" Color="Color.Success" Size="Size.Small">Ready</MudChip>
                 <MudText Typo="Typo.caption" Class="d-block mt-1">
-                    @_serviceStatus.SmokeTests smoke / @_serviceStatus.ContractTests contract / @_serviceStatus.ErrorTests errors / @_serviceStatus.IntegrationTests integration / @_serviceStatus.GoldenTests golden
+                    @_serviceStatus.SmokeTests smoke / @_serviceStatus.ContractTests contract / @_serviceStatus.ErrorTests errors / @_serviceStatus.IntegrationTests integration / @_serviceStatus.GoldenTests golden / @_serviceStatus.E2eTests e2e
                 </MudText>
             }
             else if (_serviceStatus.Status == "unavailable")
@@ -107,6 +110,7 @@
                 <MudSelectItem Value="@("errors")">Errors</MudSelectItem>
                 <MudSelectItem Value="@("integration")">Integration</MudSelectItem>
                 <MudSelectItem Value="@("golden")">Golden Path</MudSelectItem>
+                <MudSelectItem Value="@("e2e")">E2E</MudSelectItem>
             </MudSelect>
         </MudItem>
         <MudItem xs="12" md="4">
@@ -187,6 +191,105 @@ else
         OnNext="@OnNextPage" />
 }
 
+@* E2E Test Results *@
+<div class="mt-6">
+    <SectionHeader Title="E2E Test Results" />
+</div>
+
+@if (_e2eResults.Data.Count > 0)
+{
+    <MudTable Items="@_e2eResults.Data" Hover="true" Elevation="1" Dense="true" Class="mb-4">
+        <HeaderContent>
+            <MudTh>Test Name</MudTh>
+            <MudTh>Result</MudTh>
+            <MudTh>Duration</MudTh>
+            <MudTh>Screenshots</MudTh>
+            <MudTh>Timestamp</MudTh>
+            <MudTh>Details</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Test Name">
+                <MudText Typo="Typo.body2" Class="font-weight-medium">@context.TestName</MudText>
+            </MudTd>
+            <MudTd DataLabel="Result">
+                <MudChip T="string" Size="Size.Small" Color="@GetResultColor(context.Result)" Variant="Variant.Filled">
+                    @context.Result
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Duration">@context.DurationMs ms</MudTd>
+            <MudTd DataLabel="Screenshots">
+                @if (context.Screenshots.Count > 0)
+                {
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                               OnClick="@(() => ShowScreenshots(context))">
+                        @context.Screenshots.Count screenshot(s)
+                    </MudButton>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption">None</MudText>
+                }
+            </MudTd>
+            <MudTd DataLabel="Timestamp">@context.Timestamp.ToString("g")</MudTd>
+            <MudTd DataLabel="Details">
+                @if (context.Critical)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Outlined">Critical</MudChip>
+                }
+                @if (!string.IsNullOrEmpty(context.FailedStep))
+                {
+                    <MudTooltip Text="@($"Failed at: {context.FailedStep}")">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">@context.FailedStep</MudChip>
+                    </MudTooltip>
+                }
+                @if (!string.IsNullOrEmpty(context.Error))
+                {
+                    <MudTooltip Text="@context.Error">
+                        <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Size="Size.Small" />
+                    </MudTooltip>
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+else
+{
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">No E2E test results yet</MudText>
+}
+
+@* Screenshot Dialog *@
+<MudDialog @bind-Visible="_showScreenshots" Options="@(new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Screenshots - @_selectedE2eTest?.TestName</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_selectedE2eTest != null)
+        {
+            <MudGrid>
+                @foreach (var screenshot in _selectedE2eTest.Screenshots)
+                {
+                    <MudItem xs="12" md="6">
+                        <MudCard Elevation="2">
+                            <MudCardContent>
+                                <MudText Typo="Typo.subtitle2" Class="mb-2">@screenshot.StepName</MudText>
+                                <MudImage Src="@($"/api/files/{screenshot.FileId}")"
+                                          Alt="@screenshot.StepName"
+                                          ObjectFit="ObjectFit.Contain"
+                                          Class="rounded"
+                                          Style="width: 100%; max-height: 400px;" />
+                                <MudText Typo="Typo.caption" Class="mt-1">@screenshot.CapturedAt.ToString("g")</MudText>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _showScreenshots = false)">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
 @* Test Run Summaries *@
 <div class="mt-6">
     <SectionHeader Title="Test Run History" />
@@ -230,8 +333,12 @@ else
     private TestResultsResponse _results = new([], 0, 1, 20);
     private TestRunSummariesResponse _summaries = new([], 0, 1, 10);
     private GoldenPathFailuresResponse _goldenFailures = new([], 0, 1, 10);
+    private E2eTestResultsResponse _e2eResults = new([], 0, 1, 20);
     private TestStats _stats = new(0, 0, 0, 0, null, null);
-    private TestingServiceStatus _serviceStatus = new("testing", "unknown", new Dictionary<string, string>(), false, 0, 0, 0, 0, 0);
+    private TestingServiceStatus _serviceStatus = new("testing", "unknown", new Dictionary<string, string>(), false, 0, 0, 0, 0, 0, 0);
+
+    private bool _showScreenshots;
+    private E2eTestResult? _selectedE2eTest;
 
     private bool _loading = true;
     private bool _triggering;
@@ -271,14 +378,16 @@ else
             var resultsTask = TestsAdmin.GetTestResults(_page, _pageSize, _selectedCategory, _selectedResult);
             var summariesTask = TestsAdmin.GetTestRunSummaries(1, 10, _selectedCategory);
             var goldenTask = TestsAdmin.GetGoldenPathFailures(1, 5);
+            var e2eTask = TestsAdmin.GetE2eTestResults(1, 20);
             var statsTask = TestsAdmin.GetTestStats();
             var statusTask = TestsAdmin.GetTestingServiceStatus();
 
-            await Task.WhenAll(resultsTask, summariesTask, goldenTask, statsTask, statusTask);
+            await Task.WhenAll(resultsTask, summariesTask, goldenTask, e2eTask, statsTask, statusTask);
 
             _results = await resultsTask;
             _summaries = await summariesTask;
             _goldenFailures = await goldenTask;
+            _e2eResults = await e2eTask;
             _stats = await statsTask;
             _serviceStatus = await statusTask;
         }
@@ -308,6 +417,7 @@ else
                 "errors" => await TestsAdmin.TriggerErrorTests(),
                 "integration" => await TestsAdmin.TriggerIntegrationTests(),
                 "golden" => await TestsAdmin.TriggerGoldenTests(),
+                "e2e" => await TestsAdmin.TriggerE2eTests(),
                 "all" => await TestsAdmin.TriggerAllTests(),
                 _ => new TriggerResponse("error", category, "Unknown category")
             };
@@ -362,6 +472,12 @@ else
         await LoadData();
     }
 
+    private void ShowScreenshots(E2eTestResult test)
+    {
+        _selectedE2eTest = test;
+        _showScreenshots = true;
+    }
+
     private static Color GetCategoryColor(string category) => category.ToLowerInvariant() switch
     {
         "smoke" => Color.Info,
@@ -369,6 +485,7 @@ else
         "errors" => Color.Error,
         "integration" => Color.Secondary,
         "golden" => Color.Warning,
+        "e2e" => Color.Tertiary,
         _ => Color.Default
     };
 
