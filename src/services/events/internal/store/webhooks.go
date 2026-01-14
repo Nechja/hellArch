@@ -7,27 +7,19 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/nechja/hellarch/datatypes/events"
 )
 
-type WebhookFormat string
+type (
+	Webhook       = events.Webhook
+	WebhookFormat = events.WebhookFormat
+)
 
 const (
-	WebhookFormatRaw     WebhookFormat = "raw"
-	WebhookFormatDiscord WebhookFormat = "discord"
-	WebhookFormatSlack   WebhookFormat = "slack"
+	WebhookFormatRaw     = events.WebhookFormatRaw
+	WebhookFormatDiscord = events.WebhookFormatDiscord
+	WebhookFormatSlack   = events.WebhookFormatSlack
 )
-
-type Webhook struct {
-	ID         string        `json:"id"`
-	Name       string        `json:"name"`
-	URL        string        `json:"url"`
-	Secret     string        `json:"secret,omitempty"`
-	EventTypes []string      `json:"event_types"`
-	Format     WebhookFormat `json:"format"`
-	IsActive   bool          `json:"is_active"`
-	CreatedAt  time.Time     `json:"created_at"`
-	UpdatedAt  time.Time     `json:"updated_at"`
-}
 
 type CreateWebhookParams struct {
 	Name       string

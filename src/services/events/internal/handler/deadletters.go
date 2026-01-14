@@ -60,6 +60,11 @@ func (h *DeadLetterHandler) createDeadLetter(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	var errorMessage *string
+	if req.ErrorMessage != "" {
+		errorMessage = &req.ErrorMessage
+	}
+
 	dl := &store.DeadLetter{
 		EventType:     req.EventType,
 		EventID:       req.EventID,
@@ -67,8 +72,8 @@ func (h *DeadLetterHandler) createDeadLetter(w http.ResponseWriter, r *http.Requ
 		OriginalQueue: req.OriginalQueue,
 		DeathReason:   req.DeathReason,
 		RetryCount:    req.RetryCount,
-		Body:          req.Body,
-		ErrorMessage:  req.ErrorMessage,
+		Body:          string(req.Body),
+		ErrorMessage:  errorMessage,
 	}
 
 	if err := h.store.CreateDeadLetter(r.Context(), dl); err != nil {

@@ -16,7 +16,7 @@ type Webhook struct {
 	Name string `json:"name"`
 	URL string `json:"url"`
 	Secret string `json:"secret"`
-	EventTypes []*string `json:"event_types"`
+	EventTypes []string `json:"event_types"`
 	Format WebhookFormat `json:"format"`
 	IsActive bool `json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`

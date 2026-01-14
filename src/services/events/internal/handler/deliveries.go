@@ -73,11 +73,17 @@ func (h *DeliveryHandler) createDelivery(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	var payload *string
+	if len(req.Payload) > 0 {
+		s := string(req.Payload)
+		payload = &s
+	}
+
 	delivery, err := h.store.CreateDelivery(r.Context(), store.CreateDeliveryParams{
 		WebhookID:    req.WebhookID,
 		EventID:      req.EventID,
 		EventType:    req.EventType,
-		Payload:      req.Payload,
+		Payload:      payload,
 		StatusCode:   req.StatusCode,
 		ResponseBody: req.ResponseBody,
 		Success:      req.Success,

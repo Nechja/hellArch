@@ -64,13 +64,19 @@ func (h *AuditHandler) createAuditLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var metadata *string
+	if len(req.Metadata) > 0 {
+		s := string(req.Metadata)
+		metadata = &s
+	}
+
 	log := &store.AuditLog{
 		EventType: req.EventType,
 		EventID:   req.EventID,
 		Source:    req.Source,
 		ActorID:   req.ActorID,
 		TargetID:  req.TargetID,
-		Metadata:  req.Metadata,
+		Metadata:  metadata,
 	}
 
 	if err := h.store.CreateAuditLog(r.Context(), log); err != nil {
