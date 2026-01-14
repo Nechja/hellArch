@@ -1,27 +1,31 @@
 # Testing
 
-**Python + pytest**
+**Python Testing Service**
 
-API and integration tests using pytest with async support.
+Centralized test orchestration service with scheduled execution, API-triggered runs, and browser automation via Playwright.
 
 ## Architecture
 
 ```mermaid
-graph LR
-    subgraph Test Suite
-        AUTH_T[test_auth.py]
-        ADMIN_T[test_admin.py]
-        USER_T[test_user.py]
+graph TB
+    subgraph Testing Service
+        API[FastAPI Server<br/>:5007]
+        RUNNER[Test Runner]
+        E2E[E2E Executor<br/>Playwright]
+        PUB[Event Publisher]
     end
 
-    subgraph Fixtures
-        DB[Database<br/>psycopg]
-        HTTP[HTTP Client<br/>httpx]
-        JWT[JWT Tokens<br/>python-jose]
-        MOCK[OAuth Mocks<br/>respx]
+    subgraph Test Categories
+        SMOKE[Smoke Tests]
+        CONTRACT[Contract Tests]
+        ERRORS[Error Path Tests]
+        INTEGRATION[Integration Tests]
+        GOLDEN[Golden Path Tests]
+        E2E_TESTS[E2E Browser Tests]
     end
 
-    subgraph Services
+    subgraph Services Under Test
+        GW[Gateway :5000]
         AUTH[Auth :5001]
         USER[User :5002]
         EVENTS[Events :5005]
@@ -29,804 +33,410 @@ graph LR
         IDENTITY[Identity :5010]
     end
 
-    AUTH_T --> HTTP
-    AUTH_T --> JWT
-    AUTH_T --> DB
-    ADMIN_T --> HTTP
-    ADMIN_T --> DB
-    USER_T --> HTTP
-    HTTP --> AUTH
-    HTTP --> USER
+    subgraph Output
+        CLOUDEVENTS[CloudEvents]
+        AUDIT[Audit Logs]
+        SCREENSHOTS[Screenshots<br/>Files Service]
+    end
+
+    API --> RUNNER
+    RUNNER --> SMOKE
+    RUNNER --> CONTRACT
+    RUNNER --> ERRORS
+    RUNNER --> INTEGRATION
+    RUNNER --> GOLDEN
+    RUNNER --> E2E
+
+    E2E --> E2E_TESTS
+    E2E_TESTS --> GW
+
+    SMOKE --> AUTH
+    SMOKE --> EVENTS
+    SMOKE --> FILES
+    CONTRACT --> GW
+    GOLDEN --> GW
+
+    RUNNER --> PUB
+    PUB --> CLOUDEVENTS
+    CLOUDEVENTS --> AUDIT
+    E2E --> SCREENSHOTS
 ```
+
+## Test Categories
+
+| Category | Purpose | Schedule |
+|----------|---------|----------|
+| **Smoke** | Health checks for all services | 30s |
+| **Contract** | API response schema validation | 5m |
+| **Errors** | Error handling and edge cases | 5m |
+| **Integration** | Cross-service communication | 2m |
+| **Golden** | Critical business flows | 5m |
+| **E2E** | Browser-based UI testing | 15m |
 
 ## Stack
 
 | Tool | Purpose |
 |------|---------|
-| pytest | Test framework |
-| pytest-asyncio | Async test support (auto mode) |
-| pytest-xdist | Parallel execution |
-| pytest-cov | Coverage reporting |
-| pytest-timeout | Test timeout enforcement |
+| FastAPI | HTTP API server |
+| Playwright | Browser automation for E2E |
 | httpx | Async HTTP client |
-| respx | HTTP mocking for OAuth providers |
-| psycopg | PostgreSQL async access |
-| python-jose | JWT token creation/validation |
-| pydantic | Data validation |
-| faker | Fake data generation |
-| redis | Redis client for cache tests |
-| aio-pika | RabbitMQ client for event tests |
-| hellarch-types | Generated Python types |
+| structlog | Structured logging |
+| Pydantic | Configuration and models |
 
-## Setup
+## Configuration
 
-```bash
-cd tests
-uv sync
-```
+Tests are defined in `infra/config/tests.json`:
 
-Uses the generated Python types from `libs/data_types/python` via workspace dependency:
-
-```toml
-[tool.uv.sources]
-hellarch-types = { path = "../libs/data_types/python" }
+```json
+{
+  "services": {
+    "gateway": "http://gateway:5000",
+    "auth": "http://auth:5001",
+    "events": "http://events:5005"
+  },
+  "schedules": {
+    "smoke": "30s",
+    "contract": "5m",
+    "e2e": "15m"
+  },
+  "tests": {
+    "smoke": [...],
+    "contract": [...],
+    "errors": [...],
+    "integration": [...],
+    "golden": [...],
+    "e2e": [...]
+  }
+}
 ```
 
 ## Running Tests
 
-### Using mise (recommended)
+### Via Admin UI
+
+Navigate to **Tests** page (`/tests`) in the Admin console:
+- Click individual category buttons (Smoke, Contract, etc.)
+- Click **All** to run all test categories
+- View results in real-time via live updates
+
+### Via API
 
 ```bash
-mise run test:all         # Run all tests
-mise run test:api         # Run API tests only
-mise run test:integration # Run integration tests only
-mise run test:e2e         # Run end-to-end tests
-mise run test:parallel    # Run all tests in parallel
-mise run test:cov         # Run tests with coverage report
-mise run test:smoke       # Run smoke tests only
-mise run test:auth        # Run auth-related tests only
-mise run test:lint        # Lint test files with ruff
-mise run test:format      # Format test files with ruff
+# Trigger specific category
+curl -X POST http://localhost:5007/run/smoke
+curl -X POST http://localhost:5007/run/contract
+curl -X POST http://localhost:5007/run/errors
+curl -X POST http://localhost:5007/run/integration
+curl -X POST http://localhost:5007/run/golden
+curl -X POST http://localhost:5007/run/e2e
+
+# Trigger all tests
+curl -X POST http://localhost:5007/run/all
+
+# Check service status
+curl http://localhost:5007/status
 ```
 
-### Using uv directly
+### Response Format
+
+```json
+{
+  "status": "started",
+  "category": "smoke",
+  "message": "Smoke tests started"
+}
+```
+
+## Test Types
+
+### Smoke Tests
+
+Simple health checks for each service:
+
+```json
+{
+  "name": "auth_health",
+  "description": "Auth service health check",
+  "target": "auth"
+}
+```
+
+### Contract Tests
+
+Validate API responses match expected schemas:
+
+```json
+{
+  "name": "auth_health_schema",
+  "description": "Auth health response matches schema",
+  "endpoint": "/api/auth/health",
+  "method": "GET",
+  "expected_status": [200],
+  "schema_name": "health"
+}
+```
+
+### Error Tests
+
+Verify proper error handling:
+
+```json
+{
+  "name": "auth_malformed_bearer",
+  "description": "Malformed bearer token returns 401",
+  "endpoint": "/api/auth/validate",
+  "method": "POST",
+  "headers": {"Authorization": "Bearer not.a.valid.jwt"},
+  "expected_status": [401]
+}
+```
+
+### Integration Tests
+
+Cross-service communication:
+
+```json
+{
+  "name": "gateway_auth_validation",
+  "description": "Gateway validates tokens with auth service",
+  "targets": ["gateway", "auth"]
+}
+```
+
+### Golden Path Tests
+
+Critical business flows with multiple steps:
+
+```json
+{
+  "name": "auth_flow",
+  "description": "Complete authentication flow through gateway",
+  "critical": true,
+  "steps": [
+    "obtain_token",
+    "validate_at_gateway",
+    "access_protected_resource"
+  ]
+}
+```
+
+### E2E Tests
+
+Browser-based UI testing with Playwright:
+
+```json
+{
+  "name": "login_page_renders",
+  "description": "Verify login page loads with OAuth providers",
+  "base_url": "http://gateway:5000",
+  "critical": true,
+  "steps": [
+    {"action": "navigate", "value": "/app/login"},
+    {"action": "wait_time", "value": "3000"},
+    {"action": "screenshot", "screenshot_name": "login-page"},
+    {"action": "assert_text", "selector": "h2", "value": "Sign in"},
+    {"action": "assert_visible", "selector": ".provider-grid"},
+    {"action": "screenshot", "screenshot_name": "login-verified"}
+  ]
+}
+```
+
+#### E2E Step Actions
+
+| Action | Description | Parameters |
+|--------|-------------|------------|
+| `navigate` | Go to URL | `value`: path or URL |
+| `click` | Click element | `selector`: CSS selector |
+| `fill` | Fill input field | `selector`, `value` |
+| `type` | Type text character by character | `selector`, `value` |
+| `wait` | Wait for element | `selector`: CSS selector |
+| `wait_time` | Wait fixed time | `value`: milliseconds |
+| `assert_visible` | Assert element visible | `selector`: CSS selector |
+| `assert_text` | Assert text content | `selector`, `value` |
+| `assert_url` | Assert URL contains | `value`: expected substring |
+| `screenshot` | Capture screenshot | `screenshot_name` |
+
+## Event Publishing
+
+Test results are published as CloudEvents:
+
+| Event Type | Description |
+|------------|-------------|
+| `hellarch.test.passed.v1` | Test passed |
+| `hellarch.test.failed.v1` | Test failed |
+| `hellarch.test.error.v1` | Test execution error |
+| `hellarch.test.run_completed.v1` | Test run summary |
+| `hellarch.test.golden_path_failed.v1` | Critical golden path failure |
+| `hellarch.test.e2e.passed.v1` | E2E test passed |
+| `hellarch.test.e2e.failed.v1` | E2E test failed |
+| `hellarch.test.e2e.critical_failed.v1` | Critical E2E failure |
+
+Events are sent to the Events service and appear in audit logs.
+
+## Screenshots
+
+E2E tests can capture screenshots at any step. Screenshots are:
+1. Captured by Playwright
+2. Uploaded to Files service
+3. Referenced in test results
+4. Viewable in Admin UI
+
+## Service Status
+
+Check testing service status:
 
 ```bash
-# All tests
-uv run pytest
-
-# Specific test file
-uv run pytest api/test_auth.py
-
-# Specific test class
-uv run pytest api/test_auth.py::TestHealthEndpoint
-
-# Specific test method
-uv run pytest api/test_auth.py::TestValidateEndpoint::test_validate_with_valid_bearer_token
-
-# Parallel execution
-uv run pytest -n auto
-
-# Verbose output
-uv run pytest -v
-
-# With coverage
-uv run pytest --cov --cov-report=term-missing --cov-report=html
-
-# Run tests by marker
-uv run pytest -m smoke
-uv run pytest -m "auth and not slow"
+curl http://localhost:5007/status
 ```
 
-## Test Markers
-
-Tests can be tagged with markers for selective execution:
-
-| Marker | Description |
-|--------|-------------|
-| `@pytest.mark.smoke` | Quick sanity checks |
-| `@pytest.mark.slow` | Long-running tests |
-| `@pytest.mark.integration` | Cross-service tests |
-| `@pytest.mark.e2e` | End-to-end flow tests |
-| `@pytest.mark.auth` | Auth service tests |
-| `@pytest.mark.user` | User service tests |
-| `@pytest.mark.admin` | Admin functionality tests |
-
-Example usage:
-
-```python
-import pytest
-
-@pytest.mark.smoke
-@pytest.mark.auth
-class TestHealthEndpoint:
-    async def test_health_returns_healthy(self, http_client, base_urls):
-        response = await http_client.get(f"{base_urls['auth']}/auth/health")
-        assert response.status_code == 200
+```json
+{
+  "service": "testing",
+  "status": "ready",
+  "running_tests": {},
+  "config_loaded": true,
+  "smoke_tests": 6,
+  "contract_tests": 8,
+  "error_tests": 12,
+  "integration_tests": 4,
+  "golden_tests": 4,
+  "e2e_tests": 1
+}
 ```
 
-## Coverage
+## Admin UI
 
-Coverage is configured in `pyproject.toml`:
+The Tests page in Admin console provides:
 
-```toml
-[tool.coverage.run]
-source = ["api", "integration", "e2e"]
-branch = true
+- **Test Triggers**: Buttons to run each test category
+- **Service Status**: Current testing service state
+- **Results Table**: Paginated test results with filtering
+- **Live Updates**: Real-time result streaming via SignalR
+- **Screenshot Viewing**: View E2E screenshots inline
 
-[tool.coverage.report]
-show_missing = true
-precision = 2
-```
+### Filtering Results
 
-Run with coverage:
-
-```bash
-mise run test:cov
-# HTML report generated at tests/coverage_html/index.html
-```
-
-## Test Structure
-
-```
-tests/
-├── pyproject.toml       # Dependencies + pytest + coverage config
-├── conftest.py          # Global fixtures + plugin registration
-├── fixtures/
-│   ├── auth.py          # User/session factories with cleanup
-│   ├── db.py            # Database connections + cleanup
-│   ├── user.py          # User profile/preferences factories
-│   ├── redis.py         # Redis fixtures for cache testing
-│   ├── rabbitmq.py      # RabbitMQ fixtures for event testing
-│   ├── oauth_mocks.py   # OAuth provider mocks (Discord, Google, GitHub)
-│   ├── assertions.py    # Custom assertion helpers
-│   └── builders.py      # Test data builders with Faker
-├── api/                 # API endpoint tests
-│   ├── test_auth.py     # Auth service endpoints
-│   ├── test_admin.py    # Admin API endpoints
-│   └── test_user.py     # User service endpoints
-├── integration/         # Cross-service integration tests
-└── e2e/                 # End-to-end flow tests
-```
-
-## Test Coverage
-
-### Auth Service (`api/test_auth.py`)
-
-| Class | Tests |
-|-------|-------|
-| `TestHealthEndpoint` | Health check returns healthy |
-| `TestValidateEndpoint` | Session token, bearer token, invalid token, no token |
-| `TestRefreshEndpoint` | Valid refresh, invalid refresh, expired token |
-| `TestMeEndpoint` | Valid session, session cookie, no session, invalid session |
-
-### Admin API (`api/test_admin.py`)
-
-| Class | Tests |
-|-------|-------|
-| `TestAdminUserEndpoints` | Get user includes permissions and is_active |
-| `TestPermissionManagement` | Get/set/grant/revoke permissions, user not found |
-| `TestUserActivation` | Deactivate/activate user, deactivate invalidates sessions |
-| `TestDeactivatedUserAuthFlow` | Deactivated user session fails, refresh fails |
-| `TestPermissionsInAuthResponse` | Validate includes permissions and is_active |
-
-### User Service (`api/test_user.py`)
-
-| Class | Tests |
-|-------|-------|
-| `TestHealthEndpoint` | Health check returns healthy |
-| `TestGetProfileEndpoint` | Profile not found |
-| `TestCreateProfileEndpoint` | Create profile, invalid body |
-| `TestUpdateProfileEndpoint` | Update not found |
-| `TestGetPreferencesEndpoint` | Preferences not found |
-| `TestMeEndpoint` | Without user ID header, invalid user ID |
-
-## Fixtures
-
-### HTTP Client
-
-```python
-@pytest.fixture
-async def http_client() -> httpx.AsyncClient:
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        yield client
-```
-
-### Base URLs
-
-```python
-@pytest.fixture(scope="session")
-def base_urls() -> dict[str, str]:
-    return {
-        "gateway": os.getenv("GATEWAY_URL", "http://localhost:5000"),
-        "auth": os.getenv("AUTH_URL", "http://localhost:5001"),
-        "user": os.getenv("USER_URL", "http://localhost:5002"),
-        "admin": os.getenv("ADMIN_URL", "http://localhost:5003"),
-        "events": os.getenv("EVENTS_URL", "http://localhost:5005"),
-        "files": os.getenv("FILES_URL", "http://localhost:5006"),
-        "identity": os.getenv("IDENTITY_URL", "http://localhost:5010"),
-    }
-```
-
-### JWT Token Creation
-
-```python
-@pytest.fixture
-def create_access_token(jwt_keys: tuple[str, str]):
-    private_key, _ = jwt_keys
-
-    def _create(
-        user_id: str,
-        email: str = "test@example.com",
-        username: str = "testuser",
-        expires_in: timedelta = timedelta(hours=1),
-    ) -> str:
-        claims = {
-            "iss": "hellarch-auth",
-            "sub": user_id,
-            "exp": datetime.now(timezone.utc) + expires_in,
-            "uid": user_id,
-            "email": email,
-            "username": username,
-        }
-        return jwt.encode(claims, private_key, algorithm="RS256")
-
-    return _create
-```
-
-### Test User Factory
-
-Creates a user with a linked OAuth account:
-
-```python
-@pytest_asyncio.fixture
-async def test_user_factory() -> Callable[..., AuthUser]:
-    created_users: list[str] = []
-
-    async def _create(
-        email: str = "test@example.com",
-        username: str = "testuser",
-    ) -> AuthUser:
-        async with auth_db_connection() as conn:
-            # Creates user + linked_account records
-            user = await create_test_user(conn, email, username)
-            created_users.append(user.id)
-            await conn.commit()
-            return user
-
-    yield _create
-
-    # Cleanup (CASCADE deletes linked_accounts, sessions)
-    async with auth_db_connection() as conn:
-        for user_id in created_users:
-            await conn.execute("DELETE FROM users WHERE id = %s", (user_id,))
-        await conn.commit()
-```
-
-### Database Connections
-
-```python
-@asynccontextmanager
-async def auth_db_connection() -> AsyncGenerator[psycopg.AsyncConnection, None]:
-    async with await psycopg.AsyncConnection.connect(get_auth_db_url()) as conn:
-        yield conn
-```
-
-### Session Factory
-
-Creates sessions for existing users with automatic cleanup:
-
-```python
-@pytest_asyncio.fixture
-async def test_session_factory() -> Callable:
-    created_sessions: list[str] = []
-
-    async def _create(user_id: str) -> AuthSession:
-        async with auth_db_connection() as conn:
-            session = await create_test_session(conn, user_id)
-            created_sessions.append(session.id)
-            await conn.commit()
-            return session
-
-    yield _create
-
-    # Cleanup
-    async with auth_db_connection() as conn:
-        for session_id in created_sessions:
-            await conn.execute("DELETE FROM sessions WHERE id = %s", (session_id,))
-        await conn.commit()
-```
-
-### OAuth Provider Mocks
-
-Mock OAuth token exchange and user info endpoints:
-
-```python
-@pytest.fixture
-def mock_discord_oauth() -> Generator[tuple[respx.MockRouter, MockOAuthUser], None, None]:
-    user = MockOAuthUser(
-        id="123456789",
-        email="testuser@example.com",
-        username="TestUser",
-        avatar_url="https://cdn.discordapp.com/avatars/123456789/abc123.png",
-    )
-
-    with respx.mock(assert_all_called=False) as mock:
-        # Mock token exchange
-        mock.post("https://discord.com/api/oauth2/token").respond(
-            json={
-                "access_token": "mock_discord_access_token",
-                "token_type": "Bearer",
-                "expires_in": 604800,
-            }
-        )
-
-        # Mock user info
-        mock.get("https://discord.com/api/users/@me").respond(
-            json={
-                "id": user.id,
-                "username": user.username,
-                "email": user.email,
-            }
-        )
-
-        yield mock, user
-```
-
-Available mocks: `mock_discord_oauth`, `mock_google_oauth`, `mock_github_oauth`
-
-### Redis Fixtures
-
-Redis fixtures for cache and session testing:
-
-```python
-from fixtures.redis import redis_client, redis_helper, RedisTestHelper
-
-class TestCaching:
-    async def test_session_caching(
-        self,
-        redis_helper: RedisTestHelper,
-    ):
-        # Set a session
-        await redis_helper.set_session("session-123", "user-456", ttl=3600)
-
-        # Retrieve it
-        user_id = await redis_helper.get_session("session-123")
-        assert user_id == "user-456"
-
-    async def test_rate_limiting(
-        self,
-        redis_helper: RedisTestHelper,
-    ):
-        # Increment rate limit
-        count = await redis_helper.increment_rate_limit("api:user:123", window=60)
-        assert count == 1
-```
-
-### RabbitMQ Fixtures
-
-RabbitMQ fixtures for event testing with CloudEvents support:
-
-```python
-from fixtures.rabbitmq import mq_helper, RabbitMQTestHelper, CloudEvent, create_user_created_event
-
-class TestEventPublishing:
-    async def test_user_created_event(
-        self,
-        mq_helper: RabbitMQTestHelper,
-    ):
-        # Setup exchange and queue
-        await mq_helper.declare_exchange("events", "topic")
-        await mq_helper.declare_queue("test-queue")
-        await mq_helper.bind_queue("test-queue", "events", "auth.user.*")
-
-        # Publish event
-        event = create_user_created_event(
-            user_id="123",
-            email="test@example.com",
-            username="testuser",
-        )
-        await mq_helper.publish_cloud_event("events", "auth.user.created", event)
-
-        # Consume and verify
-        msg = await mq_helper.consume_one("test-queue")
-        assert msg is not None
-        assert msg.cloud_event.type == "auth.user.created"
-```
-
-### User Profile Fixtures
-
-```python
-from fixtures.user import test_profile_factory, test_preferences_factory, UserProfile
-
-class TestUserProfile:
-    async def test_profile_creation(
-        self,
-        test_user: AuthUser,
-        test_profile_factory,
-    ):
-        profile = await test_profile_factory(
-            auth_user_id=test_user.id,
-            email=test_user.email,
-            display_name="Test User",
-        )
-        assert profile.auth_user_id == test_user.id
-```
-
-### Custom Assertions
-
-Fluent assertion helpers for cleaner tests:
-
-```python
-from fixtures.assertions import assert_response, assert_status, assert_response_model
-from pydantic import BaseModel
-
-class UserResponse(BaseModel):
-    id: str
-    email: str
-
-class TestWithAssertions:
-    async def test_fluent_assertions(self, http_client, base_urls, test_user):
-        response = await http_client.get(f"{base_urls['auth']}/auth/me")
-
-        # Fluent style
-        assert_response(response).status(200).has_keys("user_id", "email")
-
-        # Model validation
-        user = assert_response(response).matches(UserResponse)
-        assert user.id == test_user.id
-
-    async def test_error_assertions(self, http_client, base_urls):
-        response = await http_client.get(f"{base_urls['auth']}/auth/me")
-
-        assert_response(response).status(401).is_error("no session token")
-```
-
-### Test Data Builders
-
-Fluent builders for creating test data:
-
-```python
-from fixtures.builders import user, session, profile, preferences
-
-class TestWithBuilders:
-    async def test_user_builder(self, test_user_factory):
-        # Build user data
-        user_data = (
-            user()
-            .with_email("admin@example.com")
-            .with_username("admin")
-            .with_provider("discord")
-            .admin()
-            .build()
-        )
-
-        # Use with factory
-        created_user = await test_user_factory(
-            email=user_data.email,
-            username=user_data.username,
-        )
-
-    async def test_profile_builder(self, test_profile_factory, test_user):
-        # Build profile request
-        profile_data = (
-            profile()
-            .for_auth_user(test_user.id)
-            .with_display_name("John Doe")
-            .with_bio("Software developer")
-            .build()
-        )
-
-        # Create profile
-        await test_profile_factory(**profile_data.__dict__)
-
-    async def test_session_builder(self):
-        # Build expired session
-        session_data = (
-            session()
-            .for_user("user-123")
-            .expired()
-            .with_ip("192.168.1.1")
-            .build()
-        )
-        assert session_data.expires_at < datetime.now(timezone.utc)
-```
-
-## Example Tests
-
-### Health Check
-
-```python
-class TestHealthEndpoint:
-    async def test_health_returns_healthy(
-        self,
-        http_client: httpx.AsyncClient,
-        base_urls: dict[str, str],
-    ):
-        response = await http_client.get(f"{base_urls['auth']}/auth/health")
-
-        assert response.status_code == 200
-        assert response.json() == {"status": "healthy"}
-```
-
-### Token Validation
-
-```python
-class TestValidateEndpoint:
-    async def test_validate_with_valid_bearer_token(
-        self,
-        http_client: httpx.AsyncClient,
-        base_urls: dict[str, str],
-        test_user: AuthUser,
-        create_access_token: Callable[..., str],
-    ):
-        token = create_access_token(
-            user_id=test_user.id,
-            email=test_user.email,
-            username=test_user.username,
-        )
-
-        response = await http_client.post(
-            f"{base_urls['auth']}/auth/validate",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.json()["valid"] is True
-```
-
-### Session Authentication
-
-```python
-class TestMeEndpoint:
-    async def test_me_with_session_cookie(
-        self,
-        http_client: httpx.AsyncClient,
-        base_urls: dict[str, str],
-        test_session: AuthSession,
-    ):
-        response = await http_client.get(
-            f"{base_urls['auth']}/auth/me",
-            cookies={"hellarch_session": test_session.token},
-        )
-
-        assert response.status_code == 200
-        assert response.json()["user_id"] == test_session.user_id
-```
-
-### Permission Management
-
-```python
-class TestPermissionManagement:
-    async def test_grant_permission(
-        self,
-        http_client: httpx.AsyncClient,
-        base_urls: dict[str, str],
-        test_user: AuthUser,
-    ):
-        # Grant permission
-        response = await http_client.post(
-            f"{base_urls['auth']}/auth/admin/users/{test_user.id}/permissions/grant",
-            json={"permission": "admin.users.write"},
-        )
-        assert response.status_code == 204
-
-        # Verify it was granted
-        get_response = await http_client.get(
-            f"{base_urls['auth']}/auth/admin/users/{test_user.id}/permissions",
-        )
-        assert get_response.json()["permissions"]["admin.users.write"] is True
-```
-
-### User Deactivation Flow
-
-```python
-class TestUserActivation:
-    async def test_deactivate_invalidates_sessions(
-        self,
-        http_client: httpx.AsyncClient,
-        base_urls: dict[str, str],
-        test_user: AuthUser,
-        test_session_factory: Callable,
-    ):
-        # Create session for user
-        session = await test_session_factory(test_user.id)
-
-        # Verify session is valid
-        validate_response = await http_client.post(
-            f"{base_urls['auth']}/auth/validate",
-            headers={"X-Session-Token": session.token},
-        )
-        assert validate_response.status_code == 200
-
-        # Deactivate user
-        await http_client.post(
-            f"{base_urls['auth']}/auth/admin/users/{test_user.id}/deactivate",
-        )
-
-        # Session should now be invalid
-        validate_response = await http_client.post(
-            f"{base_urls['auth']}/auth/validate",
-            headers={"X-Session-Token": session.token},
-        )
-        assert validate_response.status_code == 401
-```
-
-## Test Data Flow
-
-```mermaid
-sequenceDiagram
-    participant Test as Test Method
-    participant Fix as Fixtures
-    participant DB as Auth DB
-    participant API as Auth Service
-
-    Test->>Fix: Request test_user
-    Fix->>DB: INSERT users + linked_accounts
-    DB-->>Fix: User created
-    Fix-->>Test: AuthUser
-
-    Test->>Fix: Request test_session_factory
-    Fix-->>Test: Factory function
-
-    Test->>Fix: Call factory(user.id)
-    Fix->>DB: INSERT sessions
-    DB-->>Fix: Session created
-    Fix-->>Test: AuthSession
-
-    Test->>API: POST /auth/validate
-    API->>DB: Query session
-    DB-->>API: Session data
-    API-->>Test: 200 OK
-
-    Note over Fix: After test completes
-    Fix->>DB: DELETE sessions
-    Fix->>DB: DELETE users (CASCADE)
-```
+Filter by:
+- **Category**: smoke, contract, errors, integration, golden, e2e
+- **Result**: passed, failed, error
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GATEWAY_URL` | `http://localhost:5000` | Gateway base URL |
-| `AUTH_URL` | `http://localhost:5001` | Auth service URL |
-| `USER_URL` | `http://localhost:5002` | User service URL |
-| `ADMIN_URL` | `http://localhost:5003` | Admin console URL |
-| `EVENTS_URL` | `http://localhost:5005` | Events service URL |
-| `FILES_URL` | `http://localhost:5006` | Files service URL |
-| `IDENTITY_URL` | `http://localhost:5010` | Identity service URL |
-| `AUTH_DATABASE_URL` | `postgres://...localhost:5434/auth_db` | Auth DB connection |
-| `USER_DATABASE_URL` | `postgres://...localhost:5433/user_db` | User DB connection |
-| `DATABASE_URL` | `postgres://...localhost:5435/events_db` | Events DB connection |
-| `FILES_DATABASE_URL` | `postgres://...localhost:5436/files_db` | Files DB connection |
-| `IDENTITY_DATABASE_URL` | `postgres://...localhost:5437/identity_db` | Identity DB connection |
-| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection |
-| `RABBITMQ_URL` | `amqp://hellarch:hellarch@localhost:5672/` | RabbitMQ connection |
+| `PORT` | `5007` | HTTP server port |
+| `TESTING_CONFIG_PATH` | `/config/tests.json` | Test configuration file |
+| `TESTING_EVENTS_URL` | `http://events:5005` | Events service URL |
+| `TESTING_FILES_URL` | `http://files:5006` | Files service URL (screenshot uploads) |
+| `TESTING_CLIENT_ID` | `testing-service` | Service account client ID |
+| `TESTING_CLIENT_SECRET` | - | Service account secret |
+| `TESTING_LOG_LEVEL` | `INFO` | Log level |
+| `OTEL_SERVICE_NAME` | `testing` | OpenTelemetry service name |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | - | OTLP endpoint for tracing |
 
-## Database Cleanup
+## Docker
 
-Tests use fixtures that automatically clean up created data:
+The testing service runs as a Docker container with Playwright's Chromium browser:
 
-```python
-@pytest_asyncio.fixture
-async def clean_auth_db(auth_db: psycopg.AsyncConnection):
-    yield auth_db
-    await conn.execute("TRUNCATE sessions, linked_accounts, users CASCADE")
+```dockerfile
+FROM python:3.12-slim
+
+# Install Playwright browser dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libnss3 libnspr4 libatk1.0-0 ...
+
+# Install Python packages and Playwright browser
+RUN uv pip install --system -e . && \
+    playwright install chromium
 ```
-
-## pytest Configuration
-
-Configured in `pyproject.toml`:
-
-```toml
-[tool.pytest.ini_options]
-asyncio_mode = "auto"                        # No need for @pytest.mark.asyncio
-asyncio_default_fixture_loop_scope = "function"
-testpaths = ["api", "integration", "e2e"]    # Test discovery paths
-```
-
-The `asyncio_mode = "auto"` setting means all `async def` test functions are automatically recognized as async tests.
 
 ## Adding New Tests
 
-1. **Create test file** in appropriate directory:
-   - `api/` - Single service endpoint tests
-   - `integration/` - Cross-service tests
-   - `e2e/` - Full user flow tests
+### Smoke Test
 
-2. **Use existing fixtures** from `conftest.py` and `fixtures/`:
+Add to `tests.json`:
 
-   **Core:**
-   - `http_client` - Async HTTP client
-   - `base_urls` - Service URL dict
-
-   **Auth:**
-   - `test_user` - User with linked account
-   - `test_session` - Session for test_user
-   - `test_user_factory` - Create multiple users
-   - `test_session_factory` - Create sessions for any user
-   - `create_access_token` - Generate JWT access tokens
-   - `create_refresh_token` - Generate JWT refresh tokens
-
-   **User Profiles:**
-   - `test_profile_factory` - Create user profiles
-   - `test_preferences_factory` - Create user preferences
-
-   **Infrastructure:**
-   - `redis_client` - Raw Redis connection
-   - `redis_helper` - Redis test helper with session/cache/rate-limit methods
-   - `mq_channel` - RabbitMQ channel
-   - `mq_helper` - RabbitMQ test helper with publish/consume methods
-
-   **OAuth Mocks:**
-   - `mock_discord_oauth` - Discord OAuth mock
-   - `mock_google_oauth` - Google OAuth mock
-   - `mock_github_oauth` - GitHub OAuth mock
-
-3. **Follow the async class pattern**:
-
-```python
-from fixtures.auth import AuthUser, AuthSession
-
-class TestMyFeature:
-    async def test_success_case(
-        self,
-        http_client: httpx.AsyncClient,
-        base_urls: dict[str, str],
-        test_user: AuthUser,
-    ):
-        response = await http_client.get(
-            f"{base_urls['auth']}/my/endpoint",
-            headers={"X-User-ID": test_user.id},
-        )
-        assert response.status_code == 200
-
-    async def test_error_case(
-        self,
-        http_client: httpx.AsyncClient,
-        base_urls: dict[str, str],
-    ):
-        response = await http_client.get(
-            f"{base_urls['auth']}/my/endpoint",
-        )
-        assert response.status_code == 401
+```json
+{
+  "name": "my_service_health",
+  "description": "My service health check",
+  "target": "my_service"
+}
 ```
 
-4. **Add new fixtures** in `fixtures/` if needed:
-   - Create factory fixtures for reusable data creation
-   - Include cleanup in the fixture teardown
-   - Use `@pytest_asyncio.fixture` for async fixtures
+Add service URL to `services` section.
 
-## CI Integration
+### Contract Test
 
-Tests run against live services. Ensure infrastructure is running:
+1. Define schema in `src/services/testing/src/testing/schemas.py`
+2. Add test to `tests.json`:
 
-```bash
-# Start services
-tilt up
-
-# Wait for services to be ready
-# (Tilt UI shows status at http://localhost:10350)
-
-# Run tests
-mise run test:all
-
-# Or run specific test suite
-mise run test:api
+```json
+{
+  "name": "my_endpoint_schema",
+  "endpoint": "/api/my/endpoint",
+  "method": "GET",
+  "expected_status": [200],
+  "schema_name": "my_schema"
+}
 ```
 
-## Debugging Tips
+### E2E Test
+
+```json
+{
+  "name": "my_ui_flow",
+  "description": "Test my UI flow",
+  "base_url": "http://gateway:5000",
+  "steps": [
+    {"action": "navigate", "value": "/my-page"},
+    {"action": "assert_visible", "selector": ".my-element"},
+    {"action": "screenshot", "screenshot_name": "my-page-loaded"}
+  ]
+}
+```
+
+## Debugging
+
+### View Test Logs
 
 ```bash
-# Run single test with output
-uv run pytest api/test_auth.py::TestValidateEndpoint::test_validate_with_valid_bearer_token -v -s
+docker logs hellarch-testing -f
+```
 
-# Show local variables on failure
-uv run pytest --tb=long
+### Check Recent Results
 
-# Drop into debugger on failure
-uv run pytest --pdb
+```bash
+# Via Events audit logs
+curl "http://localhost:5000/api/events/audit-logs?page_size=10" | jq '.items[] | select(.type | contains("test"))'
+```
 
-# Run tests matching pattern
-uv run pytest -k "validate"
+### Run Specific Category
+
+```bash
+curl -X POST http://localhost:5007/run/smoke
+```
+
+## Test Flow
+
+```mermaid
+sequenceDiagram
+    participant Admin as Admin UI
+    participant API as Testing API
+    participant Runner as Test Runner
+    participant Service as Target Service
+    participant Events as Events Service
+
+    Admin->>API: POST /run/smoke
+    API->>Runner: Start background task
+    API-->>Admin: {"status": "started"}
+
+    loop Each smoke test
+        Runner->>Service: GET /health
+        Service-->>Runner: 200 OK
+        Runner->>Events: Publish test result
+    end
+
+    Runner->>Events: Publish summary
+    Events-->>Admin: Live update (SignalR)
 ```
