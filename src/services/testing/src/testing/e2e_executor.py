@@ -55,7 +55,7 @@ class E2eExecutor:
                 port = f":{parsed.port}" if parsed.port else ""
                 return f"{parsed.scheme}://{ip}{port}{parsed.path or '/'}"
         except socket.gaierror:
-            pass
+            logger.debug("DNS resolution failed, using original URL", url=url)
         return url
 
     async def _get_token(self) -> str | None:

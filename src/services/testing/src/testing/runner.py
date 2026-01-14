@@ -12,7 +12,6 @@ from testing.e2e_executor import E2eExecutor
 from testing.events import TestEventPublisher
 from testing.executor import TestExecutor
 from testing.models import (
-    E2eTestOutcome,
     GoldenPathFailure,
     TestCategory,
     TestOutcome,
