@@ -29,6 +29,7 @@ func (h *HTTPHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/{provider}/callback", h.handleOAuthCallback)
 	mux.HandleFunc("POST /auth/refresh", h.handleRefresh)
 	mux.HandleFunc("POST /auth/validate", h.handleValidate)
+	mux.HandleFunc("POST /auth/token", h.handleServiceToken)
 	mux.HandleFunc("GET /auth/me", h.handleMe)
 	mux.HandleFunc("GET /auth/logout", h.handleLogout)
 	mux.HandleFunc("POST /auth/logout", h.handleLogout)
@@ -284,6 +285,71 @@ func (h *HTTPHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status": status.Healthy,
+	}); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
+}
+
+func (h *HTTPHandler) handleServiceToken(w http.ResponseWriter, r *http.Request) {
+	// Parse form data for client_credentials grant
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	grantType := r.FormValue("grant_type")
+	clientID := r.FormValue("client_id")
+	clientSecret := r.FormValue("client_secret")
+
+	if grantType != "client_credentials" {
+		w.WriteHeader(http.StatusBadRequest)
+		if err := json.NewEncoder(w).Encode(map[string]string{
+			"error":             "unsupported_grant_type",
+			"error_description": "only client_credentials grant is supported",
+		}); err != nil {
+			slog.Error("failed to encode response", "error", err)
+		}
+		return
+	}
+
+	if clientID == "" || clientSecret == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		if err := json.NewEncoder(w).Encode(map[string]string{
+			"error":             "invalid_request",
+			"error_description": "client_id and client_secret are required",
+		}); err != nil {
+			slog.Error("failed to encode response", "error", err)
+		}
+		return
+	}
+
+	// Validate service credentials
+	expectedSecret, ok := h.config.ServiceAccounts[clientID]
+	if !ok || expectedSecret != clientSecret {
+		slog.Warn("invalid service credentials", "client_id", clientID)
+		w.WriteHeader(http.StatusUnauthorized)
+		if err := json.NewEncoder(w).Encode(map[string]string{
+			"error":             "invalid_client",
+			"error_description": "invalid client credentials",
+		}); err != nil {
+			slog.Error("failed to encode response", "error", err)
+		}
+		return
+	}
+
+	// Generate service token
+	accessToken, err := h.auth.GenerateServiceToken(clientID)
+	if err != nil {
+		slog.Error("failed to generate service token", "error", err, "client_id", clientID)
+		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"access_token": accessToken,
+		"token_type":   "Bearer",
+		"expires_in":   3600, // 1 hour
 	}); err != nil {
 		slog.Error("failed to encode response", "error", err)
 	}

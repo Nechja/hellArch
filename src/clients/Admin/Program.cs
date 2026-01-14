@@ -95,8 +95,17 @@ builder.Services.AddHttpClient("HealthService", client =>
     client.Timeout = TimeSpan.FromSeconds(5);
 });
 
+// Testing service
+var testingUrl = Environment.GetEnvironmentVariable("TESTING_SERVICE_URL") ?? "http://testing:5007";
+builder.Services.AddHttpClient("TestingService", client =>
+{
+    client.BaseAddress = new Uri(testingUrl + "/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
 builder.Services.AddScoped<IAuthAdminFacade, AuthAdminFacade>();
 builder.Services.AddScoped<IEventsAdminFacade, EventsAdminFacade>();
+builder.Services.AddScoped<ITestsAdminFacade, TestsAdminFacade>();
 builder.Services.AddScoped<RedisBrowserAdapter>();
 builder.Services.AddScoped<IRabbitMqAdapter, RabbitMqAdapter>();
 builder.Services.AddScoped<IHealthAdapter, HealthAdapter>();

@@ -1,0 +1,297 @@
+{
+  "services": {
+    "gateway": "http://gateway:5000",
+    "auth": "http://auth:5001",
+    "user": "http://user:5002",
+    "events": "http://events:5005",
+    "files": "http://files:5006",
+    "identity": "http://identity:5010"
+  },
+  "schedules": {
+    "smoke": "30s",
+    "contract": "5m",
+    "errors": "5m",
+    "integration": "2m",
+    "golden": "5m",
+    "e2e": "15m"
+  },
+  "tests": {
+    "smoke": [
+      {
+        "name": "auth_health",
+        "description": "Auth service health check",
+        "target": "auth"
+      },
+      {
+        "name": "events_health",
+        "description": "Events service health check",
+        "target": "events"
+      },
+      {
+        "name": "files_health",
+        "description": "Files service health check",
+        "target": "files"
+      },
+      {
+        "name": "gateway_health",
+        "description": "Gateway health check",
+        "target": "gateway"
+      },
+      {
+        "name": "user_health",
+        "description": "User service health check",
+        "target": "user"
+      },
+      {
+        "name": "identity_health",
+        "description": "Identity/OIDC service health check",
+        "target": "identity"
+      }
+    ],
+    "contract": [
+      {
+        "name": "auth_health_schema",
+        "description": "Auth health response matches schema",
+        "endpoint": "/api/auth/health",
+        "method": "GET",
+        "expected_status": [200],
+        "schema_name": "health"
+      },
+      {
+        "name": "auth_validate_invalid_schema",
+        "description": "Auth validate invalid token response matches schema",
+        "endpoint": "/api/auth/validate",
+        "method": "POST",
+        "headers": {"Authorization": "Bearer invalid_token"},
+        "expected_status": [401],
+        "schema_name": "auth_validate"
+      },
+      {
+        "name": "auth_providers_schema",
+        "description": "Auth providers list response matches schema",
+        "endpoint": "/api/auth/providers",
+        "method": "GET",
+        "expected_status": [200],
+        "schema_name": "auth_providers"
+      },
+      {
+        "name": "events_audit_logs_schema",
+        "description": "Audit logs response matches schema",
+        "endpoint": "/api/events/audit-logs",
+        "method": "GET",
+        "expected_status": [200, 401],
+        "schema_name": "audit_logs"
+      },
+      {
+        "name": "events_webhooks_schema",
+        "description": "Webhooks list response matches schema",
+        "endpoint": "/api/events/webhooks",
+        "method": "GET",
+        "expected_status": [200, 401],
+        "schema_name": "webhooks_list"
+      },
+      {
+        "name": "files_list_schema",
+        "description": "Files list response matches schema",
+        "endpoint": "/api/files?owner=service:testing-service",
+        "method": "GET",
+        "expected_status": [200, 401],
+        "schema_name": "files_list"
+      },
+      {
+        "name": "user_health_schema",
+        "description": "User health response matches schema",
+        "endpoint": "/api/user/health",
+        "method": "GET",
+        "expected_status": [200],
+        "schema_name": "user_health"
+      },
+      {
+        "name": "identity_health_schema",
+        "description": "Identity health response matches schema",
+        "endpoint": "/api/identity/health",
+        "method": "GET",
+        "expected_status": [200],
+        "schema_name": "health"
+      }
+    ],
+    "errors": [
+      {
+        "name": "auth_malformed_bearer",
+        "description": "Malformed bearer token returns 401",
+        "endpoint": "/api/auth/validate",
+        "method": "POST",
+        "headers": {"Authorization": "Bearer not.a.valid.jwt"},
+        "expected_status": [401]
+      },
+      {
+        "name": "auth_whitespace_bearer",
+        "description": "Whitespace bearer token returns 401",
+        "endpoint": "/api/auth/validate",
+        "method": "POST",
+        "headers": {"Authorization": "Bearer x"},
+        "expected_status": [401]
+      },
+      {
+        "name": "auth_wrong_algorithm",
+        "description": "HS256 token instead of RS256 returns 401",
+        "endpoint": "/api/auth/validate",
+        "method": "POST",
+        "headers": {"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"},
+        "expected_status": [401]
+      },
+      {
+        "name": "auth_basic_instead_of_bearer",
+        "description": "Basic auth instead of Bearer returns 401",
+        "endpoint": "/api/auth/validate",
+        "method": "POST",
+        "headers": {"Authorization": "Basic dXNlcjpwYXNz"},
+        "expected_status": [401]
+      },
+      {
+        "name": "auth_me_no_session",
+        "description": "Request without session returns 401",
+        "endpoint": "/api/auth/me",
+        "method": "GET",
+        "expected_status": [401]
+      },
+      {
+        "name": "events_publish_missing_type",
+        "description": "CloudEvent missing type returns 400/422",
+        "endpoint": "/api/events/publish",
+        "method": "POST",
+        "body": {"specversion": "1.0", "source": "error-test", "id": "test-id"},
+        "expected_status": [400, 401, 422]
+      },
+      {
+        "name": "events_publish_missing_source",
+        "description": "CloudEvent missing source accepted or rejected",
+        "endpoint": "/api/events/publish",
+        "method": "POST",
+        "body": {"specversion": "1.0", "type": "test.event.v1", "id": "test-id"},
+        "expected_status": [202, 400, 401, 422]
+      },
+      {
+        "name": "files_download_not_found",
+        "description": "Non-existent file returns 404",
+        "endpoint": "/api/files/00000000-0000-0000-0000-000000000000",
+        "method": "GET",
+        "expected_status": [401, 404]
+      },
+      {
+        "name": "files_delete_not_found",
+        "description": "Deleting non-existent file returns error",
+        "endpoint": "/api/files/00000000-0000-0000-0000-000000000000",
+        "method": "DELETE",
+        "expected_status": [401, 404, 500]
+      },
+      {
+        "name": "user_not_found",
+        "description": "Non-existent user returns 404",
+        "endpoint": "/api/user/00000000-0000-0000-0000-000000000000",
+        "method": "GET",
+        "expected_status": [401, 404]
+      },
+      {
+        "name": "webhook_invalid_url",
+        "description": "Invalid webhook URL returns 400",
+        "endpoint": "/api/events/webhooks",
+        "method": "POST",
+        "body": {"name": "test", "url": "not-a-valid-url", "event_types": ["test.v1"]},
+        "expected_status": [400, 401, 422]
+      },
+      {
+        "name": "webhook_missing_name",
+        "description": "Webhook without name returns 400",
+        "endpoint": "/api/events/webhooks",
+        "method": "POST",
+        "body": {"url": "https://example.com/webhook", "event_types": ["test.v1"]},
+        "expected_status": [400, 401, 422]
+      }
+    ],
+    "integration": [
+      {
+        "name": "gateway_auth_validation",
+        "description": "Gateway validates tokens with auth service",
+        "targets": ["gateway", "auth"]
+      },
+      {
+        "name": "file_upload_event",
+        "description": "File upload triggers event emission",
+        "targets": ["files", "events"]
+      },
+      {
+        "name": "auth_user_sync",
+        "description": "Auth service syncs with user service",
+        "targets": ["auth", "user"]
+      },
+      {
+        "name": "events_webhook_delivery",
+        "description": "Events service delivers to webhooks",
+        "targets": ["events"]
+      }
+    ],
+    "golden": [
+      {
+        "name": "auth_flow",
+        "description": "Complete authentication flow through gateway",
+        "critical": true,
+        "steps": [
+          "obtain_token",
+          "validate_at_gateway",
+          "access_protected_resource"
+        ]
+      },
+      {
+        "name": "file_lifecycle",
+        "description": "Complete file upload/download cycle",
+        "critical": true,
+        "steps": [
+          "authenticate",
+          "upload_file",
+          "verify_exists",
+          "download_file",
+          "delete_file"
+        ]
+      },
+      {
+        "name": "event_flow",
+        "description": "Event publish and delivery verification",
+        "critical": true,
+        "steps": [
+          "publish_event",
+          "verify_stored",
+          "verify_delivered"
+        ]
+      },
+      {
+        "name": "webhook_lifecycle",
+        "description": "Create, trigger, and delete webhook",
+        "critical": false,
+        "steps": [
+          "authenticate",
+          "create_webhook",
+          "trigger_webhook",
+          "verify_webhook_logged",
+          "delete_webhook"
+        ]
+      }
+    ],
+    "e2e": [
+      {
+        "name": "login_page_renders",
+        "description": "Verify login page loads with OAuth providers",
+        "base_url": "http://gateway:5000",
+        "critical": true,
+        "steps": [
+          {"action": "navigate", "value": "/app/login"},
+          {"action": "wait_time", "value": "3000"},
+          {"action": "screenshot", "screenshot_name": "login-page"},
+          {"action": "assert_text", "selector": "h2", "value": "Sign in"},
+          {"action": "assert_visible", "selector": ".provider-grid"},
+          {"action": "screenshot", "screenshot_name": "login-verified"}
+        ]
+      }
+    ]
+  }
+}

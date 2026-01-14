@@ -262,6 +262,13 @@ docker_build(
     ],
 )
 
+# Testing service (Python)
+docker_build(
+    'hellarch-testing',
+    'src/services/testing',
+    dockerfile='src/services/testing/Dockerfile',
+)
+
 # Label service resources (DBs now run migrations on startup)
 dc_resource('gateway', labels=['services'], resource_deps=['auth-db', 'redis', 'clients'], links=['http://localhost:5000', 'http://localhost:5000/app'])
 dc_resource('auth', labels=['services'], resource_deps=['auth-db', 'redis', 'rabbitmq'], links=['http://localhost:5001'])
@@ -283,6 +290,9 @@ dc_resource('files', labels=['services'], resource_deps=['files-db', 'minio', 'r
 
 # Identity service (optional - for self-hosted auth)
 dc_resource('identity', labels=['services', 'identity'], resource_deps=['identity-db'], links=['http://localhost:5010'])
+
+# Testing service
+dc_resource('testing', labels=['testing'], resource_deps=['auth', 'events', 'files', 'gateway'])
 
 # Frontend clients (Vue app with Vuetify)
 # Built to src/gateway/Gateway/wwwroot/ - volume mount picks up changes immediately

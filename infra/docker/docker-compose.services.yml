@@ -113,6 +113,7 @@ services:
       - RABBITMQ_USER=${RABBITMQ_USER:-hellarch}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-hellarch}
       - HEALTH_SERVICE_URL=http://health:5004
+      - TESTING_SERVICE_URL=http://testing:5007
       - OTEL_SERVICE_NAME=admin
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
@@ -303,6 +304,32 @@ services:
       - OTEL_SERVICE_NAME=images-worker
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - LOG_LEVEL=debug
+    networks:
+      - hellarch
+    restart: unless-stopped
+
+  testing:
+    build:
+      context: ../../src/services/testing
+      dockerfile: Dockerfile
+    image: hellarch-testing
+    container_name: hellarch-testing
+    ports:
+      - "5007:5007"
+    env_file:
+      - ../../.env
+      - ../../.env.secrets
+    environment:
+      - PORT=5007
+      - TESTING_CONFIG_PATH=/config/tests.json
+      - TESTING_EVENTS_URL=http://events:5005
+      - TESTING_CLIENT_ID=testing-service
+      - TESTING_CLIENT_SECRET=testing-secret
+      - TESTING_LOG_LEVEL=INFO
+      - OTEL_SERVICE_NAME=testing
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    volumes:
+      - ../../infra/config/tests.json:/config/tests.json:ro
     networks:
       - hellarch
     restart: unless-stopped

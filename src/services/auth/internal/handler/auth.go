@@ -278,6 +278,17 @@ func (h *AuthHandler) GetConfiguredProviders() []string {
 	return result
 }
 
+func (h *AuthHandler) GenerateServiceToken(serviceID string) (string, error) {
+	claims := &jwt.Claims{
+		UserID:   "service:" + serviceID,
+		Username: serviceID,
+		Custom: map[string]string{
+			"type": "service",
+		},
+	}
+	return h.jwtService.GenerateAccessToken(claims, time.Hour)
+}
+
 func (h *AuthHandler) IsProviderConfigured(provider oauth.Provider) bool {
 	return h.oauthService.IsProviderConfigured(provider)
 }
