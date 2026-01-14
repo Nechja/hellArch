@@ -6,13 +6,12 @@
 
 <PageTitle>Tests - HellArch Admin</PageTitle>
 
-<PageHeader Title="Integration Tests" />
+<PageHeader Title="Tests" />
 
 @* Test Controls *@
 <MudPaper Class="pa-4 mb-4" Elevation="1">
     <MudGrid>
         <MudItem xs="12" md="8">
-            <MudText Typo="Typo.subtitle2" Class="mb-2">Run Tests</MudText>
             <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small">
                 <MudButton OnClick="@(() => TriggerTests("smoke"))" Disabled="@_triggering" StartIcon="@Icons.Material.Filled.Speed">
                     Smoke
@@ -37,14 +36,10 @@
                 </MudButton>
             </MudButtonGroup>
         </MudItem>
-        <MudItem xs="12" md="4">
-            <MudText Typo="Typo.subtitle2" Class="mb-2">Service Status</MudText>
+        <MudItem xs="12" md="4" Class="d-flex align-center justify-end gap-2">
             @if (_serviceStatus.Status == "ready")
             {
                 <MudChip T="string" Color="Color.Success" Size="Size.Small">Ready</MudChip>
-                <MudText Typo="Typo.caption" Class="d-block mt-1">
-                    @_serviceStatus.SmokeTests smoke / @_serviceStatus.ContractTests contract / @_serviceStatus.ErrorTests errors / @_serviceStatus.IntegrationTests integration / @_serviceStatus.GoldenTests golden / @_serviceStatus.E2eTests e2e
-                </MudText>
             }
             else if (_serviceStatus.Status == "unavailable")
             {
@@ -56,9 +51,9 @@
             }
             @if (_serviceStatus.RunningTests.Count > 0)
             {
-                <MudText Typo="Typo.body2" Color="Color.Warning" Class="mt-2">
+                <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Outlined">
                     Running: @string.Join(", ", _serviceStatus.RunningTests.Keys)
-                </MudText>
+                </MudChip>
             }
         </MudItem>
     </MudGrid>

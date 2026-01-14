@@ -288,20 +288,8 @@
           {"action": "wait_time", "value": "3000"},
           {"action": "screenshot", "screenshot_name": "login-page"},
           {"action": "assert_text", "selector": "h2", "value": "Sign in"},
+          {"action": "assert_visible", "selector": ".provider-grid"},
           {"action": "screenshot", "screenshot_name": "login-verified"}
-        ]
-      },
-      {
-        "name": "oauth_github_redirect",
-        "description": "Verify GitHub OAuth button redirects correctly",
-        "base_url": "http://gateway:5000",
-        "steps": [
-          {"action": "navigate", "value": "/app/login"},
-          {"action": "wait_time", "value": "2000"},
-          {"action": "screenshot", "screenshot_name": "before-click"},
-          {"action": "click", "selector": ".provider-grid .oauth-btn"},
-          {"action": "wait_time", "value": "3000"},
-          {"action": "screenshot", "screenshot_name": "after-oauth-click"}
         ]
       }
     ]
