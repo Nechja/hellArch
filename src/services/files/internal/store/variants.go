@@ -6,17 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/nechja/hellarch/datatypes/files"
 )
 
-type FileVariant struct {
-	ID          string    `json:"id"`
-	FileID      string    `json:"file_id"`
-	VariantType string    `json:"variant_type"`
-	ObjectKey   string    `json:"object_key"`
-	MimeType    string    `json:"mime_type"`
-	SizeBytes   int64     `json:"size_bytes"`
-	CreatedAt   time.Time `json:"created_at"`
-}
+type FileVariant = files.FileVariant
 
 type CreateVariantParams struct {
 	FileID      string
