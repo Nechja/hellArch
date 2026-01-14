@@ -12,6 +12,7 @@ hellArch/
 │   │   ├── files/         # Go Files Service
 │   │   ├── health/        # Gleam Health Service
 │   │   ├── identity/      # F# Identity Service
+│   │   ├── testing/       # Python Testing Service
 │   │   └── user/          # F# User Service
 │   ├── workers/           # Background workers
 │   │   ├── audit/         # Go Audit Worker
@@ -32,10 +33,7 @@ hellArch/
 │   ├── csharp/            # C# shared libraries
 │   ├── fsharp/            # F# shared libraries
 │   └── design/            # Shared design system
-├── tests/                 # pytest test suite
-│   ├── api/               # API tests
-│   ├── integration/       # Integration tests
-│   └── fixtures/          # Test fixtures
+├── docs/                  # VitePress documentation
 ├── infra/
 │   ├── dbs/               # DB containers with migrations
 │   ├── sops/              # SOPS/age encryption keys
@@ -86,6 +84,7 @@ tilt up
 | Health | 5004 | - |
 | Events | 5005 | - |
 | Files | 5006 | - |
+| Testing | 5007 | - |
 | Identity | 5010 | - |
 | PostgreSQL (Auth) | 5434 | - |
 | PostgreSQL (User) | 5433 | - |
