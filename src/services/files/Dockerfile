@@ -5,6 +5,7 @@ WORKDIR /repo
 # Copy go.mod files for dependency resolution
 COPY libs/go/go.mod libs/go/go.sum libs/go/
 COPY libs/cloud_events/go/go.mod libs/cloud_events/go/
+COPY libs/data_types/go/go.mod libs/data_types/go/
 COPY src/services/files/go.mod src/services/files/go.sum src/services/files/
 
 WORKDIR /repo/src/services/files
@@ -15,6 +16,7 @@ WORKDIR /repo
 # Copy source
 COPY libs/go/ libs/go/
 COPY libs/cloud_events/go/ libs/cloud_events/go/
+COPY libs/data_types/go/ libs/data_types/go/
 COPY src/services/files/ src/services/files/
 
 WORKDIR /repo/src/services/files

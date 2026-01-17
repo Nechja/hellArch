@@ -172,6 +172,7 @@ docker_build(
     only=[
         'src/services/events/',
         'libs/go/',
+        'libs/data_types/go/',
         'libs/cloud_events/go/',
     ],
 )
@@ -184,6 +185,7 @@ docker_build(
     only=[
         'src/services/files/',
         'libs/go/',
+        'libs/data_types/go/',
         'libs/cloud_events/go/',
     ],
 )

@@ -45,11 +45,11 @@ type appleIDTokenClaims struct {
 	Email string `json:"email"`
 }
 
-var (
-	appleJWKSCache     *appleJWKS
-	appleJWKSCacheLock sync.RWMutex
-	appleJWKSCacheTime time.Time
-)
+type jwksCache struct {
+	data      *appleJWKS
+	fetchedAt time.Time
+	mu        sync.RWMutex
+}
 
 func (s *Service) getAppleUserInfo(ctx context.Context, token *oauth2.Token) (*UserInfo, error) {
 	idToken := token.Extra("id_token")
@@ -67,7 +67,7 @@ func (s *Service) getAppleUserInfo(ctx context.Context, token *oauth2.Token) (*U
 		return nil, fmt.Errorf("apple not configured")
 	}
 
-	claims, err := verifyAppleIDToken(ctx, idTokenStr, cfg.ClientID)
+	claims, err := s.verifyAppleIDToken(ctx, idTokenStr, cfg.ClientID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify id_token: %w", err)
 	}
@@ -86,8 +86,8 @@ func (s *Service) getAppleUserInfo(ctx context.Context, token *oauth2.Token) (*U
 	}, nil
 }
 
-func verifyAppleIDToken(ctx context.Context, idToken, clientID string) (*appleIDTokenClaims, error) {
-	jwks, err := getAppleJWKS(ctx)
+func (s *Service) verifyAppleIDToken(ctx context.Context, idToken, clientID string) (*appleIDTokenClaims, error) {
+	jwks, err := s.getAppleJWKS(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch JWKS: %w", err)
 	}
@@ -134,19 +134,19 @@ func containsAudience(audiences jwt.ClaimStrings, clientID string) bool {
 	return false
 }
 
-func getAppleJWKS(ctx context.Context) (*appleJWKS, error) {
-	appleJWKSCacheLock.RLock()
-	if appleJWKSCache != nil && time.Since(appleJWKSCacheTime) < time.Hour {
-		defer appleJWKSCacheLock.RUnlock()
-		return appleJWKSCache, nil
+func (s *Service) getAppleJWKS(ctx context.Context) (*appleJWKS, error) {
+	s.appleJWKSCache.mu.RLock()
+	if s.appleJWKSCache.data != nil && time.Since(s.appleJWKSCache.fetchedAt) < time.Hour {
+		defer s.appleJWKSCache.mu.RUnlock()
+		return s.appleJWKSCache.data, nil
 	}
-	appleJWKSCacheLock.RUnlock()
+	s.appleJWKSCache.mu.RUnlock()
 
-	appleJWKSCacheLock.Lock()
-	defer appleJWKSCacheLock.Unlock()
+	s.appleJWKSCache.mu.Lock()
+	defer s.appleJWKSCache.mu.Unlock()
 
-	if appleJWKSCache != nil && time.Since(appleJWKSCacheTime) < time.Hour {
-		return appleJWKSCache, nil
+	if s.appleJWKSCache.data != nil && time.Since(s.appleJWKSCache.fetchedAt) < time.Hour {
+		return s.appleJWKSCache.data, nil
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, appleJWKSURL, nil)
@@ -154,7 +154,7 @@ func getAppleJWKS(ctx context.Context) (*appleJWKS, error) {
 		return nil, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -169,8 +169,8 @@ func getAppleJWKS(ctx context.Context) (*appleJWKS, error) {
 		return nil, err
 	}
 
-	appleJWKSCache = &jwks
-	appleJWKSCacheTime = time.Now()
+	s.appleJWKSCache.data = &jwks
+	s.appleJWKSCache.fetchedAt = time.Now()
 	return &jwks, nil
 }
 

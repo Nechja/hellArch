@@ -2,31 +2,20 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/nechja/hellarch/datatypes/events"
 )
 
-type WebhookDelivery struct {
-	ID           string          `json:"id"`
-	WebhookID    string          `json:"webhook_id"`
-	EventID      string          `json:"event_id"`
-	EventType    string          `json:"event_type"`
-	Payload      json.RawMessage `json:"payload,omitempty"`
-	StatusCode   int             `json:"status_code"`
-	ResponseBody *string         `json:"response_body,omitempty"`
-	Success      bool            `json:"success"`
-	Attempt      int             `json:"attempt"`
-	CreatedAt    time.Time       `json:"created_at"`
-}
+type WebhookDelivery = events.WebhookDelivery
 
 type CreateDeliveryParams struct {
 	WebhookID    string
 	EventID      string
 	EventType    string
-	Payload      json.RawMessage
+	Payload      *string
 	StatusCode   int
 	ResponseBody *string
 	Success      bool

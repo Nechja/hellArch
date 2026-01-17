@@ -30,7 +30,7 @@ type Config struct {
 	ExcludeServices   []string
 }
 
-func New(orch orchestrator.Orchestrator, cfg Config) *Handlers {
+func New(orch orchestrator.Orchestrator, logger *slog.Logger, cfg Config) *Handlers {
 	exclude := make(map[string]bool)
 	for _, svc := range cfg.ExcludeServices {
 		exclude[svc] = true
@@ -40,9 +40,13 @@ func New(orch orchestrator.Orchestrator, cfg Config) *Handlers {
 	exclude["infra-worker"] = true
 	exclude["health"] = true
 
+	if logger == nil {
+		logger = slog.Default()
+	}
+
 	return &Handlers{
 		orch:            orch,
-		logger:          slog.Default().With("component", "handlers"),
+		logger:          logger.With("component", "handlers"),
 		cooldown:        time.Duration(cfg.CooldownSeconds) * time.Second,
 		maxRestarts:     cfg.MaxRestarts,
 		restartWindow:   time.Duration(cfg.RestartWindowSecs) * time.Second,

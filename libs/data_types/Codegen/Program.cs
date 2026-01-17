@@ -202,7 +202,8 @@ string CSharpToGo(string type, bool nullable)
         var innerType = type.Substring(type.IndexOf('<') + 1).TrimEnd('>');
 #pragma warning restore CA1865, CA1307
         var goInner = CSharpToGo(innerType, false);
-        return $"[]*{goInner}";
+        var isPrimitive = innerType is "string" or "int" or "long" or "bool" or "Guid" or "DateTime" or "DateTimeOffset";
+        return isPrimitive ? $"[]{goInner}" : $"[]*{goInner}";
     }
 
     // Handle Dictionary<K, V> -> map[K]V

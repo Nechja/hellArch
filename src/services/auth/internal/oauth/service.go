@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 
 	"github.com/nechja/hellarch/auth/internal/config"
 	"golang.org/x/oauth2"
@@ -31,13 +32,25 @@ type UserInfo struct {
 	Provider  Provider
 }
 
-type Service struct {
-	configs         map[Provider]*oauth2.Config
-	appleConfig     *config.AppleConfig
-	hellarchBaseURL string
+type UserInfoFetcher func(ctx context.Context, token *oauth2.Token) (*UserInfo, error)
+
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
 }
 
-func NewService(cfg config.OAuthConfig) *Service {
+type Service struct {
+	configs          map[Provider]*oauth2.Config
+	userInfoFetchers map[Provider]UserInfoFetcher
+	appleConfig      *config.AppleConfig
+	hellarchBaseURL  string
+	httpClient       HTTPClient
+	appleJWKSCache   *jwksCache
+}
+
+func NewService(cfg config.OAuthConfig, httpClient HTTPClient) *Service {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
 	configs := make(map[Provider]*oauth2.Config)
 
 	if cfg.Discord.ClientID != "" {
@@ -139,11 +152,24 @@ func NewService(cfg config.OAuthConfig) *Service {
 		}
 	}
 
-	return &Service{
-		configs:         configs,
-		appleConfig:     appleConfig,
-		hellarchBaseURL: hellarchBaseURL,
+	svc := &Service{
+		configs:          configs,
+		userInfoFetchers: make(map[Provider]UserInfoFetcher),
+		appleConfig:      appleConfig,
+		hellarchBaseURL:  hellarchBaseURL,
+		httpClient:       httpClient,
+		appleJWKSCache:   &jwksCache{},
 	}
+
+	svc.userInfoFetchers[ProviderDiscord] = svc.getDiscordUserInfo
+	svc.userInfoFetchers[ProviderGoogle] = svc.getGoogleUserInfo
+	svc.userInfoFetchers[ProviderGitHub] = svc.getGitHubUserInfo
+	svc.userInfoFetchers[ProviderApple] = svc.getAppleUserInfo
+	svc.userInfoFetchers[ProviderMicrosoft] = svc.getMicrosoftUserInfo
+	svc.userInfoFetchers[ProviderTwitch] = svc.getTwitchUserInfo
+	svc.userInfoFetchers[ProviderHellArch] = svc.getHellArchUserInfo
+
+	return svc
 }
 
 // GeneratePKCEVerifier creates a cryptographically random PKCE code verifier
@@ -202,24 +228,11 @@ func (s *Service) Exchange(ctx context.Context, provider Provider, code string, 
 }
 
 func (s *Service) GetUserInfo(ctx context.Context, provider Provider, token *oauth2.Token) (*UserInfo, error) {
-	switch provider {
-	case ProviderDiscord:
-		return s.getDiscordUserInfo(ctx, token)
-	case ProviderGoogle:
-		return s.getGoogleUserInfo(ctx, token)
-	case ProviderGitHub:
-		return s.getGitHubUserInfo(ctx, token)
-	case ProviderApple:
-		return s.getAppleUserInfo(ctx, token)
-	case ProviderMicrosoft:
-		return s.getMicrosoftUserInfo(ctx, token)
-	case ProviderTwitch:
-		return s.getTwitchUserInfo(ctx, token)
-	case ProviderHellArch:
-		return s.getHellArchUserInfo(ctx, token)
-	default:
+	fetcher, ok := s.userInfoFetchers[provider]
+	if !ok {
 		return nil, fmt.Errorf("unsupported provider: %s", provider)
 	}
+	return fetcher(ctx, token)
 }
 
 func (s *Service) IsProviderConfigured(provider Provider) bool {

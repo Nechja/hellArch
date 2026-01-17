@@ -3,22 +3,31 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// KubernetesPodClient defines the K8s pod operations we need (for testability)
+type KubernetesPodClient interface {
+	List(ctx context.Context, opts metav1.ListOptions) (*corev1.PodList, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+}
+
 type KubernetesOrchestrator struct {
-	clientset *kubernetes.Clientset
+	podClient KubernetesPodClient
 	namespace string
 	logger    *slog.Logger
 }
 
-func NewKubernetesOrchestrator() (*KubernetesOrchestrator, error) {
+// NewKubernetesClient creates a real K8s clientset from environment/in-cluster config
+func NewKubernetesClient() (*kubernetes.Clientset, string, error) {
 	var config *rest.Config
 	var err error
 
@@ -31,13 +40,13 @@ func NewKubernetesOrchestrator() (*KubernetesOrchestrator, error) {
 		}
 		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create kubernetes config: %w", err)
+			return nil, "", fmt.Errorf("failed to create kubernetes config: %w", err)
 		}
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create kubernetes clientset: %w", err)
+		return nil, "", fmt.Errorf("failed to create kubernetes clientset: %w", err)
 	}
 
 	namespace := os.Getenv("KUBERNETES_NAMESPACE")
@@ -45,11 +54,21 @@ func NewKubernetesOrchestrator() (*KubernetesOrchestrator, error) {
 		namespace = "hellarch"
 	}
 
+	return clientset, namespace, nil
+}
+
+func NewKubernetesOrchestrator(podClient KubernetesPodClient, namespace string, logger *slog.Logger) *KubernetesOrchestrator {
+	if logger == nil {
+		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
+	if namespace == "" {
+		namespace = "hellarch"
+	}
 	return &KubernetesOrchestrator{
-		clientset: clientset,
+		podClient: podClient,
 		namespace: namespace,
-		logger:    slog.Default().With("orchestrator", "kubernetes"),
-	}, nil
+		logger:    logger.With("orchestrator", "kubernetes"),
+	}
 }
 
 func (k *KubernetesOrchestrator) RestartService(ctx context.Context, serviceName string) error {
@@ -57,7 +76,7 @@ func (k *KubernetesOrchestrator) RestartService(ctx context.Context, serviceName
 
 	k.logger.Info("deleting pods to trigger restart", "service", serviceName, "namespace", k.namespace)
 
-	pods, err := k.clientset.CoreV1().Pods(k.namespace).List(ctx, metav1.ListOptions{
+	pods, err := k.podClient.List(ctx, metav1.ListOptions{
 		LabelSelector: labelSelector,
 	})
 	if err != nil {
@@ -71,7 +90,7 @@ func (k *KubernetesOrchestrator) RestartService(ctx context.Context, serviceName
 
 	for _, pod := range pods.Items {
 		k.logger.Info("deleting pod", "pod", pod.Name)
-		err := k.clientset.CoreV1().Pods(k.namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
+		err := k.podClient.Delete(ctx, pod.Name, metav1.DeleteOptions{})
 		if err != nil {
 			k.logger.Error("failed to delete pod", "pod", pod.Name, "error", err)
 		}

@@ -14,7 +14,7 @@ type googleUser struct {
 }
 
 func (s *Service) getGoogleUserInfo(ctx context.Context, token *oauth2.Token) (*UserInfo, error) {
-	data, err := fetchUserData[googleUser](ctx, token, "https://www.googleapis.com/oauth2/v2/userinfo", nil)
+	data, err := fetchUserData[googleUser](ctx, s.httpClient, token, "https://www.googleapis.com/oauth2/v2/userinfo", nil)
 	if err != nil {
 		return nil, err
 	}

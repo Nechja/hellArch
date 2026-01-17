@@ -11,6 +11,12 @@ const (
 	// - SESSION_DURATION_HOURS (default: 24)
 )
 
+type OAuthURLResult struct {
+	AuthURL   string
+	State     string
+	CSRFToken string
+}
+
 type AuthResult struct {
 	AccessToken  string
 	RefreshToken string
@@ -27,4 +33,11 @@ type UserInfo struct {
 	Username  string
 	AvatarURL string
 	Provider  string
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

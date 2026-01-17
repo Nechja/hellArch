@@ -10,7 +10,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func fetchUserData[T any](ctx context.Context, token *oauth2.Token, url string, headers map[string]string) (*T, error) {
+func fetchUserData[T any](ctx context.Context, client HTTPClient, token *oauth2.Token, url string, headers map[string]string) (*T, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -20,7 +20,7 @@ func fetchUserData[T any](ctx context.Context, token *oauth2.Token, url string, 
 		req.Header.Set(k, v)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

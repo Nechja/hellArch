@@ -70,15 +70,19 @@ type SlackElement struct {
 	Text string `json:"text"`
 }
 
+type PayloadTransformer func(payload []byte) ([]byte, string, error)
+
+var transformers = map[events.WebhookFormat]PayloadTransformer{
+	events.WebhookFormatDiscord: transformToDiscord,
+	events.WebhookFormatSlack:   transformToSlack,
+}
+
 func TransformPayload(payload []byte, format events.WebhookFormat) ([]byte, string, error) {
-	switch format {
-	case events.WebhookFormatDiscord:
-		return transformToDiscord(payload)
-	case events.WebhookFormatSlack:
-		return transformToSlack(payload)
-	default:
+	transformer, ok := transformers[format]
+	if !ok {
 		return payload, "application/cloudevents+json", nil
 	}
+	return transformer(payload)
 }
 
 func transformToDiscord(payload []byte) ([]byte, string, error) {

@@ -23,6 +23,7 @@ type Config struct {
 	SecureCookies       bool
 	MaxSessionsPerUser  int
 	SessionDuration     time.Duration
+	OAuthStateTTL       time.Duration
 }
 
 type OAuthConfig struct {
@@ -72,6 +73,7 @@ func Load() (*Config, error) {
 		SecureCookies:       sharedconfig.GetEnvBool("SECURE_COOKIES", false),
 		MaxSessionsPerUser:  sharedconfig.GetEnvInt("MAX_SESSIONS_PER_USER", 5),
 		SessionDuration:     time.Duration(sharedconfig.GetEnvInt("SESSION_DURATION_HOURS", 24)) * time.Hour,
+		OAuthStateTTL:       time.Duration(sharedconfig.GetEnvInt("OAUTH_STATE_TTL_MINUTES", 10)) * time.Minute,
 		OAuth: OAuthConfig{
 			Discord: ProviderConfig{
 				ClientID:     os.Getenv("DISCORD_CLIENT_ID"),

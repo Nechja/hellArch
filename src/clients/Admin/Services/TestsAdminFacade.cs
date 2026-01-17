@@ -256,7 +256,7 @@ public sealed class TestsAdminFacade(
             Timestamp: log.CreatedAt);
     }
 
-    private static IReadOnlyList<E2eScreenshot> GetScreenshots(JsonElement? element)
+    private static List<E2eScreenshot> GetScreenshots(JsonElement? element)
     {
         if (element?.TryGetProperty("screenshots", out var prop) != true)
         {

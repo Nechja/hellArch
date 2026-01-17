@@ -18,6 +18,7 @@ from testing.models import (
     TestResult,
     TestRunSummary,
 )
+from testing.results import get_results_store
 
 logger = structlog.get_logger()
 
@@ -31,6 +32,7 @@ class TestRunner:
         self.publisher = TestEventPublisher(settings.events_url)
         self.executor = TestExecutor(config, settings)
         self.e2e_executor = E2eExecutor(settings)
+        self.results_store = get_results_store()
         self._running = False
 
     async def run_smoke_tests(self) -> TestRunSummary:
@@ -64,6 +66,7 @@ class TestRunner:
                         error=error,
                     )
 
+                self.results_store.add_result(outcome)
                 await self.publisher.publish_test_result(outcome)
 
             except Exception as e:
@@ -76,6 +79,7 @@ class TestRunner:
                     duration_ms=duration_ms,
                     error=str(e),
                 )
+                self.results_store.add_result(outcome)
                 await self.publisher.publish_test_result(outcome)
                 logger.error("Smoke test error", test=test.name, error=str(e))
 
@@ -87,6 +91,7 @@ class TestRunner:
             failed=failed,
             duration_ms=total_duration,
         )
+        self.results_store.add_summary(summary)
         await self.publisher.publish_test_run_summary(summary)
         return summary
 
@@ -121,6 +126,7 @@ class TestRunner:
                         error=error,
                     )
 
+                self.results_store.add_result(outcome)
                 await self.publisher.publish_test_result(outcome)
 
             except Exception as e:
@@ -133,6 +139,7 @@ class TestRunner:
                     duration_ms=duration_ms,
                     error=str(e),
                 )
+                self.results_store.add_result(outcome)
                 await self.publisher.publish_test_result(outcome)
                 logger.error("Contract test error", test=test.name, error=str(e))
 
@@ -144,6 +151,7 @@ class TestRunner:
             failed=failed,
             duration_ms=total_duration,
         )
+        self.results_store.add_summary(summary)
         await self.publisher.publish_test_run_summary(summary)
         return summary
 
@@ -178,6 +186,7 @@ class TestRunner:
                         error=error,
                     )
 
+                self.results_store.add_result(outcome)
                 await self.publisher.publish_test_result(outcome)
 
             except Exception as e:
@@ -190,6 +199,7 @@ class TestRunner:
                     duration_ms=duration_ms,
                     error=str(e),
                 )
+                self.results_store.add_result(outcome)
                 await self.publisher.publish_test_result(outcome)
                 logger.error("Error test error", test=test.name, error=str(e))
 
@@ -201,6 +211,7 @@ class TestRunner:
             failed=failed,
             duration_ms=total_duration,
         )
+        self.results_store.add_summary(summary)
         await self.publisher.publish_test_run_summary(summary)
         return summary
 
@@ -235,6 +246,7 @@ class TestRunner:
                         error=error,
                     )
 
+                self.results_store.add_result(outcome)
                 await self.publisher.publish_test_result(outcome)
 
             except Exception as e:
@@ -247,6 +259,7 @@ class TestRunner:
                     duration_ms=duration_ms,
                     error=str(e),
                 )
+                self.results_store.add_result(outcome)
                 await self.publisher.publish_test_result(outcome)
                 logger.error("Integration test error", test=test.name, error=str(e))
 
@@ -258,6 +271,7 @@ class TestRunner:
             failed=failed,
             duration_ms=total_duration,
         )
+        self.results_store.add_summary(summary)
         await self.publisher.publish_test_run_summary(summary)
         return summary
 
@@ -283,6 +297,7 @@ class TestRunner:
                         duration_ms=duration_ms,
                         critical=test.critical,
                     )
+                    self.results_store.add_result(outcome)
                     await self.publisher.publish_test_result(outcome)
                 else:
                     failed += 1
@@ -294,6 +309,7 @@ class TestRunner:
                         critical=test.critical,
                         error=error,
                     )
+                    self.results_store.add_result(outcome)
                     await self.publisher.publish_test_result(outcome)
 
                     if test.critical:
@@ -308,6 +324,16 @@ class TestRunner:
             except Exception as e:
                 failed += 1
                 duration_ms = int((time.monotonic() - test_start) * 1000)
+                outcome = TestOutcome(
+                    test_name=test.name,
+                    category=TestCategory.GOLDEN,
+                    result=TestResult.ERROR,
+                    duration_ms=duration_ms,
+                    critical=test.critical,
+                    error=str(e),
+                )
+                self.results_store.add_result(outcome)
+                await self.publisher.publish_test_result(outcome)
                 logger.error("Golden test error", test=test.name, error=str(e))
 
                 if test.critical:
@@ -327,6 +353,7 @@ class TestRunner:
             failed=failed,
             duration_ms=total_duration,
         )
+        self.results_store.add_summary(summary)
         await self.publisher.publish_test_run_summary(summary)
         return summary
 
@@ -345,6 +372,17 @@ class TestRunner:
             else:
                 failed += 1
 
+            # Store result as TestOutcome for consistency
+            test_outcome = TestOutcome(
+                test_name=outcome.test_name,
+                category=TestCategory.E2E,
+                result=outcome.result,
+                duration_ms=outcome.duration_ms,
+                critical=outcome.critical,
+                error=outcome.error,
+            )
+            self.results_store.add_result(test_outcome)
+
             # Publish E2E result with screenshots
             await self.publisher.publish_e2e_result(outcome)
 
@@ -359,6 +397,7 @@ class TestRunner:
             failed=failed,
             duration_ms=total_duration,
         )
+        self.results_store.add_summary(summary)
         await self.publisher.publish_test_run_summary(summary)
         return summary
 
