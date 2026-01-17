@@ -50,7 +50,7 @@ func main() {
 
 	// Create orchestrator
 	backend := getEnvOrDefault("ORCHESTRATOR_BACKEND", "docker")
-	orch, err := orchestrator.New(backend)
+	orch, err := orchestrator.New(backend, orchestrator.Options{Logger: logger})
 	if err != nil {
 		logger.Error("failed to create orchestrator", "backend", backend, "error", err)
 		healthServer.SetHealthy(false)
@@ -66,7 +66,7 @@ func main() {
 		RestartWindowSecs: getEnvIntOrDefault("RESTART_WINDOW_SECONDS", 300),
 		ExcludeServices:   strings.Split(getEnvOrDefault("EXCLUDE_SERVICES", ""), ","),
 	}
-	h := handlers.New(orch, handlersConfig)
+	h := handlers.New(orch, logger, handlersConfig)
 
 	// Create RabbitMQ consumer
 	rabbitmqURL := getEnvOrDefault("RABBITMQ_URL", "amqp://hellarch:hellarch@localhost:5672")
