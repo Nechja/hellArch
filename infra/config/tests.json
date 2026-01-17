@@ -1,11 +1,11 @@
 {
   "services": {
-    "gateway": "http://gateway:5000",
-    "auth": "http://auth:5001",
-    "user": "http://user:5002",
-    "events": "http://events:5005",
-    "files": "http://files:5006",
-    "identity": "http://identity:5010"
+    "gateway": "http://hellarch-gateway:5000",
+    "auth": "http://hellarch-auth:5001",
+    "user": "http://hellarch-user:5002",
+    "events": "http://hellarch-events:5005",
+    "files": "http://hellarch-files:5006",
+    "identity": "http://hellarch-identity:5010"
   },
   "schedules": {
     "smoke": "30s",

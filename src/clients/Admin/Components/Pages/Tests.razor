@@ -109,7 +109,7 @@
             </MudSelect>
         </MudItem>
         <MudItem xs="12" md="4">
-            <MudSelect T="string" Label="Result" Value="@_selectedResult" ValueChanged="OnResultChanged" Clearable="true">
+            <MudSelect T="string" Label="Result" Value="@_selectedResultFilter" ValueChanged="OnResultChanged" Clearable="true">
                 <MudSelectItem Value="@("passed")">Passed</MudSelectItem>
                 <MudSelectItem Value="@("failed")">Failed</MudSelectItem>
                 <MudSelectItem Value="@("error")">Error</MudSelectItem>
@@ -137,8 +137,10 @@ else if (_results.Data.Count == 0)
 }
 else
 {
-    <MudTable Items="@_results.Data" Hover="true" Elevation="1" Dense="true" Class="mb-4">
+    <MudTable Items="@_results.Data" Hover="true" Elevation="1" Dense="true" Class="mb-4"
+              @bind-SelectedItem="_selectedTestResult" T="TestResult">
         <HeaderContent>
+            <MudTh Style="width: 40px;"></MudTh>
             <MudTh>Test Name</MudTh>
             <MudTh>Category</MudTh>
             <MudTh>Result</MudTh>
@@ -147,6 +149,13 @@ else
             <MudTh>Details</MudTh>
         </HeaderContent>
         <RowTemplate>
+            <MudTd Style="width: 40px;">
+                @if (!string.IsNullOrEmpty(context.Error))
+                {
+                    <MudIconButton Icon="@(_expandedRows.Contains(context.Id) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                   Size="Size.Small" OnClick="@(() => ToggleRow(context.Id))" />
+                }
+            </MudTd>
             <MudTd DataLabel="Test Name">
                 <MudText Typo="Typo.body2" Class="font-weight-medium">@context.TestName</MudText>
             </MudTd>
@@ -169,12 +178,22 @@ else
                 }
                 @if (!string.IsNullOrEmpty(context.Error))
                 {
-                    <MudTooltip Text="@context.Error">
-                        <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Size="Size.Small" />
-                    </MudTooltip>
+                    <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Size="Size.Small" Class="ml-1" />
                 }
             </MudTd>
         </RowTemplate>
+        <ChildRowContent>
+            @if (_expandedRows.Contains(context.Id) && !string.IsNullOrEmpty(context.Error))
+            {
+                <MudTr>
+                    <td colspan="7" class="pa-4" style="background-color: var(--mud-palette-background-grey);">
+                        <MudAlert Severity="Severity.Error" Dense="true" Class="mb-0">
+                            <MudText Typo="Typo.body2" Style="font-family: monospace; white-space: pre-wrap;">@context.Error</MudText>
+                        </MudAlert>
+                    </td>
+                </MudTr>
+            }
+        </ChildRowContent>
     </MudTable>
 
     <Pagination
@@ -334,6 +353,8 @@ else
 
     private bool _showScreenshots;
     private E2eTestResult? _selectedE2eTest;
+    private TestResult? _selectedTestResult;
+    private HashSet<string> _expandedRows = new();
 
     private bool _loading = true;
     private bool _triggering;
@@ -342,7 +363,7 @@ else
     private int _page = 1;
     private readonly int _pageSize = 20;
     private string? _selectedCategory;
-    private string? _selectedResult;
+    private string? _selectedResultFilter;
 
     private string PassRate => _stats.RecentTotal > 0
         ? $"{(_stats.RecentPassed * 100 / _stats.RecentTotal)}%"
@@ -370,7 +391,7 @@ else
 
         try
         {
-            var resultsTask = TestsAdmin.GetTestResults(_page, _pageSize, _selectedCategory, _selectedResult);
+            var resultsTask = TestsAdmin.GetTestResults(_page, _pageSize, _selectedCategory, _selectedResultFilter);
             var summariesTask = TestsAdmin.GetTestRunSummaries(1, 10, _selectedCategory);
             var goldenTask = TestsAdmin.GetGoldenPathFailures(1, 5);
             var e2eTask = TestsAdmin.GetE2eTestResults(1, 20);
@@ -450,9 +471,17 @@ else
 
     private async Task OnResultChanged(string? result)
     {
-        _selectedResult = result;
+        _selectedResultFilter = result;
         _page = 1;
         await LoadData();
+    }
+
+    private void ToggleRow(string id)
+    {
+        if (!_expandedRows.Remove(id))
+        {
+            _expandedRows.Add(id);
+        }
     }
 
     private async Task OnPreviousPage()
