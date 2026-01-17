@@ -16,7 +16,7 @@ type discordUser struct {
 }
 
 func (s *Service) getDiscordUserInfo(ctx context.Context, token *oauth2.Token) (*UserInfo, error) {
-	data, err := fetchUserData[discordUser](ctx, token, "https://discord.com/api/users/@me", nil)
+	data, err := fetchUserData[discordUser](ctx, s.httpClient, token, "https://discord.com/api/users/@me", nil)
 	if err != nil {
 		return nil, err
 	}

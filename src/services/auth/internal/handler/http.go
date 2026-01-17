@@ -68,7 +68,7 @@ func (h *HTTPHandler) handleOAuthLogin(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Secure:   h.config.SecureCookies,
 		SameSite: http.SameSiteLaxMode,
-		MaxAge:   600, // 10 minutes - matches OAuthStateTTL
+		MaxAge:   int(h.config.OAuthStateTTL.Seconds()),
 	})
 
 	http.Redirect(w, r, result.AuthURL, http.StatusTemporaryRedirect)
@@ -153,7 +153,7 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 			HttpOnly: true,
 			Secure:   h.config.SecureCookies,
 			SameSite: http.SameSiteLaxMode,
-			MaxAge:   24 * 60 * 60, // 24 hours
+			MaxAge:   int(h.config.SessionDuration.Seconds()),
 		})
 	}
 

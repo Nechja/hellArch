@@ -15,7 +15,7 @@ type hellarchUser struct {
 func (s *Service) getHellArchUserInfo(ctx context.Context, token *oauth2.Token) (*UserInfo, error) {
 	userInfoURL := s.hellarchBaseURL + "/identity/userinfo"
 
-	data, err := fetchUserData[hellarchUser](ctx, token, userInfoURL, nil)
+	data, err := fetchUserData[hellarchUser](ctx, s.httpClient, token, userInfoURL, nil)
 	if err != nil {
 		return nil, err
 	}

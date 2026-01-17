@@ -15,7 +15,7 @@ type githubUser struct {
 }
 
 func (s *Service) getGitHubUserInfo(ctx context.Context, token *oauth2.Token) (*UserInfo, error) {
-	data, err := fetchUserData[githubUser](ctx, token, "https://api.github.com/user", map[string]string{
+	data, err := fetchUserData[githubUser](ctx, s.httpClient, token, "https://api.github.com/user", map[string]string{
 		"Accept": "application/vnd.github.v3+json",
 	})
 	if err != nil {

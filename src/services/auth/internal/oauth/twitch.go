@@ -35,7 +35,7 @@ func (s *Service) getTwitchUserInfo(ctx context.Context, token *oauth2.Token) (*
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 	req.Header.Set("Client-Id", cfg.ClientID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

@@ -14,7 +14,7 @@ type microsoftUser struct {
 }
 
 func (s *Service) getMicrosoftUserInfo(ctx context.Context, token *oauth2.Token) (*UserInfo, error) {
-	data, err := fetchUserData[microsoftUser](ctx, token, "https://graph.microsoft.com/v1.0/me", nil)
+	data, err := fetchUserData[microsoftUser](ctx, s.httpClient, token, "https://graph.microsoft.com/v1.0/me", nil)
 	if err != nil {
 		return nil, err
 	}

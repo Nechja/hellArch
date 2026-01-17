@@ -73,7 +73,7 @@ func run() error {
 		return errors.New("failed to initialize jwt service: " + err.Error())
 	}
 
-	oauthService := oauth.NewService(cfg.OAuth)
+	oauthService := oauth.NewService(cfg.OAuth, nil)
 
 	// Create services
 	sessionService := service.NewSession(redisStore, cfg)
