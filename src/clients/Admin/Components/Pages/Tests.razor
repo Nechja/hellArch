@@ -354,7 +354,7 @@ else
     private bool _showScreenshots;
     private E2eTestResult? _selectedE2eTest;
     private TestResult? _selectedTestResult;
-    private HashSet<string> _expandedRows = new();
+    private readonly HashSet<string> _expandedRows = new();
 
     private bool _loading = true;
     private bool _triggering;

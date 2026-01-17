@@ -331,7 +331,16 @@ async def get_results(
 ) -> ResultsResponse:
     """Get recent test results, optionally filtered by category."""
     store = get_results_store()
-    cat = TestCategory(category) if category else None
+    cat = None
+    if category:
+        try:
+            cat = TestCategory(category)
+        except ValueError:
+            valid = [c.value for c in TestCategory]
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid category '{category}'. Valid categories: {valid}",
+            )
     results = store.get_recent_results(limit=limit, category=cat)
     return ResultsResponse(results=results, total=len(results))
 
@@ -342,7 +351,16 @@ async def get_failures(
 ) -> FailuresResponse:
     """Get recent test failures, optionally filtered by category."""
     store = get_results_store()
-    cat = TestCategory(category) if category else None
+    cat = None
+    if category:
+        try:
+            cat = TestCategory(category)
+        except ValueError:
+            valid = [c.value for c in TestCategory]
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid category '{category}'. Valid categories: {valid}",
+            )
     failures = store.get_failures(limit=limit, category=cat)
     return FailuresResponse(failures=failures, total=len(failures))
 

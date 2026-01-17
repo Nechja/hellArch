@@ -68,7 +68,7 @@ func (h *OAuthHandler) GetOAuthURL(ctx context.Context, provider oauth.Provider,
 		"pkce_verifier": pkceVerifier,
 		"created_at":    time.Now().Format(time.RFC3339),
 	})
-	if err := h.oauthState.SetOAuthState(ctx, state, string(stateData), OAuthStateTTL); err != nil {
+	if err := h.oauthState.SetOAuthState(ctx, state, string(stateData), h.security.OAuthStateTTL()); err != nil {
 		return nil, status.Error(codes.Internal, "failed to store state")
 	}
 

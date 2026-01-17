@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/nechja/hellarch/auth/internal/config"
 )
@@ -73,6 +74,10 @@ func (h *SecurityHandler) ValidateCSRFToken(csrfToken, storedHash string) error 
 func (h *SecurityHandler) HashCSRFToken(csrfToken string) string {
 	hash := sha256.Sum256([]byte(csrfToken))
 	return base64.URLEncoding.EncodeToString(hash[:])
+}
+
+func (h *SecurityHandler) OAuthStateTTL() time.Duration {
+	return h.config.OAuthStateTTL
 }
 
 func GenerateRandomState() (string, error) {

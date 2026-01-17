@@ -333,6 +333,7 @@ class TestRunner:
                     error=str(e),
                 )
                 self.results_store.add_result(outcome)
+                await self.publisher.publish_test_result(outcome)
                 logger.error("Golden test error", test=test.name, error=str(e))
 
                 if test.critical:

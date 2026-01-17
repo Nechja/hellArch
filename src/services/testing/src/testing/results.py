@@ -79,11 +79,15 @@ class ResultsStore:
 
 # Global singleton for the results store
 _store: ResultsStore | None = None
+_store_lock = Lock()
 
 
 def get_results_store() -> ResultsStore:
-    """Get or create the global results store."""
+    """Get or create the global results store (thread-safe)."""
     global _store
     if _store is None:
-        _store = ResultsStore()
+        with _store_lock:
+            # Double-check pattern for thread safety
+            if _store is None:
+                _store = ResultsStore()
     return _store
