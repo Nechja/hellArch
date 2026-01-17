@@ -9,6 +9,8 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException
 from pydantic import BaseModel
 
 from testing.config import Settings, TestConfig, load_config
+from testing.models import TestCategory, TestOutcome, TestRunSummary
+from testing.results import get_results_store
 from testing.runner import TestRunner
 
 logger = structlog.get_logger()
@@ -56,6 +58,26 @@ class HealthResponse(BaseModel):
 
     status: str
     timestamp: datetime
+
+
+class ResultsResponse(BaseModel):
+    """Response for test results query."""
+
+    results: list[TestOutcome]
+    total: int
+
+
+class FailuresResponse(BaseModel):
+    """Response for failures query."""
+
+    failures: list[TestOutcome]
+    total: int
+
+
+class SummariesResponse(BaseModel):
+    """Response for summaries query."""
+
+    summaries: dict[str, TestRunSummary]
 
 
 @asynccontextmanager
@@ -301,6 +323,37 @@ async def trigger_all_tests(background_tasks: BackgroundTasks) -> TriggerRespons
         category="all",
         message="All tests started",
     )
+
+
+@app.get("/results", response_model=ResultsResponse)
+async def get_results(
+    limit: int = 50, category: str | None = None
+) -> ResultsResponse:
+    """Get recent test results, optionally filtered by category."""
+    store = get_results_store()
+    cat = TestCategory(category) if category else None
+    results = store.get_recent_results(limit=limit, category=cat)
+    return ResultsResponse(results=results, total=len(results))
+
+
+@app.get("/failures", response_model=FailuresResponse)
+async def get_failures(
+    limit: int = 20, category: str | None = None
+) -> FailuresResponse:
+    """Get recent test failures, optionally filtered by category."""
+    store = get_results_store()
+    cat = TestCategory(category) if category else None
+    failures = store.get_failures(limit=limit, category=cat)
+    return FailuresResponse(failures=failures, total=len(failures))
+
+
+@app.get("/summaries", response_model=SummariesResponse)
+async def get_summaries() -> SummariesResponse:
+    """Get the latest summary for each test category."""
+    store = get_results_store()
+    summaries = store.get_summaries()
+    # Convert enum keys to strings for JSON serialization
+    return SummariesResponse(summaries={k.value: v for k, v in summaries.items()})
 
 
 def create_app() -> FastAPI:
