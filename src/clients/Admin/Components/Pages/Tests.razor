@@ -116,10 +116,14 @@
                 <MudSelectItem Value="@("skipped")">Skipped</MudSelectItem>
             </MudSelect>
         </MudItem>
-        <MudItem xs="12" md="4" Class="d-flex align-end">
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadData" StartIcon="@Icons.Material.Filled.Refresh">
+        <MudItem xs="12" md="4" Class="d-flex align-end gap-2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="RefreshData" StartIcon="@Icons.Material.Filled.Refresh" Disabled="@_refreshing">
                 Refresh
             </MudButton>
+            @if (_refreshing)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
         </MudItem>
     </MudGrid>
 </MudPaper>
@@ -141,9 +145,9 @@ else
               @bind-SelectedItem="_selectedTestResult" T="TestResult">
         <HeaderContent>
             <MudTh Style="width: 40px;"></MudTh>
+            <MudTh>Result</MudTh>
             <MudTh>Test Name</MudTh>
             <MudTh>Category</MudTh>
-            <MudTh>Result</MudTh>
             <MudTh>Duration</MudTh>
             <MudTh>Timestamp</MudTh>
             <MudTh>Details</MudTh>
@@ -156,17 +160,17 @@ else
                                    Size="Size.Small" OnClick="@(() => ToggleRow(context.Id))" />
                 }
             </MudTd>
+            <MudTd DataLabel="Result">
+                <MudChip T="string" Size="Size.Small" Color="@GetResultColor(context.Result)" Variant="Variant.Filled">
+                    @context.Result
+                </MudChip>
+            </MudTd>
             <MudTd DataLabel="Test Name">
                 <MudText Typo="Typo.body2" Class="font-weight-medium">@context.TestName</MudText>
             </MudTd>
             <MudTd DataLabel="Category">
                 <MudChip T="string" Size="Size.Small" Color="@GetCategoryColor(context.Category)">
                     @context.Category
-                </MudChip>
-            </MudTd>
-            <MudTd DataLabel="Result">
-                <MudChip T="string" Size="Size.Small" Color="@GetResultColor(context.Result)" Variant="Variant.Filled">
-                    @context.Result
                 </MudChip>
             </MudTd>
             <MudTd DataLabel="Duration">@context.DurationMs ms</MudTd>
@@ -357,6 +361,7 @@ else
     private readonly HashSet<string> _expandedRows = new();
 
     private bool _loading = true;
+    private bool _refreshing;
     private bool _triggering;
     private string? _triggerMessage;
     private Severity _triggerSeverity = Severity.Info;
@@ -379,15 +384,18 @@ else
     {
         InvokeAsync(async () =>
         {
-            await LoadData();
+            await RefreshData();
             StateHasChanged();
         });
     }
 
     private async Task LoadData()
     {
-        _loading = true;
-        StateHasChanged();
+        var isInitialLoad = _loading;
+        if (isInitialLoad)
+        {
+            StateHasChanged();
+        }
 
         try
         {
@@ -414,6 +422,41 @@ else
         finally
         {
             _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        if (_refreshing) return;
+        _refreshing = true;
+        StateHasChanged();
+
+        try
+        {
+            var resultsTask = TestsAdmin.GetTestResults(_page, _pageSize, _selectedCategory, _selectedResultFilter);
+            var summariesTask = TestsAdmin.GetTestRunSummaries(1, 10, _selectedCategory);
+            var goldenTask = TestsAdmin.GetGoldenPathFailures(1, 5);
+            var e2eTask = TestsAdmin.GetE2eTestResults(1, 20);
+            var statsTask = TestsAdmin.GetTestStats();
+            var statusTask = TestsAdmin.GetTestingServiceStatus();
+
+            await Task.WhenAll(resultsTask, summariesTask, goldenTask, e2eTask, statsTask, statusTask);
+
+            _results = await resultsTask;
+            _summaries = await summariesTask;
+            _goldenFailures = await goldenTask;
+            _e2eResults = await e2eTask;
+            _stats = await statsTask;
+            _serviceStatus = await statusTask;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to refresh test data");
+        }
+        finally
+        {
+            _refreshing = false;
             StateHasChanged();
         }
     }
@@ -466,14 +509,14 @@ else
     {
         _selectedCategory = category;
         _page = 1;
-        await LoadData();
+        await RefreshData();
     }
 
     private async Task OnResultChanged(string? result)
     {
         _selectedResultFilter = result;
         _page = 1;
-        await LoadData();
+        await RefreshData();
     }
 
     private void ToggleRow(string id)
@@ -487,13 +530,13 @@ else
     private async Task OnPreviousPage()
     {
         _page--;
-        await LoadData();
+        await RefreshData();
     }
 
     private async Task OnNextPage()
     {
         _page++;
-        await LoadData();
+        await RefreshData();
     }
 
     private void ShowScreenshots(E2eTestResult test)
