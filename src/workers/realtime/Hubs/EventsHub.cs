@@ -1,5 +1,7 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Realtime.Security;
 
 namespace Realtime.Hubs;
 
@@ -7,6 +9,7 @@ namespace Realtime.Hubs;
 /// SignalR hub for real-time event broadcasting.
 /// Clients are automatically added to user-specific groups on connection.
 /// </summary>
+[Authorize]
 public sealed class EventsHub(ILogger<EventsHub> logger) : Hub<IEventsClient>
 {
     public const string UserGroupPrefix = "user:";
@@ -77,6 +80,15 @@ public sealed class EventsHub(ILogger<EventsHub> logger) : Hub<IEventsClient>
     /// </summary>
     public async Task SubscribeToEventType(string eventType)
     {
+        if (!EventTypeValidator.IsValid(eventType))
+        {
+            logger.LogWarning(
+                "Client {ConnectionId} attempted to subscribe to invalid event type: {EventType}",
+                Context.ConnectionId,
+                eventType);
+            throw new HubException("Invalid event type format");
+        }
+
         var groupName = $"event:{eventType}";
         await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
         logger.LogDebug(
@@ -90,6 +102,15 @@ public sealed class EventsHub(ILogger<EventsHub> logger) : Hub<IEventsClient>
     /// </summary>
     public async Task UnsubscribeFromEventType(string eventType)
     {
+        if (!EventTypeValidator.IsValid(eventType))
+        {
+            logger.LogWarning(
+                "Client {ConnectionId} attempted to unsubscribe from invalid event type: {EventType}",
+                Context.ConnectionId,
+                eventType);
+            throw new HubException("Invalid event type format");
+        }
+
         var groupName = $"event:{eventType}";
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
         logger.LogDebug(

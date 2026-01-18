@@ -44,7 +44,15 @@ public sealed class DlqConsumer(
 
     private readonly int _maxRetries = configuration.GetValue("DLQ:MaxRetries", 3);
     private readonly int _baseDelaySeconds = configuration.GetValue("DLQ:BaseDelaySeconds", 5);
+    private readonly int _maxBodySizeBytes = configuration.GetValue("DLQ:MaxBodySizeBytes", 65536); // 64KB default
     private readonly SemaphoreSlim _publishChannelLock = new(1, 1);
+
+    // Fields that should be redacted from stored bodies to prevent PII leakage
+    private static readonly HashSet<string> SensitiveFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "password", "secret", "token", "apikey", "api_key", "authorization",
+        "credential", "ssn", "social_security", "credit_card", "card_number"
+    };
 
     private IChannel? _publishChannel;
     private volatile bool _stopping;
@@ -170,15 +178,28 @@ public sealed class DlqConsumer(
             "Queue={Queue}, Reason={Reason}",
             eventType, eventId, originalQueue, deathReason);
 
-        // Try to parse body as JSON for storage
+        // Parse body for storage with size limit and redaction
         JsonElement bodyJson;
         try
         {
-            bodyJson = JsonDocument.Parse(body).RootElement;
+            // Prevent JSON bomb attacks with size limit
+            if (ea.Body.Length > _maxBodySizeBytes)
+            {
+                Logger.LogWarning(
+                    "Dead letter body exceeds size limit ({BodySize} > {MaxSize}), truncating",
+                    ea.Body.Length, _maxBodySizeBytes);
+                bodyJson = JsonDocument.Parse("{\"_truncated\": true, \"_reason\": \"body_too_large\"}").RootElement;
+            }
+            else
+            {
+                var parsedDoc = JsonDocument.Parse(body);
+                bodyJson = RedactSensitiveFields(parsedDoc.RootElement);
+            }
         }
         catch (JsonException)
         {
-            bodyJson = JsonDocument.Parse($"{{\"raw\": \"{Convert.ToBase64String(ea.Body.ToArray())}\"}}").RootElement;
+            // Don't store raw body - it might contain binary sensitive data
+            bodyJson = JsonDocument.Parse("{\"_raw\": true, \"_reason\": \"non_json_body\"}").RootElement;
         }
 
         var request = new DeadLetterRequest(
@@ -294,6 +315,55 @@ public sealed class DlqConsumer(
             };
         }
         return 0;
+    }
+
+    /// <summary>
+    /// Redacts sensitive fields from a JSON element to prevent PII leakage in dead letter storage.
+    /// </summary>
+    internal static JsonElement RedactSensitiveFields(JsonElement element)
+    {
+        using var stream = new MemoryStream();
+        using var writer = new Utf8JsonWriter(stream);
+        RedactElement(element, writer);
+        writer.Flush();
+        stream.Position = 0;
+        return JsonDocument.Parse(stream).RootElement;
+    }
+
+    private static void RedactElement(JsonElement element, Utf8JsonWriter writer)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                writer.WriteStartObject();
+                foreach (var property in element.EnumerateObject())
+                {
+                    writer.WritePropertyName(property.Name);
+                    if (SensitiveFields.Contains(property.Name))
+                    {
+                        writer.WriteStringValue("[REDACTED]");
+                    }
+                    else
+                    {
+                        RedactElement(property.Value, writer);
+                    }
+                }
+                writer.WriteEndObject();
+                break;
+
+            case JsonValueKind.Array:
+                writer.WriteStartArray();
+                foreach (var item in element.EnumerateArray())
+                {
+                    RedactElement(item, writer);
+                }
+                writer.WriteEndArray();
+                break;
+
+            default:
+                element.WriteTo(writer);
+                break;
+        }
     }
 
     private static Activity? StartActivity(BasicDeliverEventArgs ea)

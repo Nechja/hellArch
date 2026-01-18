@@ -41,6 +41,7 @@ module TokenGenerator =
             .TrimEnd('=')
 
     /// Verify PKCE code challenge (S256 method only - PLAIN is not secure)
+    /// Uses constant-time comparison to prevent timing attacks
     let verifyCodeChallenge (codeVerifier: string) (codeChallenge: string) (method: string) =
         match method.ToUpperInvariant() with
         | "S256" ->
@@ -51,5 +52,8 @@ module TokenGenerator =
                     .Replace("+", "-")
                     .Replace("/", "_")
                     .TrimEnd('=')
-            String.Equals(computed, codeChallenge, StringComparison.Ordinal)
+            // Use constant-time comparison to prevent timing attacks
+            let computedBytes = Encoding.UTF8.GetBytes(computed)
+            let challengeBytes = Encoding.UTF8.GetBytes(codeChallenge)
+            CryptographicOperations.FixedTimeEquals(ReadOnlySpan<byte>(computedBytes), ReadOnlySpan<byte>(challengeBytes))
         | _ -> false

@@ -21,4 +21,6 @@ module HttpUtils =
 
     let writeUnauthorized = HttpResponse.writeUnauthorized
 
+    let writeForbidden = HttpResponse.writeForbidden
+
     let writeNotFound = HttpResponse.writeNotFound
