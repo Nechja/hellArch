@@ -8,6 +8,18 @@ import (
 	sharedconfig "github.com/nechja/hellarch/golibs/config"
 )
 
+// SessionBindingMode controls how strictly sessions are bound to client characteristics
+type SessionBindingMode string
+
+const (
+	// SessionBindingNone disables IP/UserAgent binding checks
+	SessionBindingNone SessionBindingMode = "none"
+	// SessionBindingWarn logs mismatches but allows the session
+	SessionBindingWarn SessionBindingMode = "warn"
+	// SessionBindingStrict rejects sessions with IP/UserAgent mismatch
+	SessionBindingStrict SessionBindingMode = "strict"
+)
+
 type Config struct {
 	Environment         string
 	GRPCAddress         string
@@ -24,6 +36,7 @@ type Config struct {
 	MaxSessionsPerUser  int
 	SessionDuration     time.Duration
 	OAuthStateTTL       time.Duration
+	SessionBindingMode  SessionBindingMode // Controls IP/UserAgent binding validation
 }
 
 type OAuthConfig struct {
@@ -74,6 +87,7 @@ func Load() (*Config, error) {
 		MaxSessionsPerUser:  sharedconfig.GetEnvInt("MAX_SESSIONS_PER_USER", 5),
 		SessionDuration:     time.Duration(sharedconfig.GetEnvInt("SESSION_DURATION_HOURS", 24)) * time.Hour,
 		OAuthStateTTL:       time.Duration(sharedconfig.GetEnvInt("OAUTH_STATE_TTL_MINUTES", 10)) * time.Minute,
+		SessionBindingMode:  parseSessionBindingMode(sharedconfig.GetEnv("SESSION_BINDING_MODE", "warn")),
 		OAuth: OAuthConfig{
 			Discord: ProviderConfig{
 				ClientID:     os.Getenv("DISCORD_CLIENT_ID"),
@@ -201,4 +215,15 @@ func trim(s string) string {
 		end--
 	}
 	return s[start:end]
+}
+
+func parseSessionBindingMode(s string) SessionBindingMode {
+	switch s {
+	case "strict":
+		return SessionBindingStrict
+	case "none":
+		return SessionBindingNone
+	default:
+		return SessionBindingWarn
+	}
 }

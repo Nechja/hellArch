@@ -77,6 +77,11 @@ func (h *AuthHandler) ValidateSession(ctx context.Context, sessionToken string) 
 	return h.session.Validate(ctx, sessionToken)
 }
 
+// GetSession returns full session data for binding validation
+func (h *AuthHandler) GetSession(ctx context.Context, sessionToken string) (*store.RedisSession, error) {
+	return h.session.GetSession(ctx, sessionToken)
+}
+
 func (h *AuthHandler) InvalidateSession(ctx context.Context, sessionToken string) error {
 	return h.session.Invalidate(ctx, sessionToken)
 }

@@ -210,12 +210,45 @@ func (h *HTTPHandler) handleRefresh(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPHandler) handleValidate(w http.ResponseWriter, r *http.Request) {
 	sessionToken := r.Header.Get("X-Session-Token")
 	if sessionToken != "" {
-		userID, err := h.auth.ValidateSession(r.Context(), sessionToken)
+		session, err := h.auth.GetSession(r.Context(), sessionToken)
 		if err == nil {
+			// Validate session binding (IP/UserAgent) if configured
+			if h.config.SessionBindingMode != config.SessionBindingNone {
+				currentIP := getClientIP(r)
+				currentUA := r.UserAgent()
+
+				ipMismatch := session.IPAddress != "" && session.IPAddress != currentIP
+				uaMismatch := session.UserAgent != "" && session.UserAgent != currentUA
+
+				if ipMismatch || uaMismatch {
+					slog.Warn("session binding mismatch",
+						"user_id", session.UserID,
+						"session_ip", session.IPAddress,
+						"current_ip", currentIP,
+						"session_ua", session.UserAgent,
+						"current_ua", currentUA,
+						"ip_mismatch", ipMismatch,
+						"ua_mismatch", uaMismatch,
+					)
+
+					if h.config.SessionBindingMode == config.SessionBindingStrict {
+						w.WriteHeader(http.StatusUnauthorized)
+						if err := json.NewEncoder(w).Encode(map[string]interface{}{
+							"valid": false,
+							"error": "session_binding_failed",
+						}); err != nil {
+							slog.Error("failed to encode response", "error", err)
+						}
+						return
+					}
+					// In warn mode, continue but the warning is logged above
+				}
+			}
+
 			// Fetch full user to get permissions and is_active
-			user, err := h.auth.GetUserByID(r.Context(), userID)
+			user, err := h.auth.GetUserByID(r.Context(), session.UserID)
 			if err != nil {
-				slog.Error("failed to get user", "error", err, "user_id", userID)
+				slog.Error("failed to get user", "error", err, "user_id", session.UserID)
 				// Return 401 instead of 500 to avoid info disclosure about internal failures
 				w.WriteHeader(http.StatusUnauthorized)
 				return
