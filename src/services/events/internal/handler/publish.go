@@ -4,11 +4,15 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"regexp"
 
 	cloudevents "github.com/nechja/hellarch/cloudevents"
 	"github.com/google/uuid"
 	"github.com/nechja/hellarch/golibs/rabbitmq"
 )
+
+// publishEventTypePattern validates event types for publishing
+var publishEventTypePattern = regexp.MustCompile(`^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+$`)
 
 type PublishHandler struct {
 	publisher *rabbitmq.Publisher
@@ -27,6 +31,12 @@ func (h *PublishHandler) publishEvent(w http.ResponseWriter, r *http.Request) {
 
 	if event.Type == "" {
 		writeError(w, http.StatusBadRequest, "Event type is required")
+		return
+	}
+
+	// Validate event type format
+	if !publishEventTypePattern.MatchString(event.Type) {
+		writeError(w, http.StatusBadRequest, "invalid event type format: must be lowercase dot-separated (e.g., user.created)")
 		return
 	}
 

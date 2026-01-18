@@ -4,12 +4,15 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"mime/multipart"
+	"net/http"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,6 +22,9 @@ import (
 	"github.com/nechja/hellarch/services/files/internal/storage"
 	"github.com/nechja/hellarch/services/files/internal/store"
 )
+
+// ErrContentTypeMismatch is returned when the detected content type doesn't match the claimed type
+var ErrContentTypeMismatch = errors.New("content type mismatch: detected type differs from claimed type")
 
 type Upload struct {
 	store         *store.Store
@@ -52,15 +58,22 @@ func (u *Upload) Upload(ctx context.Context, params UploadParams) (*store.Stored
 	ext := filepath.Ext(params.Header.Filename)
 	objectKey := fmt.Sprintf("%s/%s%s", params.OwnerID, uuid.New().String(), ext)
 
+	// Detect actual content type from file bytes
+	detectedType, err := detectContentType(params.File)
+	if err != nil {
+		return nil, fmt.Errorf("failed to detect content type: %w", err)
+	}
+
+	// Validate claimed type against detected type
+	contentType, err := validateContentType(params.ContentType, detectedType)
+	if err != nil {
+		return nil, err
+	}
+
 	hasher := sha256.New()
 	teeReader := io.TeeReader(params.File, hasher)
 
-	contentType := params.ContentType
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
-
-	_, err := u.storage.Upload(ctx, storage.UploadParams{
+	_, err = u.storage.Upload(ctx, storage.UploadParams{
 		ObjectKey:   objectKey,
 		Reader:      teeReader,
 		Size:        params.Header.Size,
@@ -155,6 +168,73 @@ func (u *Upload) Confirm(ctx context.Context, params ConfirmParams) (*store.Stor
 
 func (u *Upload) MaxUploadSize() int64 {
 	return u.maxUploadSize
+}
+
+// detectContentType reads the first 512 bytes of a file to detect its actual content type.
+// It returns the detected type and resets the file reader to the beginning.
+func detectContentType(file multipart.File) (string, error) {
+	// Read the first 512 bytes for content type detection
+	buf := make([]byte, 512)
+	n, err := file.Read(buf)
+	if err != nil && err != io.EOF {
+		return "", fmt.Errorf("failed to read file for content detection: %w", err)
+	}
+
+	// Reset file position to beginning
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return "", fmt.Errorf("failed to reset file position: %w", err)
+	}
+
+	// Detect content type from actual bytes
+	return http.DetectContentType(buf[:n]), nil
+}
+
+// validateContentType compares the claimed content type against the detected type.
+// Returns the validated content type to use, or an error if validation fails.
+func validateContentType(claimed, detected string) (string, error) {
+	// Normalize content types by removing parameters (e.g., "text/plain; charset=utf-8" -> "text/plain")
+	claimedBase := strings.Split(claimed, ";")[0]
+	claimedBase = strings.TrimSpace(strings.ToLower(claimedBase))
+
+	detectedBase := strings.Split(detected, ";")[0]
+	detectedBase = strings.TrimSpace(strings.ToLower(detectedBase))
+
+	// If no claimed type, use detected
+	if claimedBase == "" || claimedBase == "application/octet-stream" {
+		return detected, nil
+	}
+
+	// application/octet-stream from detection means the type couldn't be determined
+	// In this case, trust the claimed type for uncommon file types
+	if detectedBase == "application/octet-stream" {
+		return claimed, nil
+	}
+
+	// Check for dangerous mismatches: claimed safe type but detected executable/script
+	dangerousTypes := []string{
+		"application/x-executable",
+		"application/x-msdos-program",
+		"application/x-msdownload",
+	}
+
+	for _, dangerous := range dangerousTypes {
+		if detectedBase == dangerous && claimedBase != dangerous {
+			slog.Warn("blocked dangerous content type mismatch",
+				"claimed", claimed, "detected", detected)
+			return "", ErrContentTypeMismatch
+		}
+	}
+
+	// For images, ensure the detected type matches the claimed type
+	// This prevents uploading executables disguised as images
+	if strings.HasPrefix(claimedBase, "image/") && !strings.HasPrefix(detectedBase, "image/") {
+		slog.Warn("blocked image content type mismatch",
+			"claimed", claimed, "detected", detected)
+		return "", ErrContentTypeMismatch
+	}
+
+	// Use the detected type as it's more reliable
+	return detected, nil
 }
 
 func (u *Upload) publishUploaded(ctx context.Context, file *store.StoredFile) {
