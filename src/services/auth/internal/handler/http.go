@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -131,15 +132,16 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 
 	result, err := h.auth.HandleOAuthCallback(r.Context(), provider, code, state, csrfToken, ipAddress, userAgent, existingUserID)
 	if err != nil {
-		if grpcstatus.Code(err) == codes.AlreadyExists {
-			msg := grpcstatus.Convert(err).Message()
-			if msg == "provider_linked_to_other_account" {
-				http.Redirect(w, r, "/settings?error=provider_taken", http.StatusTemporaryRedirect)
-				return
-			}
-			http.Redirect(w, r, "/login?error=email_conflict", http.StatusTemporaryRedirect)
+		errCode := grpcstatus.Code(err)
+		msg := grpcstatus.Convert(err).Message()
+
+		// Handle account linking conflict (user is logged in, provider already linked to another account)
+		if errCode == codes.AlreadyExists && msg == "provider_linked_to_other_account" {
+			http.Redirect(w, r, "/settings?error=provider_taken", http.StatusTemporaryRedirect)
 			return
 		}
+
+		// Generic error for all other failures to prevent account enumeration
 		slog.Error("oauth callback failed", "error", err, "provider", provider)
 		http.Error(w, "Authentication failed", http.StatusUnauthorized)
 		return
@@ -323,10 +325,10 @@ func (h *HTTPHandler) handleServiceToken(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Validate service credentials
+	// Validate service credentials with constant-time comparison to prevent timing attacks
 	expectedSecret, ok := h.config.ServiceAccounts[clientID]
-	if !ok || expectedSecret != clientSecret {
-		slog.Warn("invalid service credentials", "client_id", clientID)
+	if !ok || subtle.ConstantTimeCompare([]byte(expectedSecret), []byte(clientSecret)) != 1 {
+		slog.Warn("invalid service credentials")
 		w.WriteHeader(http.StatusUnauthorized)
 		if err := json.NewEncoder(w).Encode(map[string]string{
 			"error":             "invalid_client",

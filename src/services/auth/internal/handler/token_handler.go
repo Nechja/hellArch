@@ -17,12 +17,14 @@ import (
 type TokenHandler struct {
 	jwtService  *jwt.Service
 	userService *service.User
+	redis       *store.Redis
 }
 
-func NewTokenHandler(jwtService *jwt.Service, userService *service.User) *TokenHandler {
+func NewTokenHandler(jwtService *jwt.Service, userService *service.User, redis *store.Redis) *TokenHandler {
 	return &TokenHandler{
 		jwtService:  jwtService,
 		userService: userService,
+		redis:       redis,
 	}
 }
 
@@ -30,6 +32,19 @@ func (h *TokenHandler) Refresh(ctx context.Context, refreshToken string) (string
 	claims, err := h.jwtService.ValidateToken(refreshToken)
 	if err != nil {
 		return "", "", status.Error(codes.Unauthenticated, "invalid refresh token")
+	}
+
+	// Check if the refresh token has been revoked (token rotation enforcement)
+	if claims.ID != "" {
+		revoked, err := h.redis.IsTokenRevoked(ctx, claims.ID)
+		if err != nil {
+			slog.Error("failed to check token revocation", "error", err)
+			return "", "", status.Error(codes.Internal, "failed to validate token")
+		}
+		if revoked {
+			slog.Warn("attempted use of revoked refresh token", "jti", claims.ID, "user_id", claims.Subject)
+			return "", "", status.Error(codes.Unauthenticated, "token has been revoked")
+		}
 	}
 
 	user, err := h.userService.FindByID(ctx, claims.Subject)
@@ -74,11 +89,37 @@ func (h *TokenHandler) Refresh(ctx context.Context, refreshToken string) (string
 		return "", "", status.Error(codes.Internal, "failed to generate refresh token")
 	}
 
+	// Revoke the old refresh token to implement token rotation
+	// This ensures each refresh token can only be used once
+	if claims.ID != "" {
+		if err := h.redis.RevokeToken(ctx, claims.ID, RefreshTokenDuration); err != nil {
+			slog.Warn("failed to revoke old refresh token", "error", err, "jti", claims.ID)
+			// Don't fail the request - the new token was already generated
+		}
+	}
+
 	return accessToken, newRefreshToken, nil
 }
 
 func (h *TokenHandler) Validate(ctx context.Context, token string) (*jwt.Claims, error) {
-	return h.jwtService.ValidateToken(token)
+	claims, err := h.jwtService.ValidateToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if the token has been revoked
+	if claims.ID != "" {
+		revoked, err := h.redis.IsTokenRevoked(ctx, claims.ID)
+		if err != nil {
+			slog.Error("failed to check token revocation", "error", err)
+			return nil, status.Error(codes.Internal, "failed to validate token")
+		}
+		if revoked {
+			return nil, status.Error(codes.Unauthenticated, "token has been revoked")
+		}
+	}
+
+	return claims, nil
 }
 
 func (h *TokenHandler) GenerateServiceToken(serviceID string) (string, error) {

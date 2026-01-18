@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/redis/go-redis/extra/redisotel/v9"
@@ -67,6 +66,31 @@ func (r *Redis) GetOAuthState(ctx context.Context, state string) (string, error)
 
 func (r *Redis) DeleteOAuthState(ctx context.Context, state string) error {
 	return r.client.Del(ctx, "oauth:state:"+state).Err()
+}
+
+// GetAndDeleteOAuthState atomically retrieves and deletes OAuth state to prevent race conditions.
+// This ensures the state can only be used once, even with concurrent requests.
+var getAndDeleteStateScript = redis.NewScript(`
+	local data = redis.call('GET', KEYS[1])
+	if data then
+		redis.call('DEL', KEYS[1])
+	end
+	return data
+`)
+
+func (r *Redis) GetAndDeleteOAuthState(ctx context.Context, state string) (string, error) {
+	key := "oauth:state:" + state
+	result, err := getAndDeleteStateScript.Run(ctx, r.client, []string{key}).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return "", redis.Nil
+		}
+		return "", err
+	}
+	if result == nil {
+		return "", redis.Nil
+	}
+	return result.(string), nil
 }
 
 // Session management - Redis is the single source of truth
@@ -236,30 +260,70 @@ func (r *Redis) DeleteUserSessions(ctx context.Context, userID string) error {
 	return err
 }
 
+// enforceMaxSessionsScript atomically enforces the max sessions limit.
+// It retrieves all session hashes for a user, sorts them by creation time,
+// and deletes the oldest sessions if the count exceeds the limit.
+// This prevents race conditions where concurrent logins could exceed the limit.
+var enforceMaxSessionsScript = redis.NewScript(`
+	local userSessionsKey = KEYS[1]
+	local maxSessions = tonumber(ARGV[1])
+
+	-- Get all session token hashes for this user
+	local tokenHashes = redis.call('SMEMBERS', userSessionsKey)
+	local count = #tokenHashes
+
+	if count < maxSessions then
+		return 0
+	end
+
+	-- Collect sessions with their creation times
+	local sessions = {}
+	for _, hash in ipairs(tokenHashes) do
+		local sessionKey = 'session:' .. hash
+		local createdAt = redis.call('HGET', sessionKey, 'created_at')
+		if createdAt then
+			table.insert(sessions, {hash = hash, created_at = createdAt})
+		else
+			-- Session expired or invalid, remove from set
+			redis.call('SREM', userSessionsKey, hash)
+		end
+	end
+
+	-- Sort by created_at (oldest first)
+	table.sort(sessions, function(a, b)
+		return a.created_at < b.created_at
+	end)
+
+	-- Delete oldest sessions to make room for new one
+	local toDelete = #sessions - maxSessions + 1
+	local deleted = 0
+
+	for i = 1, toDelete do
+		if sessions[i] then
+			local hash = sessions[i].hash
+			local sessionKey = 'session:' .. hash
+			local sessionId = redis.call('HGET', sessionKey, 'id')
+
+			-- Delete session data
+			redis.call('DEL', sessionKey)
+			redis.call('SREM', userSessionsKey, hash)
+
+			-- Delete reverse lookup
+			if sessionId then
+				redis.call('DEL', 'session_id:' .. sessionId)
+			end
+
+			deleted = deleted + 1
+		end
+	end
+
+	return deleted
+`)
+
 func (r *Redis) EnforceMaxSessions(ctx context.Context, userID string, maxSessions int) error {
-	sessions, err := r.GetUserSessions(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	if len(sessions) <= maxSessions {
-		return nil
-	}
-
-	// Sort by creation time (oldest first)
-	sort.Slice(sessions, func(i, j int) bool {
-		return sessions[i].CreatedAt.Before(sessions[j].CreatedAt)
-	})
-
-	// Delete oldest sessions to get under the limit
-	toDelete := len(sessions) - maxSessions
-	for i := 0; i < toDelete; i++ {
-		if err := r.DeleteSessionByID(ctx, sessions[i].ID); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	userSessionsKey := "user:" + userID + ":sessions"
+	_, err := enforceMaxSessionsScript.Run(ctx, r.client, []string{userSessionsKey}, maxSessions).Result()
+	return err
 }
 
 func (r *Redis) CountActiveSessions(ctx context.Context) (int, error) {

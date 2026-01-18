@@ -20,7 +20,20 @@ internal sealed partial class AuthRedirectMiddleware(
     private readonly string _defaultRedirect = configuration.GetValue("Auth:DefaultRedirect", "/admin")!;
     private readonly string _validateEndpoint = configuration.GetValue("Auth:ValidateEndpoint", "http://hellarch-auth:5001/auth/validate")!;
     private readonly string[] _protectedPaths = configuration.GetSection("Auth:ProtectedPaths").Get<string[]>() ?? ["/admin", "/app"];
-    private readonly string[] _bypassPaths = ["/api/auth", "/health", "/hubs", "/_framework", "/_content", "/css", "/js", "/lib", "/favicon", "/app"];
+    // Paths that bypass authentication entirely - be specific to avoid security holes
+    private readonly string[] _bypassPaths = [
+        "/api/auth",     // Auth endpoints (login, callback, etc.)
+        "/health",       // Health checks
+        "/hubs",         // SignalR hubs
+        "/_framework",   // Blazor framework files
+        "/_content",     // Static content
+        "/css",          // Stylesheets
+        "/js",           // JavaScript
+        "/lib",          // Library files
+        "/favicon",      // Favicon
+        "/app/login",    // Login page only
+        "/app/register"  // Register page only
+    ];
     private readonly Dictionary<string, string> _permissionRoutes = configuration.GetSection("Auth:PermissionRoutes").Get<Dictionary<string, string>>() ?? [];
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Path {Path} requires authentication, redirecting to login")]
@@ -204,8 +217,9 @@ internal sealed partial class AuthRedirectMiddleware(
         }
 
         context.Response.ContentType = "application/json";
+        // Don't include required permission in response to prevent information disclosure
         await context.Response.WriteAsync(
-            $$"""{"error": "forbidden", "message": "Permission denied", "required": "{{requiredPermission}}"}"""
+            """{"error": "forbidden", "message": "Permission denied"}"""
         ).ConfigureAwait(false);
     }
 
@@ -222,7 +236,9 @@ internal sealed partial class AuthRedirectMiddleware(
             using var request = new HttpRequestMessage(HttpMethod.Post, _validateEndpoint);
             request.Headers.Add("X-Session-Token", sessionToken);
 
-            using var response = await client.SendAsync(request).ConfigureAwait(false);
+            // Add timeout to prevent hanging if auth service is slow/down
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var response = await client.SendAsync(request, cts.Token).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -268,6 +284,11 @@ internal sealed partial class AuthRedirectMiddleware(
             }
 
             return new SessionInfo(userId, username, permissions, isActive);
+        }
+        catch (OperationCanceledException)
+        {
+            LogValidationFailed("Auth service timeout");
+            return null;
         }
         catch (HttpRequestException ex)
         {

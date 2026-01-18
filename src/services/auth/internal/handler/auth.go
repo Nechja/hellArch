@@ -30,7 +30,7 @@ func NewAuthHandler(
 	cfg *config.Config,
 ) *AuthHandler {
 	security := NewSecurityHandler(cfg)
-	tokenHandler := NewTokenHandler(jwtService, userService)
+	tokenHandler := NewTokenHandler(jwtService, userService, redis)
 	sessionHandler := NewSessionHandler(sessionService)
 	oauthHandler := NewOAuthHandler(
 		oauthService,
