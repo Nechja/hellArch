@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -131,15 +132,16 @@ func (h *HTTPHandler) handleOAuthCallback(w http.ResponseWriter, r *http.Request
 
 	result, err := h.auth.HandleOAuthCallback(r.Context(), provider, code, state, csrfToken, ipAddress, userAgent, existingUserID)
 	if err != nil {
-		if grpcstatus.Code(err) == codes.AlreadyExists {
-			msg := grpcstatus.Convert(err).Message()
-			if msg == "provider_linked_to_other_account" {
-				http.Redirect(w, r, "/settings?error=provider_taken", http.StatusTemporaryRedirect)
-				return
-			}
-			http.Redirect(w, r, "/login?error=email_conflict", http.StatusTemporaryRedirect)
+		errCode := grpcstatus.Code(err)
+		msg := grpcstatus.Convert(err).Message()
+
+		// Handle account linking conflict (user is logged in, provider already linked to another account)
+		if errCode == codes.AlreadyExists && msg == "provider_linked_to_other_account" {
+			http.Redirect(w, r, "/settings?error=provider_taken", http.StatusTemporaryRedirect)
 			return
 		}
+
+		// Generic error for all other failures to prevent account enumeration
 		slog.Error("oauth callback failed", "error", err, "provider", provider)
 		http.Error(w, "Authentication failed", http.StatusUnauthorized)
 		return
@@ -208,12 +210,45 @@ func (h *HTTPHandler) handleRefresh(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPHandler) handleValidate(w http.ResponseWriter, r *http.Request) {
 	sessionToken := r.Header.Get("X-Session-Token")
 	if sessionToken != "" {
-		userID, err := h.auth.ValidateSession(r.Context(), sessionToken)
+		session, err := h.auth.GetSession(r.Context(), sessionToken)
 		if err == nil {
+			// Validate session binding (IP/UserAgent) if configured
+			if h.config.SessionBindingMode != config.SessionBindingNone {
+				currentIP := getClientIP(r)
+				currentUA := r.UserAgent()
+
+				ipMismatch := session.IPAddress != "" && session.IPAddress != currentIP
+				uaMismatch := session.UserAgent != "" && session.UserAgent != currentUA
+
+				if ipMismatch || uaMismatch {
+					slog.Warn("session binding mismatch",
+						"user_id", session.UserID,
+						"session_ip", session.IPAddress,
+						"current_ip", currentIP,
+						"session_ua", session.UserAgent,
+						"current_ua", currentUA,
+						"ip_mismatch", ipMismatch,
+						"ua_mismatch", uaMismatch,
+					)
+
+					if h.config.SessionBindingMode == config.SessionBindingStrict {
+						w.WriteHeader(http.StatusUnauthorized)
+						if err := json.NewEncoder(w).Encode(map[string]interface{}{
+							"valid": false,
+							"error": "session_binding_failed",
+						}); err != nil {
+							slog.Error("failed to encode response", "error", err)
+						}
+						return
+					}
+					// In warn mode, continue but the warning is logged above
+				}
+			}
+
 			// Fetch full user to get permissions and is_active
-			user, err := h.auth.GetUserByID(r.Context(), userID)
+			user, err := h.auth.GetUserByID(r.Context(), session.UserID)
 			if err != nil {
-				slog.Error("failed to get user", "error", err, "user_id", userID)
+				slog.Error("failed to get user", "error", err, "user_id", session.UserID)
 				// Return 401 instead of 500 to avoid info disclosure about internal failures
 				w.WriteHeader(http.StatusUnauthorized)
 				return
@@ -323,10 +358,10 @@ func (h *HTTPHandler) handleServiceToken(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Validate service credentials
+	// Validate service credentials with constant-time comparison to prevent timing attacks
 	expectedSecret, ok := h.config.ServiceAccounts[clientID]
-	if !ok || expectedSecret != clientSecret {
-		slog.Warn("invalid service credentials", "client_id", clientID)
+	if !ok || subtle.ConstantTimeCompare([]byte(expectedSecret), []byte(clientSecret)) != 1 {
+		slog.Warn("invalid service credentials")
 		w.WriteHeader(http.StatusUnauthorized)
 		if err := json.NewEncoder(w).Encode(map[string]string{
 			"error":             "invalid_client",

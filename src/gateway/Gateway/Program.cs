@@ -80,18 +80,42 @@ builder.Services.AddHttpClient();
 var rateLimitConfig = builder.Configuration.GetSection("RateLimiting");
 var permitLimit = rateLimitConfig.GetValue("PermitLimit", 100);
 var windowMinutes = rateLimitConfig.GetValue("WindowMinutes", 1);
+var authPermitLimit = rateLimitConfig.GetValue("AuthPermitLimit", 10);
+var authWindowMinutes = rateLimitConfig.GetValue("AuthWindowMinutes", 1);
 
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Global rate limiter with stricter limits for auth endpoints
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+    {
+        var path = context.Request.Path.Value ?? "";
+        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        // Use stricter limits for authentication endpoints to prevent brute force attacks
+        var isAuthPath = path.StartsWith("/api/auth", StringComparison.OrdinalIgnoreCase);
+        var limit = isAuthPath ? authPermitLimit : permitLimit;
+        var window = isAuthPath ? authWindowMinutes : windowMinutes;
+        var partitionKey = isAuthPath ? $"auth:{ip}" : ip;
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: partitionKey,
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = permitLimit,
-                Window = TimeSpan.FromMinutes(windowMinutes)
-            }));
+                PermitLimit = limit,
+                Window = TimeSpan.FromMinutes(window)
+            });
+    });
+
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsync(
+            """{"error": "too_many_requests", "message": "Rate limit exceeded. Please try again later."}""",
+            token);
+    };
 });
 
 var app = builder.Build();

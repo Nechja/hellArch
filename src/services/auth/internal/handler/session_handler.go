@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/nechja/hellarch/auth/internal/service"
+	"github.com/nechja/hellarch/auth/internal/store"
 )
 
 type SessionHandler struct {
@@ -22,6 +23,11 @@ func (h *SessionHandler) Validate(ctx context.Context, sessionToken string) (str
 		return "", err
 	}
 	return session.UserID, nil
+}
+
+// GetSession returns the full session data including IP and UserAgent for binding validation
+func (h *SessionHandler) GetSession(ctx context.Context, sessionToken string) (*store.RedisSession, error) {
+	return h.sessionService.Validate(ctx, sessionToken)
 }
 
 func (h *SessionHandler) Invalidate(ctx context.Context, sessionToken string) error {

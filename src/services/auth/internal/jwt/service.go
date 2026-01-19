@@ -1,13 +1,25 @@
 package jwt
 
 import (
+	"crypto/rand"
 	"crypto/rsa"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
+
+// generateJTI creates a cryptographically secure unique token identifier
+// for use in the JWT ID (jti) claim. This enables per-token revocation.
+func generateJTI() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
 
 type Service struct {
 	privateKey *rsa.PrivateKey
@@ -51,8 +63,14 @@ func NewService(privateKeyPath, publicKeyPath string) (*Service, error) {
 }
 
 func (s *Service) GenerateAccessToken(claims *Claims, duration time.Duration) (string, error) {
+	jti, err := generateJTI()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate jti: %w", err)
+	}
+
 	now := time.Now()
 	claims.RegisteredClaims = jwt.RegisteredClaims{
+		ID:        jti, // JTI claim for per-token revocation
 		Issuer:    "hellarch-auth",
 		Subject:   claims.UserID,
 		IssuedAt:  jwt.NewNumericDate(now),
@@ -65,8 +83,14 @@ func (s *Service) GenerateAccessToken(claims *Claims, duration time.Duration) (s
 }
 
 func (s *Service) GenerateRefreshToken(userID string, duration time.Duration) (string, error) {
+	jti, err := generateJTI()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate jti: %w", err)
+	}
+
 	now := time.Now()
 	claims := &jwt.RegisteredClaims{
+		ID:        jti, // JTI claim for per-token revocation
 		Issuer:    "hellarch-auth",
 		Subject:   userID,
 		IssuedAt:  jwt.NewNumericDate(now),

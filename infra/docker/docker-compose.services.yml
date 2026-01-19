@@ -24,8 +24,7 @@ services:
     image: hellarch-auth
     container_name: hellarch-auth
     user: "${UID:-1000}:${GID:-1000}"
-    ports:
-      - "5001:5001"
+    # Internal service - accessed via Gateway proxy
     env_file:
       - ../../.env
       - ../../.env.secrets
@@ -54,8 +53,7 @@ services:
       dockerfile: src/services/user/Dockerfile
     image: hellarch-user
     container_name: hellarch-user
-    ports:
-      - "5002:5002"
+    # Internal service - accessed via Gateway proxy
     environment:
       - ASPNETCORE_URLS=http://+:5002
       - ASPNETCORE_ENVIRONMENT=Development
@@ -74,8 +72,7 @@ services:
       dockerfile: src/services/identity/Dockerfile
     image: hellarch-identity
     container_name: hellarch-identity
-    ports:
-      - "5010:5010"
+    # Internal service - accessed via Gateway proxy
     env_file:
       - ../../.env
     environment:
@@ -99,8 +96,7 @@ services:
       dockerfile: src/clients/Admin/Dockerfile
     image: hellarch-admin
     container_name: hellarch-admin
-    ports:
-      - "5003:5003"
+    # Internal service - accessed via Gateway proxy
     env_file:
       - ../../.env
       - ../../.env.secrets
@@ -127,8 +123,8 @@ services:
       dockerfile: Dockerfile
     image: hellarch-health
     container_name: hellarch-health
-    ports:
-      - "5004:5004"
+    # No external port exposure - internal service only
+    # Accessible via http://health:5004 within the network
     environment:
       - PORT=5004
       - POLL_INTERVAL_MS=10000
@@ -148,8 +144,7 @@ services:
       dockerfile: src/services/events/Dockerfile
     image: hellarch-events
     container_name: hellarch-events
-    ports:
-      - "5005:5005"
+    # Internal service - accessed via Gateway proxy
     environment:
       - HTTP_ADDRESS=:5005
       - DATABASE_URL=postgres://hellarch:hellarch@events-db:5432/events_db
@@ -199,8 +194,7 @@ services:
     image: hellarch-realtime-worker
     container_name: hellarch-realtime-worker
     user: "${UID:-1000}:${GID:-1000}"
-    ports:
-      - "5020:5020"
+    # Internal service - accessed via Gateway proxy
     env_file:
       - ../../.env
       - ../../.env.secrets
@@ -247,8 +241,7 @@ services:
       dockerfile: src/workers/dlq/Dockerfile
     image: hellarch-dlq-worker
     container_name: hellarch-dlq-worker
-    ports:
-      - "5025:5025"
+    # Internal service - accessed via Gateway proxy
     environment:
       - ASPNETCORE_URLS=http://+:5025
       - ASPNETCORE_ENVIRONMENT=Development
@@ -266,8 +259,7 @@ services:
       dockerfile: src/services/files/Dockerfile
     image: hellarch-files
     container_name: hellarch-files
-    ports:
-      - "5006:5006"
+    # Internal service - accessed via Gateway proxy
     environment:
       - HTTP_ADDRESS=:5006
       - DATABASE_URL=postgres://hellarch:hellarch@files-db:5432/files_db
@@ -314,8 +306,7 @@ services:
       dockerfile: Dockerfile
     image: hellarch-testing
     container_name: hellarch-testing
-    ports:
-      - "5007:5007"
+    # Internal service - accessed via Admin panel
     env_file:
       - ../../.env
       - ../../.env.secrets

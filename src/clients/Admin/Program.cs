@@ -87,7 +87,7 @@ builder.Services.AddHttpClient("RabbitMQ", client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
-// Health aggregator service
+// Health aggregator service (direct internal access)
 var healthUrl = Environment.GetEnvironmentVariable("HEALTH_SERVICE_URL") ?? "http://health:5004";
 builder.Services.AddHttpClient("HealthService", client =>
 {
@@ -95,7 +95,7 @@ builder.Services.AddHttpClient("HealthService", client =>
     client.Timeout = TimeSpan.FromSeconds(5);
 });
 
-// Testing service
+// Testing service (direct internal access)
 var testingUrl = Environment.GetEnvironmentVariable("TESTING_SERVICE_URL") ?? "http://testing:5007";
 builder.Services.AddHttpClient("TestingService", client =>
 {

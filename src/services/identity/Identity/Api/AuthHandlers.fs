@@ -10,41 +10,63 @@ open Identity.Api.Config
 
 module AuthHandlers =
 
+    let private validateRequiredParam (name: string) (value: string) =
+        if String.IsNullOrWhiteSpace(value) then
+            Error $"missing_parameter:{name}"
+        else
+            Ok value
+
     let handleAuthorize (config: IdentityConfig) (ctx: HttpContext) =
         task {
             let query = ctx.Request.Query
 
-            let request: AuthorizeRequest = {
-                ResponseType = query.["response_type"].ToString()
-                ClientId = query.["client_id"].ToString()
-                RedirectUri = query.["redirect_uri"].ToString()
-                Scope = if query.ContainsKey("scope") then Some (query.["scope"].ToString()) else None
-                State = query.["state"].ToString()
-                CodeChallenge = if query.ContainsKey("code_challenge") then Some (query.["code_challenge"].ToString()) else None
-                CodeChallengeMethod = if query.ContainsKey("code_challenge_method") then Some (query.["code_challenge_method"].ToString()) else None
-            }
+            let responseType = query.["response_type"].ToString()
+            let clientId = query.["client_id"].ToString()
+            let redirectUri = query.["redirect_uri"].ToString()
+            let state = query.["state"].ToString()
 
-            if request.ResponseType <> "code" then
-                do! writeJson ctx 400 {| error = "unsupported_response_type" |}
-            else
-                let! clientResult = Database.getClient config.ConnectionString request.ClientId |> Async.StartAsTask
+            // Validate required OAuth parameters before processing
+            let validation =
+                validateRequiredParam "response_type" responseType
+                |> Result.bind (fun _ -> validateRequiredParam "client_id" clientId)
+                |> Result.bind (fun _ -> validateRequiredParam "redirect_uri" redirectUri)
+                |> Result.bind (fun _ -> validateRequiredParam "state" state)
 
-                match clientResult with
-                | Error e ->
-                    do! writeJson ctx (errorToStatus e) {| error = errorToMessage e |}
-                | Ok None ->
-                    do! writeJson ctx 401 {| error = "invalid_client" |}
-                | Ok (Some client) ->
-                    match Validation.validateRedirectUri client.RedirectUris request.RedirectUri with
-                    | Error _ ->
-                        do! writeJson ctx 400 {| error = "invalid_redirect_uri" |}
-                    | Ok _ ->
-                        let sessionId = TokenGenerator.generateToken 32
-                        let session: AuthorizationSession = { Request = request; CreatedAt = DateTime.UtcNow }
-                        SessionStore.add sessionId session
+            match validation with
+            | Error param ->
+                do! writeJson ctx 400 {| error = "invalid_request"; error_description = param |}
+            | Ok _ ->
+                let request: AuthorizeRequest = {
+                    ResponseType = responseType
+                    ClientId = clientId
+                    RedirectUri = redirectUri
+                    Scope = if query.ContainsKey("scope") then Some (query.["scope"].ToString()) else None
+                    State = state
+                    CodeChallenge = if query.ContainsKey("code_challenge") then Some (query.["code_challenge"].ToString()) else None
+                    CodeChallengeMethod = if query.ContainsKey("code_challenge_method") then Some (query.["code_challenge_method"].ToString()) else None
+                }
 
-                        let loginUrl = Views.loginUrl config.ClientBaseUrl sessionId
-                        ctx.Response.Redirect(loginUrl)
+                if request.ResponseType <> "code" then
+                    do! writeJson ctx 400 {| error = "unsupported_response_type" |}
+                else
+                    let! clientResult = Database.getClient config.ConnectionString request.ClientId |> Async.StartAsTask
+
+                    match clientResult with
+                    | Error e ->
+                        do! writeJson ctx (errorToStatus e) {| error = errorToMessage e |}
+                    | Ok None ->
+                        do! writeJson ctx 401 {| error = "invalid_client" |}
+                    | Ok (Some client) ->
+                        match Validation.validateRedirectUri client.RedirectUris request.RedirectUri with
+                        | Error _ ->
+                            do! writeJson ctx 400 {| error = "invalid_redirect_uri" |}
+                        | Ok _ ->
+                            let sessionId = TokenGenerator.generateToken 32
+                            let session: AuthorizationSession = { Request = request; CreatedAt = DateTime.UtcNow }
+                            SessionStore.add sessionId session
+
+                            let loginUrl = Views.loginUrl config.ClientBaseUrl sessionId
+                            ctx.Response.Redirect(loginUrl)
         }
 
     let handleLogin (config: IdentityConfig) (ctx: HttpContext) =
@@ -67,9 +89,8 @@ module AuthHandlers =
                     | Ok None ->
                         do! writeJson ctx 401 {| error = "invalid_credentials" |}
                     | Ok (Some user) ->
-                        if not user.IsActive then
-                            do! writeJson ctx 401 {| error = "account_disabled" |}
-                        elif not (PasswordHasher.verify body.Password user.PasswordHash) then
+                        // Return same generic error for disabled accounts to prevent account enumeration
+                        if not user.IsActive || not (PasswordHasher.verify body.Password user.PasswordHash) then
                             do! writeJson ctx 401 {| error = "invalid_credentials" |}
                         else
                             SessionStore.tryRemove body.Session

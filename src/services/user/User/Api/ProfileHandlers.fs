@@ -69,24 +69,41 @@ module ProfileHandlers =
 
     let updateProfile (dbConfig: Database.DatabaseConfig) (userId: Guid) (ctx: HttpContext) =
         task {
-            let! bodyNullable = ctx.Request.ReadFromJsonAsync<UpdateProfileRequest>(jsonOptions)
+            // Verify the authenticated user owns this profile
+            match ctx.Request.Headers.TryGetValue("X-User-ID") with
+            | false, _ -> do! writeUnauthorized ctx "No user ID in request"
+            | true, values ->
+                match Guid.TryParse(values.ToString()) with
+                | false, _ -> do! writeBadRequest ctx "Invalid user ID format"
+                | true, authUserId ->
+                    // Get the profile to verify ownership
+                    let! profileResult = Database.getProfile dbConfig userId |> Async.StartAsTask
 
-            match Option.ofObj bodyNullable with
-            | None -> do! writeBadRequest ctx "Invalid request body"
-            | Some body ->
-                let displayName = body.DisplayName
-                let avatarUrl = body.AvatarUrl
-                let bio = body.Bio
+                    match profileResult with
+                    | Error err -> do! handleError ctx err
+                    | Ok profile ->
+                        // Check if the authenticated user owns this profile
+                        if profile.AuthUserId <> authUserId then
+                            do! writeForbidden ctx "You can only update your own profile"
+                        else
+                            let! bodyNullable = ctx.Request.ReadFromJsonAsync<UpdateProfileRequest>(jsonOptions)
 
-                let! result =
-                    Database.updateProfile dbConfig userId displayName avatarUrl bio
-                    |> Async.StartAsTask
+                            match Option.ofObj bodyNullable with
+                            | None -> do! writeBadRequest ctx "Invalid request body"
+                            | Some body ->
+                                let displayName = body.DisplayName
+                                let avatarUrl = body.AvatarUrl
+                                let bio = body.Bio
 
-                match result with
-                | Ok profile ->
-                    let dto = Mapping.UserProfile.toDto profile
-                    do! writeJson ctx 200 dto
-                | Error err -> do! handleError ctx err
+                                let! result =
+                                    Database.updateProfile dbConfig userId displayName avatarUrl bio
+                                    |> Async.StartAsTask
+
+                                match result with
+                                | Ok updatedProfile ->
+                                    let dto = Mapping.UserProfile.toDto updatedProfile
+                                    do! writeJson ctx 200 dto
+                                | Error err -> do! handleError ctx err
         }
 
     let getMe (dbConfig: Database.DatabaseConfig) (ctx: HttpContext) =

@@ -85,11 +85,12 @@ func (h *OAuthHandler) GetOAuthURL(ctx context.Context, provider oauth.Provider,
 }
 
 func (h *OAuthHandler) HandleCallback(ctx context.Context, provider oauth.Provider, code, state, csrfToken, ipAddress, userAgent, existingUserID string) (*AuthResult, error) {
-	stateData, err := h.oauthState.GetOAuthState(ctx, state)
+	// Atomically get and delete state to prevent race conditions where the same
+	// state could be used multiple times in concurrent requests
+	stateData, err := h.oauthState.GetAndDeleteOAuthState(ctx, state)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid or expired state")
 	}
-	_ = h.oauthState.DeleteOAuthState(ctx, state)
 
 	var stateInfo map[string]string
 	if err := json.Unmarshal([]byte(stateData), &stateInfo); err != nil {

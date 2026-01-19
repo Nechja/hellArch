@@ -29,7 +29,10 @@ type Dispatcher struct {
 
 func New(eventsClient *events.Client, timeout time.Duration) *Dispatcher {
 	return &Dispatcher{
-		httpClient: httpclient.New(timeout),
+		// Use SSRF-safe client to block requests to private/internal IPs
+		// This prevents DNS rebinding attacks where hostname resolves to
+		// public IP at registration but private IP at delivery time
+		httpClient: httpclient.NewSSRFSafe(timeout),
 		recorder:   NewDeliveryRecorder(eventsClient),
 	}
 }

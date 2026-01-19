@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -26,6 +27,14 @@ type PresignUploadResponse struct {
 func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	// Owner ID must come from Gateway (X-User-ID header), not from user input
+	// This prevents users from uploading files as other users
+	ownerID := r.Header.Get("X-User-ID")
+	if ownerID == "" {
+		writeError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
 	r.Body = http.MaxBytesReader(w, r.Body, h.uploadService.MaxUploadSize())
 
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
@@ -40,12 +49,6 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	ownerID := r.FormValue("owner_id")
-	if ownerID == "" {
-		writeError(w, http.StatusBadRequest, "owner_id is required")
-		return
-	}
-
 	contentType := header.Header.Get("Content-Type")
 
 	storedFile, err := h.uploadService.Upload(ctx, service.UploadParams{
@@ -55,6 +58,10 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 		ContentType: contentType,
 	})
 	if err != nil {
+		if errors.Is(err, service.ErrContentTypeMismatch) {
+			writeError(w, http.StatusBadRequest, "content type validation failed: file content does not match declared type")
+			return
+		}
 		slog.Error("failed to upload file", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to upload file")
 		return
@@ -66,18 +73,25 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) presignUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	// Owner ID must come from Gateway (X-User-ID header), not from user input
+	ownerID := r.Header.Get("X-User-ID")
+	if ownerID == "" {
+		writeError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
 	var req PresignUploadRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	if req.Filename == "" || req.OwnerID == "" {
-		writeError(w, http.StatusBadRequest, "filename and owner_id are required")
+	if req.Filename == "" {
+		writeError(w, http.StatusBadRequest, "filename is required")
 		return
 	}
 
-	result, err := h.uploadService.Presign(ctx, req.Filename, req.OwnerID, req.Size)
+	result, err := h.uploadService.Presign(ctx, req.Filename, ownerID, req.Size)
 	if err != nil {
 		slog.Error("failed to generate presigned URL", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to generate upload URL")
@@ -102,6 +116,13 @@ type ConfirmUploadRequest struct {
 func (h *Handler) confirmUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	// Owner ID must come from Gateway (X-User-ID header), not from user input
+	ownerID := r.Header.Get("X-User-ID")
+	if ownerID == "" {
+		writeError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
 	var req ConfirmUploadRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -112,7 +133,7 @@ func (h *Handler) confirmUpload(w http.ResponseWriter, r *http.Request) {
 		ObjectKey: req.ObjectKey,
 		Filename:  req.Filename,
 		MimeType:  req.MimeType,
-		OwnerID:   req.OwnerID,
+		OwnerID:   ownerID,
 	})
 	if err != nil {
 		slog.Error("failed to confirm upload", "error", err)

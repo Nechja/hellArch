@@ -30,7 +30,7 @@ func NewAuthHandler(
 	cfg *config.Config,
 ) *AuthHandler {
 	security := NewSecurityHandler(cfg)
-	tokenHandler := NewTokenHandler(jwtService, userService)
+	tokenHandler := NewTokenHandler(jwtService, userService, redis)
 	sessionHandler := NewSessionHandler(sessionService)
 	oauthHandler := NewOAuthHandler(
 		oauthService,
@@ -75,6 +75,11 @@ func (h *AuthHandler) GetConfiguredProviders() []string {
 
 func (h *AuthHandler) ValidateSession(ctx context.Context, sessionToken string) (string, error) {
 	return h.session.Validate(ctx, sessionToken)
+}
+
+// GetSession returns full session data for binding validation
+func (h *AuthHandler) GetSession(ctx context.Context, sessionToken string) (*store.RedisSession, error) {
+	return h.session.GetSession(ctx, sessionToken)
 }
 
 func (h *AuthHandler) InvalidateSession(ctx context.Context, sessionToken string) error {

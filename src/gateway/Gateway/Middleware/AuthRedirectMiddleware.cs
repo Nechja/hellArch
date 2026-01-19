@@ -20,7 +20,35 @@ internal sealed partial class AuthRedirectMiddleware(
     private readonly string _defaultRedirect = configuration.GetValue("Auth:DefaultRedirect", "/admin")!;
     private readonly string _validateEndpoint = configuration.GetValue("Auth:ValidateEndpoint", "http://hellarch-auth:5001/auth/validate")!;
     private readonly string[] _protectedPaths = configuration.GetSection("Auth:ProtectedPaths").Get<string[]>() ?? ["/admin", "/app"];
-    private readonly string[] _bypassPaths = ["/api/auth", "/health", "/hubs", "/_framework", "/_content", "/css", "/js", "/lib", "/favicon", "/app"];
+    // Paths that bypass authentication entirely - must be specific to avoid security holes
+    // WARNING: These use StartsWith matching, so "/api/auth" would match "/api/auth/admin"!
+    private readonly string[] _bypassPaths = [
+        "/api/auth/login",      // Login endpoint
+        "/api/auth/logout",     // Logout endpoint
+        "/api/auth/refresh",    // Token refresh
+        "/api/auth/register",   // Registration
+        "/api/auth/validate",   // Token validation (service-to-service)
+        "/api/auth/token",      // Client credentials grant (service-to-service)
+        "/api/auth/providers",  // OAuth provider list (login page)
+        "/api/auth/me",         // Current user info
+        "/api/auth/hellarch",   // HellArch OAuth
+        "/api/auth/github",     // GitHub OAuth
+        "/api/auth/google",     // Google OAuth
+        "/api/auth/discord",    // Discord OAuth
+        "/api/auth/apple",      // Apple OAuth
+        "/api/auth/microsoft",  // Microsoft OAuth
+        "/api/auth/twitch",     // Twitch OAuth
+        "/health",              // Health checks
+        "/hubs",                // SignalR hubs (has own auth)
+        "/_framework",          // Blazor framework files
+        "/_content",            // Static content
+        "/css",                 // Stylesheets
+        "/js",                  // JavaScript
+        "/lib",                 // Library files
+        "/favicon",             // Favicon
+        "/app/login",           // Login page only
+        "/app/register"         // Register page only
+    ];
     private readonly Dictionary<string, string> _permissionRoutes = configuration.GetSection("Auth:PermissionRoutes").Get<Dictionary<string, string>>() ?? [];
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Path {Path} requires authentication, redirecting to login")]
@@ -61,8 +89,9 @@ internal sealed partial class AuthRedirectMiddleware(
             return;
         }
 
-        // Try to validate session and add user context
+        // Try to validate session (cookie) or Bearer token and add user context
         var session = await ValidateSession(context).ConfigureAwait(false);
+        session ??= await ValidateBearerToken(context).ConfigureAwait(false);
 
         if (session is not null)
         {
@@ -204,8 +233,9 @@ internal sealed partial class AuthRedirectMiddleware(
         }
 
         context.Response.ContentType = "application/json";
+        // Don't include required permission in response to prevent information disclosure
         await context.Response.WriteAsync(
-            $$"""{"error": "forbidden", "message": "Permission denied", "required": "{{requiredPermission}}"}"""
+            """{"error": "forbidden", "message": "Permission denied"}"""
         ).ConfigureAwait(false);
     }
 
@@ -222,7 +252,9 @@ internal sealed partial class AuthRedirectMiddleware(
             using var request = new HttpRequestMessage(HttpMethod.Post, _validateEndpoint);
             request.Headers.Add("X-Session-Token", sessionToken);
 
-            using var response = await client.SendAsync(request).ConfigureAwait(false);
+            // Add timeout to prevent hanging if auth service is slow/down
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var response = await client.SendAsync(request, cts.Token).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -269,6 +301,11 @@ internal sealed partial class AuthRedirectMiddleware(
 
             return new SessionInfo(userId, username, permissions, isActive);
         }
+        catch (OperationCanceledException)
+        {
+            LogValidationFailed("Auth service timeout");
+            return null;
+        }
         catch (HttpRequestException ex)
         {
             LogValidationFailed(ex.Message);
@@ -277,6 +314,77 @@ internal sealed partial class AuthRedirectMiddleware(
         catch (JsonException ex)
         {
             LogValidationFailed($"JSON parse error: {ex.Message}");
+            return null;
+        }
+    }
+
+    private async Task<SessionInfo?> ValidateBearerToken(HttpContext context)
+    {
+        var authHeader = context.Request.Headers.Authorization.ToString();
+        if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var token = authHeader["Bearer ".Length..];
+        if (string.IsNullOrEmpty(token))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var client = httpClientFactory.CreateClient();
+            using var request = new HttpRequestMessage(HttpMethod.Post, _validateEndpoint);
+            request.Headers.Add("Authorization", $"Bearer {token}");
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var response = await client.SendAsync(request, cts.Token).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(content);
+
+            if (!doc.RootElement.TryGetProperty("user_id", out var userIdElement))
+            {
+                return null;
+            }
+
+            var userId = userIdElement.GetString();
+            if (string.IsNullOrEmpty(userId))
+            {
+                return null;
+            }
+
+            string? username = null;
+            if (doc.RootElement.TryGetProperty("username", out var usernameElement))
+            {
+                username = usernameElement.GetString();
+            }
+
+            string? permissions = null;
+            if (doc.RootElement.TryGetProperty("permissions", out var permissionsElement))
+            {
+                permissions = permissionsElement.GetRawText();
+            }
+
+            // Service tokens are always active
+            return new SessionInfo(userId, username, permissions, IsActive: true);
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+        catch (JsonException)
+        {
             return null;
         }
     }

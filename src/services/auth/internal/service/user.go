@@ -42,7 +42,9 @@ func (u *User) FindOrCreateFromOAuth(ctx context.Context, info *oauth.UserInfo) 
 
 	user, err = u.postgres.GetUserByEmail(ctx, info.Email)
 	if err == nil {
-		return nil, status.Error(codes.AlreadyExists, "email_conflict")
+		// Return generic error to prevent account enumeration
+		// Don't reveal that an account with this email already exists
+		return nil, status.Error(codes.InvalidArgument, "registration_failed")
 	}
 
 	if !errors.Is(err, pgx.ErrNoRows) {
