@@ -1,6 +1,70 @@
 # Testing
 
-**Python Testing Service**
+## Philosophy
+
+Tests exist to catch bugs before they ship. Every test should justify its existence by protecting against real failures.
+
+### No "true = true" Tests
+
+Don't write tests that just verify constants or trivial mappings:
+
+```go
+// Bad - this catches nothing
+func TestConfigDefault(t *testing.T) {
+    cfg := DefaultConfig()
+    if cfg.Timeout != 30 {
+        t.Error("expected 30")
+    }
+}
+
+// Good - this catches real logic bugs
+func TestCooldownPreventsRapidRestarts(t *testing.T) {
+    h := NewHandler(cfg)
+    h.HandleUnhealthy(ctx, event)  // First restart
+    h.HandleUnhealthy(ctx, event)  // Should be blocked
+    if restartCount != 1 {
+        t.Error("cooldown should prevent second restart")
+    }
+}
+```
+
+### Test Logic That Breaks
+
+Focus on code paths where bugs actually hide:
+
+| Worth Testing | Not Worth Testing |
+|--------------|-------------------|
+| Validation logic (regex, bounds) | String constants |
+| State machines (cooldowns, retries) | Simple getters |
+| Security checks (auth, permissions) | Configuration defaults |
+| Type coercion (parsing headers) | Direct field access |
+| Business rules (thresholds, limits) | Constructor assignment |
+
+### Tests Should Find Dev Errors Early
+
+Good tests catch mistakes during development, not just verify existing behavior:
+
+- **Regex validation** - catches invalid patterns before they reject good input or accept bad
+- **Time-based logic** - catches race conditions and off-by-one errors in cooldowns/windows
+- **Security boundaries** - catches permission bypasses before they ship
+- **Protocol handling** - catches type mismatches when external systems send unexpected formats
+
+### Keep Tests Focused
+
+Each test should verify one behavior. If a test name needs "and" in it, split it:
+
+```go
+// Bad - tests two things
+func TestValidatesInputAndSavesToDatabase(t *testing.T) { ... }
+
+// Good - separate concerns
+func TestRejectsInvalidInput(t *testing.T) { ... }
+func TestPersistsValidInput(t *testing.T) { ... }
+```
+
+---
+
+## Integration Testing Service
 
 Centralized test orchestration service with scheduled execution, API-triggered runs, and browser automation via Playwright.
 
