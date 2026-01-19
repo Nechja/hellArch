@@ -122,6 +122,12 @@ func (h *TokenHandler) Validate(ctx context.Context, token string) (*jwt.Claims,
 	return claims, nil
 }
 
+// servicePermissions defines permissions granted to specific service accounts
+var servicePermissions = map[string]map[string]bool{
+	"testing-service": {"admin.panel": true},
+	"health-service":  {"admin.panel": true},
+}
+
 func (h *TokenHandler) GenerateServiceToken(serviceID string) (string, error) {
 	claims := &jwt.Claims{
 		UserID:   "service:" + serviceID,
@@ -130,6 +136,17 @@ func (h *TokenHandler) GenerateServiceToken(serviceID string) (string, error) {
 			"type": "service",
 		},
 	}
+
+	// Add permissions if defined for this service
+	if perms, ok := servicePermissions[serviceID]; ok && len(perms) > 0 {
+		permJSON, err := json.Marshal(perms)
+		if err != nil {
+			slog.Error("failed to marshal service permissions", "serviceID", serviceID, "error", err)
+		} else {
+			claims.Custom["permissions"] = string(permJSON)
+		}
+	}
+
 	return h.jwtService.GenerateAccessToken(claims, time.Hour)
 }
 

@@ -22,6 +22,10 @@ from testing.results import get_results_store
 
 logger = structlog.get_logger()
 
+# Delay between test categories to avoid hitting gateway rate limits
+# Auth endpoints are limited to 10 requests/minute
+CATEGORY_DELAY_SECONDS = 25
+
 
 class TestRunner:
     """Manages test execution and scheduling."""
@@ -402,14 +406,26 @@ class TestRunner:
         return summary
 
     async def run_all_tests(self) -> list[TestRunSummary]:
-        """Run all test categories."""
+        """Run all test categories with delays to avoid rate limiting."""
         summaries = []
+
         summaries.append(await self.run_smoke_tests())
+        await asyncio.sleep(CATEGORY_DELAY_SECONDS)
+
         summaries.append(await self.run_contract_tests())
+        await asyncio.sleep(CATEGORY_DELAY_SECONDS)
+
         summaries.append(await self.run_error_tests())
+        await asyncio.sleep(CATEGORY_DELAY_SECONDS)
+
         summaries.append(await self.run_integration_tests())
+        await asyncio.sleep(CATEGORY_DELAY_SECONDS)
+
         summaries.append(await self.run_golden_tests())
+        await asyncio.sleep(CATEGORY_DELAY_SECONDS)
+
         summaries.append(await self.run_e2e_tests())
+
         return summaries
 
     async def start(self) -> None:
