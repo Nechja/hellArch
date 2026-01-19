@@ -48,10 +48,15 @@ public sealed class DlqConsumer(
     private readonly SemaphoreSlim _publishChannelLock = new(1, 1);
 
     // Fields that should be redacted from stored bodies to prevent PII leakage
+    // Uses partial matching - any field containing these strings will be redacted
     private static readonly HashSet<string> SensitiveFields = new(StringComparer.OrdinalIgnoreCase)
     {
         "password", "secret", "token", "apikey", "api_key", "authorization",
-        "credential", "ssn", "social_security", "credit_card", "card_number"
+        "credential", "ssn", "social_security", "credit_card", "card_number",
+        "access_token", "refresh_token", "session_token", "private_key",
+        "cvv", "pin", "security_code", "routing_number", "account_number",
+        "bank_account", "tax_id", "passport", "license_number", "dob",
+        "date_of_birth", "mother_maiden", "security_question", "security_answer"
     };
 
     private IChannel? _publishChannel;

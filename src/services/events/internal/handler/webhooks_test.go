@@ -45,11 +45,11 @@ func TestValidateWebhookURLBlocksSSRFTargets(t *testing.T) {
 }
 
 func TestValidateWebhookURLAllowsPublicEndpoints(t *testing.T) {
+	// Use well-known domains that will always resolve
 	validURLs := []string{
-		"https://hooks.slack.com/services/xxx",
-		"https://discord.com/api/webhooks/xxx",
-		"https://api.example.com/webhook",
-		"http://webhook.site/abc123",
+		"https://google.com/webhook",
+		"https://github.com/webhook",
+		"https://cloudflare.com/api",
 	}
 
 	for _, url := range validURLs {
@@ -188,6 +188,25 @@ func TestSanitizeWebhooksDoesNotLeakSecrets(t *testing.T) {
 			if s.ID == secret || s.Name == secret || s.URL == secret {
 				t.Errorf("webhook %d leaks secret %q", i, secret)
 			}
+		}
+	}
+}
+
+func TestValidateWebhookURLRejectsUnresolvableHostnames(t *testing.T) {
+	// These hostnames should not resolve and must be rejected
+	// to prevent SSRF via DNS rebinding attacks
+	unresolvableURLs := []string{
+		"https://this-hostname-definitely-does-not-exist-xyz123abc.com/webhook",
+		"https://fake-internal-service.invalid/api",
+	}
+
+	for _, url := range unresolvableURLs {
+		err := validateWebhookURL(url)
+		if err == nil {
+			t.Errorf("should reject unresolvable hostname: %s", url)
+		}
+		if err != ErrInvalidWebhookURL {
+			t.Errorf("expected ErrInvalidWebhookURL for %s, got: %v", url, err)
 		}
 	}
 }

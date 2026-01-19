@@ -48,12 +48,12 @@ func validateWebhookURL(rawURL string) error {
 	}
 
 	// Resolve hostname to IP and check for private/internal ranges
+	// SECURITY: Reject unresolvable hostnames to prevent SSRF via DNS rebinding
+	// where a hostname might resolve to a private IP at delivery time
 	ips, err := net.LookupIP(hostname)
 	if err != nil {
-		// If we can't resolve, allow it - might be a hostname that resolves at delivery time
-		// But log it for monitoring
-		slog.Debug("could not resolve webhook hostname", "hostname", hostname)
-		return nil
+		slog.Warn("rejected webhook with unresolvable hostname", "hostname", hostname, "error", err)
+		return ErrInvalidWebhookURL
 	}
 
 	for _, ip := range ips {
