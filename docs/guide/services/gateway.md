@@ -25,9 +25,10 @@ graph LR
 ## Responsibilities
 
 1. **Request Routing** - Routes API requests to respective services
-2. **Cookie-to-JWT Transform** - Extracts JWT from cookies, adds to request headers
+2. **Authentication** - Validates session cookies and Bearer tokens, adds user context headers
 3. **CORS Handling** - Manages cross-origin requests
-4. **Static File Serving** - Serves Vue SPA clients (Admin, Identity)
+4. **Static File Serving** - Serves Vue SPA clients (App, Identity)
+5. **Rate Limiting** - Per-IP rate limiting with stricter limits for auth endpoints
 
 ## Route Configuration
 
@@ -64,19 +65,62 @@ Example configuration:
 
 ## Auth Middleware
 
-The middleware intercepts requests and:
-1. Reads `auth_token` cookie
-2. Validates JWT with Auth service (gRPC)
-3. Adds user claims to request headers
+The middleware validates authentication and adds user context headers for downstream services.
 
+### Authentication Methods
+
+| Method | Use Case | Header/Cookie |
+|--------|----------|---------------|
+| Session Cookie | Browser clients | `hellarch_session` cookie |
+| Bearer Token | Service-to-service | `Authorization: Bearer {token}` |
+
+### Flow
+
+1. Check if path is bypassed (public endpoints like `/api/auth/providers`)
+2. Try session cookie validation
+3. If no session, try Bearer token validation
+4. Add user context headers if authenticated
+5. Check route permissions if required
+
+### User Context Headers
+
+Set for downstream services when authenticated:
+
+| Header | Description |
+|--------|-------------|
+| `X-User-ID` | User or service identifier (e.g., `user:uuid` or `service:testing-service`) |
+| `X-Username` | Username if available |
+| `X-Permissions` | JSON object of permissions |
+
+### Sequence Diagrams
+
+**Browser Client (Session Cookie):**
 ```mermaid
 sequenceDiagram
     Client->>Gateway: Request + Cookie
-    Gateway->>Gateway: Extract JWT
-    Gateway->>Auth: ValidateToken (gRPC)
-    Auth-->>Gateway: Claims
-    Gateway->>Service: Request + X-User-Id header
+    Gateway->>Auth: Validate Session
+    Auth-->>Gateway: User Claims
+    Gateway->>Service: Request + X-User-ID
 ```
+
+**Service Client (Bearer Token):**
+```mermaid
+sequenceDiagram
+    Service->>Gateway: Request + Bearer Token
+    Gateway->>Auth: Validate Token
+    Auth-->>Gateway: Service Claims
+    Gateway->>Service: Request + X-User-ID
+```
+
+### Bypass Paths
+
+These paths skip authentication middleware (handled by the service itself):
+
+- `/api/auth/login`, `/api/auth/logout`, `/api/auth/refresh`
+- `/api/auth/validate`, `/api/auth/token`, `/api/auth/providers`
+- `/api/auth/{provider}` - OAuth provider routes
+- `/health` - Health checks
+- `/app/login`, `/app/register` - Public pages
 
 ## Location
 
