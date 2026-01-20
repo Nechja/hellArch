@@ -373,6 +373,7 @@ jobs:
         with:
           otp-version: '27'
           gleam-version: '1.14.0'
+          rebar3-version: '3.24'
 
       - name: Download dependencies
         run: gleam deps download
