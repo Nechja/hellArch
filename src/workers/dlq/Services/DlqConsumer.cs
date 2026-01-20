@@ -307,7 +307,7 @@ public sealed class DlqConsumer(
         }
     }
 
-    private static int GetRetryCount(IDictionary<string, object?>? headers)
+    internal static int GetRetryCount(IDictionary<string, object?>? headers)
     {
         if (headers?.TryGetValue("x-dlq-retry-count", out var countObj) == true)
         {

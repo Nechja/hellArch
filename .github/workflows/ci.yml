@@ -1,0 +1,389 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test-auth-service:
+    name: Test Auth Service (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/services/auth
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: src/services/auth/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-coverage
+          path: src/services/auth/coverage.out
+
+  test-files-service:
+    name: Test Files Service (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/services/files
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: src/services/files/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: files-coverage
+          path: src/services/files/coverage.out
+
+  test-events-service:
+    name: Test Events Service (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/services/events
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: src/services/events/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: events-coverage
+          path: src/services/events/coverage.out
+
+  test-gateway:
+    name: Test Gateway (C#)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/gateway
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          include-prerelease: true
+
+      - name: Restore dependencies
+        run: dotnet restore Gateway.Tests
+
+      - name: Build
+        run: dotnet build Gateway.Tests --no-restore
+
+      - name: Run tests
+        run: dotnet test Gateway.Tests --no-build --verbosity normal --collect:"XPlat Code Coverage"
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: gateway-coverage
+          path: src/gateway/Gateway.Tests/TestResults/**/coverage.cobertura.xml
+
+  test-identity-service:
+    name: Test Identity Service (F#)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/services/identity
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          include-prerelease: true
+
+      - name: Restore dependencies
+        run: dotnet restore Identity.Tests
+
+      - name: Build
+        run: dotnet build Identity.Tests --no-restore
+
+      - name: Run tests
+        run: dotnet test Identity.Tests --no-build --verbosity normal --collect:"XPlat Code Coverage"
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: identity-coverage
+          path: src/services/identity/Identity.Tests/TestResults/**/coverage.cobertura.xml
+
+  test-user-service:
+    name: Test User Service (F#)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/services/user
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          include-prerelease: true
+
+      - name: Restore dependencies
+        run: dotnet restore User.Tests
+
+      - name: Build
+        run: dotnet build User.Tests --no-restore
+
+      - name: Run tests
+        run: dotnet test User.Tests --no-build --verbosity normal --collect:"XPlat Code Coverage"
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: user-coverage
+          path: src/services/user/User.Tests/TestResults/**/coverage.cobertura.xml
+
+  test-audit-worker:
+    name: Test Audit Worker (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/workers/audit
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: src/workers/audit/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-coverage
+          path: src/workers/audit/coverage.out
+
+  test-webhooks-worker:
+    name: Test Webhooks Worker (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/workers/webhooks
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: src/workers/webhooks/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: webhooks-coverage
+          path: src/workers/webhooks/coverage.out
+
+  test-images-worker:
+    name: Test Images Worker (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/workers/images
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: src/workers/images/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: images-coverage
+          path: src/workers/images/coverage.out
+
+  test-infra-worker:
+    name: Test Infra Worker (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/workers/infra
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: src/workers/infra/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: infra-coverage
+          path: src/workers/infra/coverage.out
+
+  test-dlq-worker:
+    name: Test DLQ Worker (C#)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/workers
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          include-prerelease: true
+
+      - name: Restore dependencies
+        run: dotnet restore dlq.tests
+
+      - name: Build
+        run: dotnet build dlq.tests --no-restore
+
+      - name: Run tests
+        run: dotnet test dlq.tests --no-build --verbosity normal --collect:"XPlat Code Coverage"
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: dlq-coverage
+          path: src/workers/dlq.tests/TestResults/**/coverage.cobertura.xml
+
+  test-realtime-worker:
+    name: Test Realtime Worker (C#)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/workers
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          include-prerelease: true
+
+      - name: Restore dependencies
+        run: dotnet restore realtime.tests
+
+      - name: Build
+        run: dotnet build realtime.tests --no-restore
+
+      - name: Run tests
+        run: dotnet test realtime.tests --no-build --verbosity normal --collect:"XPlat Code Coverage"
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: realtime-coverage
+          path: src/workers/realtime.tests/TestResults/**/coverage.cobertura.xml
+
+  test-health-service:
+    name: Test Health Service (Gleam)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/services/health
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Gleam
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: '27'
+          gleam-version: '1.14.0'
+          rebar3-version: '3.24'
+
+      - name: Download dependencies
+        run: gleam deps download
+
+      - name: Run tests
+        run: gleam test
+
+  build-check:
+    name: Build Check
+    runs-on: ubuntu-latest
+    needs: [test-auth-service, test-files-service, test-events-service, test-gateway, test-identity-service, test-user-service, test-audit-worker, test-webhooks-worker, test-images-worker, test-infra-worker, test-dlq-worker, test-realtime-worker, test-health-service]
+    steps:
+      - run: echo "All tests passed"

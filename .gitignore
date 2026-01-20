@@ -260,3 +260,6 @@ src/clients/*/dist/
 !docs/architecture/**
 !docs/guide/**
 !docs/types/**
+
+
+!.github/
