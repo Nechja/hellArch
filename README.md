@@ -1,6 +1,6 @@
 ![hellarch](hellarch.png)
 
-A polyglot microservices architecture built as a learning project. Intentionally complex and messy to explore multiple languages, patterns, and infrastructure approaches.
+A polyglot microservices architecture built as a learning project. Intentionally complex and messy to explore multiple languages, patterns, and infrastructure approaches. I also tried out ai made documents with this project for helping document along side my work. 
 
 ## Architecture Overview
 
